@@ -6,10 +6,11 @@
 \usage{
 mlim(
   data,
+  include_algos = "ELNET",
+  preimpute = "iterate",
   ignore = NULL,
   init = TRUE,
-  include_algos = "ELNET",
-  save = "mlim.rds",
+  save = NULL,
   iterdata = NULL,
   maxiter = 10L,
   miniter = 2L,
@@ -36,13 +37,6 @@ mlim(
 \arguments{
 \item{data}{a \code{data.frame} or \code{matrix} with missing data}
 
-\item{ignore}{character vector of column names or index of columns that should
-should be ignored in the process of imputation.}
-
-\item{init}{logical. should h2o Java server be initiated? the default is TRUE.
-however, if the Java server is already running, set this argument
-to FALSE.}
-
 \item{include_algos}{character. specify a vector of algorithms to be used
        in the process of auto-tuning. the three main algorithms are
        \code{"GLM"},
@@ -53,6 +47,23 @@ to FALSE.}
        \code{"DeepLearning"}, and \code{"StackedEnsemble")}. Note that the
        choice of algorithms to be trained can largely increase the runtime.
        for advice on algorithm selection visit \url{https:github.com/mlim}}
+
+\item{preimpute}{character. specifies the procedure for handling the missing
+data before initiating the procedures. the default procedure
+is "iterate", which models the missing data with \code{mlim}
+and then adds them as predictors for imputing the other
+variables. This is the slowest procedure, yet the most accurate
+one. You can skip this step by carrying out a quick imputation
+with a fast algorithm. Currently, "missMDA" procedure is
+supported, which carries out a fast imputation via
+\code{missMDA} R package.}
+
+\item{ignore}{character vector of column names or index of columns that should
+should be ignored in the process of imputation.}
+
+\item{init}{logical. should h2o Java server be initiated? the default is TRUE.
+however, if the Java server is already running, set this argument
+to FALSE.}
 
 \item{save}{filename. if a filename is specified, an \code{mlim} object is
 saved after the end of each iteration. this object not only

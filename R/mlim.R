@@ -6,7 +6,8 @@
 #' @importFrom h2o h2o.init as.h2o h2o.automl h2o.predict h2o.ls
 #'             h2o.removeAll h2o.rm
 #' @importFrom md.log md.log
-#' @importFrom missRanger imputeUnivariate
+#' @importFrom VIM kNN
+#' @importFrom missRanger missRanger imputeUnivariate
 #' @importFrom stats var setNames na.omit
 #' @param data a \code{data.frame} or \code{matrix} with missing data
 #' @param include_algos character. specify a vector of algorithms to be used
@@ -19,6 +20,15 @@
 #'        \code{"DeepLearning"}, and \code{"StackedEnsemble")}. Note that the
 #'        choice of algorithms to be trained can largely increase the runtime.
 #'        for advice on algorithm selection visit \url{https:github.com/mlim}
+#' @param preimpute character. specifies the procedure for handling the missing
+#'                  data before initiating the procedures. the default procedure
+#'                  is "iterate", which models the missing data with \code{mlim}
+#'                  and then adds them as predictors for imputing the other
+#'                  variables. This is the slowest procedure, yet the most accurate
+#'                  one. You can skip this step by carrying out a quick imputation
+#'                  with a fast algorithm. Currently, "missMDA" procedure is
+#'                  supported, which carries out a fast imputation via
+#'                  \code{missMDA} R package.
 #' @param init logical. should h2o Java server be initiated? the default is TRUE.
 #'             however, if the Java server is already running, set this argument
 #'             to FALSE.
@@ -130,13 +140,15 @@
 
 
 mlim <- function(data,
+                 include_algos =  "ELNET", #c("GBM", "StackedEnsemble"),
+                 preimpute = "iterate",
 
                  # multiple imputation settings
                  #m = FALSE, #boot = FALSE, nboot = 0,
 
                  ignore = NULL,
                  init = TRUE,
-                 include_algos =  "ELNET", #c("GBM", "StackedEnsemble"),
+
                  save = NULL,
                  iterdata = NULL, #experimental
 
@@ -174,6 +186,8 @@ mlim <- function(data,
   # ============================================================
   suppressPackageStartupMessages({requireNamespace("h2o")})
   suppressPackageStartupMessages({requireNamespace("md.log")})
+  suppressPackageStartupMessages({requireNamespace("VIM")})
+  suppressPackageStartupMessages({requireNamespace("missRanger")})
 
   # Syntax processing
   # ============================================================
@@ -241,9 +255,20 @@ mlim <- function(data,
   data  <- Features$data
   rm(Features)
 
-
-
-
+  # .........................................................
+  # PREIMPUTATION
+  # .........................................................
+  if (preimputation != "iterate") {
+    if (tolower(preimputation) == "knn") {
+      set.seed(seed)
+      data <- VIM::kNN(irisNA, imp_var=FALSE)
+      md.log("kNN preimputation is done")
+    }
+    if (tolower(preimputation) == "ranger") {
+      data <- missRanger::missRanger(irisWithNA, seed = seed)
+      md.log("missRanger preimputation is done")
+    }
+  }
 
   # Run H2O on the statistics server
   # ============================================================
@@ -449,7 +474,7 @@ mlim <- function(data,
 
       # Update the predictors during the first iteration
       # ------------------------------------------------------------
-      if (k == 1L && (Y %in% allPredictors)) {
+      if (preimputation == "iterate" && k == 1L && (Y %in% allPredictors)) {
         X <- union(X, Y)
       }
     }
