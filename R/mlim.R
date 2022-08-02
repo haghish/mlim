@@ -199,7 +199,8 @@ mlim <- function(data,
   verbose <- 0
 
   # examine the data.frame and the arguments
-  syntaxProcessing(data, preimpute, matching, miniter, maxiter, max_models,
+  syntaxProcessing(data, preimpute, include_algos,
+                   matching, miniter, maxiter, max_models,
                    max_model_runtime_secs,
                    nfolds, weights_column, report)
 
@@ -267,9 +268,13 @@ mlim <- function(data,
       data <- VIM::kNN(data, imp_var=FALSE)
       md.log("kNN preimputation is done")
     }
-    if (tolower(preimpute) == "ranger") {
+    else if (tolower(preimpute) == "ranger") {
       data <- missRanger::missRanger(data, seed = seed)
       md.log("missRanger preimputation is done")
+    }
+    else if (tolower(preimpute) == "mm") {
+      data <- meanmode(data)
+      md.log("Mean/Mode preimputation is done")
     }
 
     # reset the relevant predictors
@@ -396,7 +401,7 @@ mlim <- function(data,
                             exploitation_ratio = 0.1,
                             max_runtime_secs = max_model_runtime_secs,
                             max_models = max_models,
-                            weights_column = weights_column,
+                            weights_column = weights_column[which(!v.na)],
                             keep_cross_validation_predictions =
                               keep_cross_validation_predictions,
                             seed = seed,
@@ -420,7 +425,7 @@ mlim <- function(data,
                             exploitation_ratio = 0.1,
                             max_runtime_secs = max_model_runtime_secs,
                             max_models = max_models,
-                            weights_column = weights_column,
+                            weights_column = weights_column[which(!v.na)],
                             keep_cross_validation_predictions =
                               keep_cross_validation_predictions,
                             seed = seed,
