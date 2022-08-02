@@ -137,7 +137,7 @@ mlim <- function(data,
                  ignore = NULL,
                  init = TRUE,
                  include_algos =  "ELNET", #c("GBM", "StackedEnsemble"),
-                 save = "mlim.rds",
+                 save = NULL,
                  iterdata = NULL, #experimental
 
                  # computational resources
@@ -457,7 +457,7 @@ mlim <- function(data,
 
 
     # CHECK CRITERIA FOR RUNNING THE NEXT ITERATION
-    # ------------------------------------------------------------
+    # --------------------------------------------------------------
     # ??? needs update for binary and multinomial
     #if (debug) METER <<- metrics
     SC <- stoppingCriteria(miniter, maxiter,
@@ -475,12 +475,34 @@ mlim <- function(data,
     # update the loop
     k <- k + 1L
 
+    # prepare mlim object for future imputation in the future
+    # --------------------------------------------------------------
     if (!is.null(iterdata)) {
       if (!is.null(iterDF)) iterDF <- append(iterDF, list(data))
       else iterDF <- list(data)
 
+      mlimClass <- list(iteration=iterDF, k = k, include_algos=include_algos,
+                        ignore=ignore, save = save, iterdata = iterdata,
+                        maxiter = maxiter, miniter = miniter, nfolds = nfolds,
+                        max_model_runtime_secs = max_model_runtime_secs,
+                        max_models = max_models, matching = matching,
+                        ordinal_as_integer = ordinal_as_integer,
+                        weights_column = weights_column, seed=seed,
+                        verbosity=verbosity, report=report,
+                        iteration_stopping_metric=iteration_stopping_metric,
+                        iteration_stopping_tolerance=iteration_stopping_tolerance,
+                        stopping_metric=stopping_metric,stopping_rounds=stopping_rounds,
+                        stopping_tolerance=stopping_tolerance,
+                        nthreads = nthreads, max_mem_size=max_mem_size,
+                        min_mem_size = min_mem_size,
+
+                        # save the package version used for the imputation
+                        pkg=packageVersion("mlim")
+                        )
+      class(mlimClass) <- "mlim"
+
       # update iteration data
-      saveRDS(iterDF, iterdata)
+      saveRDS(mlimClass, iterdata)
     }
 
     # add the metrics error to the data.frame and save it
@@ -503,10 +525,6 @@ mlim <- function(data,
     dataLast <- as.data.frame(hex)
     attr(dataLast, "metrics") <- metrics
     attr(dataLast, iteration_stopping_metric) <- error
-  }
-
-  if (!is.null(save)) {
-    saveRDS(dataLast, save)
   }
 
   return(dataLast)
