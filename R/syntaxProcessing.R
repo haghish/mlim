@@ -6,7 +6,7 @@
 #' @noRd
 
 
-syntaxProcessing <- function(data, matching, miniter, maxiter, max_models,
+syntaxProcessing <- function(data, preimpute, matching, miniter, maxiter, max_models,
                              max_model_runtime_secs, nfolds, weights_column,
                              md.log) {
 
@@ -15,13 +15,13 @@ syntaxProcessing <- function(data, matching, miniter, maxiter, max_models,
     "'data' has no observations" = dim(data) >= 1,
     #"'formula' should be a formula!" = inherits(formula, "formula"),
     #length(formula <- as.character(formula)) == 3L,
-    "'miniter' must not be less than 2" = miniter >= 2,
-    "'miniter' must be a positive integer equal or more than 2" = miniter >= 2,
-    "'maxiter' must be a positive integer equal or more than 2" = maxiter >= 2,
-    "'max_models' must be a positive integer equal or more than 1" = maxiter >= 1,
-    "'max_model_runtime_secs' must be a positive integer" = maxiter >= 2,
+    #"'max_models' must be a positive integer equal or more than 1" = max_models >= 1,
+    #"'max_model_runtime_secs' must be a positive integer" = max_model_runtime_secs >= 2,
     "'nfolds' must be a positive integer equal or more than 10" = nfolds >= 10
   )
+
+  if (miniter < 2 & preimpute == "iterate") stop("'miniter' must not be less than 2")
+  if ( maxiter < 2 & preimpute == "iterate") stop("'maxiter' must not be less than 2")
 
   if (!is.null(weights_column)) {
     stopifnot(

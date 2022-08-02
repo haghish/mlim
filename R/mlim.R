@@ -179,8 +179,9 @@ mlim <- function(data,
                  # setup the h2o cluster
                  nthreads = -1,
                  max_mem_size = NULL,
-                 min_mem_size = NULL,
-                 ...) {
+                 min_mem_size = NULL
+                 #, ...
+                 ) {
 
   # Load the libraries
   # ============================================================
@@ -198,7 +199,7 @@ mlim <- function(data,
   verbose <- 0
 
   # examine the data.frame and the arguments
-  syntaxProcessing(data, matching, miniter, maxiter, max_models,
+  syntaxProcessing(data, preimpute, matching, miniter, maxiter, max_models,
                    max_model_runtime_secs,
                    nfolds, weights_column, report)
 
@@ -240,16 +241,18 @@ mlim <- function(data,
   allPredictors <- VARS$allPredictors
   vars2impute <- VARS$vars2impute
   X <- VARS$X
-  rm(VARS)
+  xxx <<- X
+  v2m <<- vars2impute
+  vars <<- VARS
 
   if (debug) {
-    #var2imp <<- vars2impute
+    var2imp <<- vars2impute
     print(vars2impute)
   }
-  #DATA1 <<- data
+  DATA1 <<- data
   Features <- checkNconvert(data, vars2impute, ignore,
                             ordinal_as_integer, report)
-  #FEAT <<- Features
+  FEAT <<- Features
   CLASS <- Features$class
   FAMILY<- Features$family
   data  <- Features$data
@@ -258,16 +261,19 @@ mlim <- function(data,
   # .........................................................
   # PREIMPUTATION
   # .........................................................
-  if (preimputation != "iterate") {
-    if (tolower(preimputation) == "knn") {
+  if (preimpute != "iterate") {
+    if (tolower(preimpute) == "knn") {
       set.seed(seed)
-      data <- VIM::kNN(irisNA, imp_var=FALSE)
+      data <- VIM::kNN(data, imp_var=FALSE)
       md.log("kNN preimputation is done")
     }
-    if (tolower(preimputation) == "ranger") {
-      data <- missRanger::missRanger(irisWithNA, seed = seed)
+    if (tolower(preimpute) == "ranger") {
+      data <- missRanger::missRanger(data, seed = seed)
       md.log("missRanger preimputation is done")
     }
+
+    # reset the relevant predictors
+    X <- allPredictors
   }
 
   # Run H2O on the statistics server
@@ -310,30 +316,34 @@ mlim <- function(data,
   hexID <- h2o::h2o.getId(hex)
   Sys.sleep(1)
   if (debug) {
-    #HEX <<- hex
-    #iDD <<- hexID
+    HEX <<- hex
+    iDD <<- hexID
     md.log("data was sent to h2o cloud")
   }
 
   while (running) {
     if (verbose) {
-      cat("\nIteration ", k, ":\t", sep = "")
+      #cat("\nIteration ", k, ":\t", sep = "")
+      cat("\nIteration ", k, ":\n", sep = "")
     }
 
     md.log(paste("Iteration", k), section="section")
 
     if (debug) md.log("store last data")
+
     dataLast <- as.data.frame(hex)
     attr(dataLast, "metrics") <- metrics
     attr(dataLast, "nrmse") <- error
 
-    #if (debug) LASTDATA <<- dataLast
+
+    if (debug) LASTDATA <<- dataLast
 
     # .........................................................
     # IMPUTATION LOOP
     # .........................................................
     z <- 0
     for (Y in vars2impute) {
+      print(paste("XXX:   ", X))
       z <- z + 1
       v.na <- dataNA[, Y]
 
@@ -342,7 +352,9 @@ mlim <- function(data,
         md.log(paste("family:", FAMILY[z]))
       }
 
+      md.log(paste(X, collapse = ","))
       if (length(X) == 0L) {
+        print(X)
         if (debug) md.log("uni impute")
         #??? change this with a self-written function
         hex[[Y]] <- h2o::as.h2o(missRanger::imputeUnivariate(data[[Y]]))
@@ -419,7 +431,7 @@ mlim <- function(data,
         }
 
         if (debug) {
-          #FIT <<- fit
+          FIT <<- fit
           md.log("model fitted")
           md.log("model was executed successfully")
         }
@@ -429,7 +441,7 @@ mlim <- function(data,
         if (debug) md.log("predictions were generated")
         perf <- h2o::h2o.performance(fit@leader)
         Sys.sleep(1)
-        #if (debug) perff <<- perf
+        if (debug) perff <<- perf
 
         # update metrics
         # ------------------------------------------------------------
@@ -447,11 +459,11 @@ mlim <- function(data,
         }
         else {
           if (debug) {
-            #A <<- v.na
-            #Y <<- Y
-            #B <<- data[v.na, Y]
-            #iDD <<- hexID
-            #PRED <<- pred
+            A <<- v.na
+            Y <<- Y
+            B <<- data[v.na, Y]
+            iDD <<- hexID
+            PRED <<- pred
             #data[v.na, Y] <- as.vector(pred) #here convert it to a vector
           }
           hex[which(v.na), Y] <- pred #h2o requires numeric subsetting
@@ -474,7 +486,7 @@ mlim <- function(data,
 
       # Update the predictors during the first iteration
       # ------------------------------------------------------------
-      if (preimputation == "iterate" && k == 1L && (Y %in% allPredictors)) {
+      if (preimpute == "iterate" && k == 1L && (Y %in% allPredictors)) {
         X <- union(X, Y)
       }
     }
@@ -484,7 +496,7 @@ mlim <- function(data,
     # CHECK CRITERIA FOR RUNNING THE NEXT ITERATION
     # --------------------------------------------------------------
     # ??? needs update for binary and multinomial
-    #if (debug) METER <<- metrics
+    if (debug) METER <<- metrics
     SC <- stoppingCriteria(miniter, maxiter,
                            metrics, k,
                            iteration_stopping_metric,
@@ -503,39 +515,40 @@ mlim <- function(data,
     # prepare mlim object for future imputation in the future
     # --------------------------------------------------------------
     if (!is.null(iterdata)) {
-      if (!is.null(iterDF)) iterDF <- append(iterDF, list(data))
-      else iterDF <- list(data)
+      if (!is.null(iterDF)) {
+        currentData <- as.data.frame(hex)
+        attr(currentData, "metrics") <- metrics
+        iterDF <- append(iterDF, list(currentData))
+      }
+      else {
+        currentData <- as.data.frame(hex)
+        attr(currentData, "metrics") <- metrics
+        iterDF <- list(currentData)
 
-      mlimClass <- list(iteration=iterDF, k = k, include_algos=include_algos,
-                        ignore=ignore, save = save, iterdata = iterdata,
-                        maxiter = maxiter, miniter = miniter, nfolds = nfolds,
-                        max_model_runtime_secs = max_model_runtime_secs,
-                        max_models = max_models, matching = matching,
-                        ordinal_as_integer = ordinal_as_integer,
-                        weights_column = weights_column, seed=seed,
-                        verbosity=verbosity, report=report,
-                        iteration_stopping_metric=iteration_stopping_metric,
-                        iteration_stopping_tolerance=iteration_stopping_tolerance,
-                        stopping_metric=stopping_metric,stopping_rounds=stopping_rounds,
-                        stopping_tolerance=stopping_tolerance,
-                        nthreads = nthreads, max_mem_size=max_mem_size,
-                        min_mem_size = min_mem_size,
-
-                        # save the package version used for the imputation
-                        pkg=packageVersion("mlim")
-                        )
-      class(mlimClass) <- "mlim"
-
+      #mlimClass <- list(iteration=iterDF, k = k, include_algos=include_algos,
+      #                  ignore=ignore, save = save, iterdata = iterdata,
+      #                  maxiter = maxiter, miniter = miniter, nfolds = nfolds,
+      #                  max_model_runtime_secs = max_model_runtime_secs,
+      #                  max_models = max_models, matching = matching,
+      #                  ordinal_as_integer = ordinal_as_integer,
+      #                  weights_column = weights_column, seed=seed,
+      #                  verbosity=verbosity, report=report,
+      #                  iteration_stopping_metric=iteration_stopping_metric,
+      #                  iteration_stopping_tolerance=iteration_stopping_tolerance,
+      #                  stopping_metric=stopping_metric,stopping_rounds=stopping_rounds,
+      #                  stopping_tolerance=stopping_tolerance,
+      #                  nthreads = nthreads, max_mem_size=max_mem_size,
+      #                  min_mem_size = min_mem_size,
+      #
+      #                  # save the package version used for the imputation
+      #                  pkg=packageVersion("mlim")
+      #                  )
+      #class(mlimClass) <- "mlim"
+      }
       # update iteration data
-      saveRDS(mlimClass, iterdata)
+      saveRDS(iterDF, iterdata)
     }
 
-    # add the metrics error to the data.frame and save it
-    if (!is.null(save)) {
-      currentData <- as.data.frame(hex)
-      attr(currentData, "metrics") <- metrics
-      saveRDS(data, save)
-    }
   }
 
   # ............................................................

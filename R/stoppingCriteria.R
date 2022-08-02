@@ -23,7 +23,7 @@ stoppingCriteria <- function(miniter, maxiter,
   # there has been no (or too little) improvement
   # ------------------------------------------------------------
   if (running) {
-    if (k >= miniter) {
+    if (k >= 2) {
       error <- mean(metrics[metrics$iteration == k,
                             iteration_stopping_metric], na.rm = TRUE)
 
