@@ -230,8 +230,8 @@ mlim <- function(data,
   # INITIALIZE THE MARKDOWN REPORT
   # ============================================================
   if (!is.null(report)) {
-    if (debug) md.log("Initiating a new Markdown log", file=report, trace=TRUE,
-                      date=TRUE, time=TRUE) #, print=TRUE
+    if (verbose > 0) md.log("Initiating a new Markdown log", file=report, trace=TRUE,
+                      date=TRUE, time=TRUE, print=TRUE)
     else md.log("Initiating a new Markdown log", file=report, trace=FALSE)
   }
 
