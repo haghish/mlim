@@ -179,8 +179,8 @@ mlim <- function(data,
                  # setup the h2o cluster
                  nthreads = -1,
                  max_mem_size = NULL,
-                 min_mem_size = NULL
-                 #, ...
+                 min_mem_size = NULL,
+                 ...
                  ) {
 
   # Load the libraries
@@ -242,18 +242,18 @@ mlim <- function(data,
   allPredictors <- VARS$allPredictors
   vars2impute <- VARS$vars2impute
   X <- VARS$X
-  xxx <<- X
-  v2m <<- vars2impute
-  vars <<- VARS
+  #>>xxx <<- X
+  #>>v2m <<- vars2impute
+  #>>vars <<- VARS
 
   if (debug) {
-    var2imp <<- vars2impute
+    #>>var2imp <<- vars2impute
     print(vars2impute)
   }
-  DATA1 <<- data
+  #>>DATA1 <<- data
   Features <- checkNconvert(data, vars2impute, ignore,
                             ordinal_as_integer, report)
-  FEAT <<- Features
+  #>>FEAT <<- Features
   CLASS <- Features$class
   FAMILY<- Features$family
   data  <- Features$data
@@ -321,8 +321,8 @@ mlim <- function(data,
   hexID <- h2o::h2o.getId(hex)
   Sys.sleep(1)
   if (debug) {
-    HEX <<- hex
-    iDD <<- hexID
+    #>>HEX <<- hex
+    #>>iDD <<- hexID
     md.log("data was sent to h2o cloud")
   }
 
@@ -341,7 +341,7 @@ mlim <- function(data,
     attr(dataLast, "nrmse") <- error
 
 
-    if (debug) LASTDATA <<- dataLast
+    #>>if (debug) LASTDATA <<- dataLast
 
     # .........................................................
     # IMPUTATION LOOP
@@ -436,7 +436,7 @@ mlim <- function(data,
         }
 
         if (debug) {
-          FIT <<- fit
+          #>>FIT <<- fit
           md.log("model fitted")
           md.log("model was executed successfully")
         }
@@ -446,7 +446,7 @@ mlim <- function(data,
         if (debug) md.log("predictions were generated")
         perf <- h2o::h2o.performance(fit@leader)
         Sys.sleep(1)
-        if (debug) perff <<- perf
+        #>>if (debug) perff <<- perf
 
         # update metrics
         # ------------------------------------------------------------
@@ -464,11 +464,11 @@ mlim <- function(data,
         }
         else {
           if (debug) {
-            A <<- v.na
-            Y <<- Y
-            B <<- data[v.na, Y]
-            iDD <<- hexID
-            PRED <<- pred
+            #>>A <<- v.na
+            #>>Y <<- Y
+            #>>B <<- data[v.na, Y]
+            #>>iDD <<- hexID
+            #>>PRED <<- pred
             #data[v.na, Y] <- as.vector(pred) #here convert it to a vector
           }
           hex[which(v.na), Y] <- pred #h2o requires numeric subsetting
@@ -501,7 +501,7 @@ mlim <- function(data,
     # CHECK CRITERIA FOR RUNNING THE NEXT ITERATION
     # --------------------------------------------------------------
     # ??? needs update for binary and multinomial
-    if (debug) METER <<- metrics
+    #>>if (debug) METER <<- metrics
     SC <- stoppingCriteria(miniter, maxiter,
                            metrics, k,
                            iteration_stopping_metric,

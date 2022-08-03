@@ -30,7 +30,8 @@ mlim(
   stopping_tolerance = 0.001,
   nthreads = -1,
   max_mem_size = NULL,
-  min_mem_size = NULL
+  min_mem_size = NULL,
+  ...
 )
 }
 \arguments{

@@ -1,5 +1,6 @@
 #' @title mean and mode imputation
 #' @description Compute the missing values with mean and mode replacement
+#' @importFrom stats median
 #' @param data A data frame with dummies or numeric variables.
 #' @return imputed dataset
 #' @author E. F. Haghish, Maintainer: \email{haghish@@uio.no}
