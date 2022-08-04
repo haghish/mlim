@@ -1,6 +1,6 @@
 > This R package is still in _Beta Version_. Please E-mail the bugs to <haghish@uio.no> or [report an issue](https://github.com/haghish/mlim/issues). 
 
-# `mlim` : Extreme Missing Data Imputation with Automated Machine Learning
+# `mlim` : Missing Data Imputation with Automated Machine Learning
 
 <a href="http://haghish.com/mlim"><img src="./web/mlim.png" align="left" width="140" hspace="10" vspace="6"></a>
 
