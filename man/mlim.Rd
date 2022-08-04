@@ -16,6 +16,7 @@ mlim(
   nfolds = 10L,
   max_model_runtime_secs = 3600,
   max_models = 100,
+  matching = FALSE,
   weights_column = NULL,
   seed = NULL,
   verbosity = NULL,
@@ -98,6 +99,11 @@ this value should be consistent with increasing
 more time in the process of individualized fine-tuning.
 as a result, the better tuned the model, the more accurate
 the imputed values are expected to be}
+
+\item{matching}{EXPERIMENTAL. logical. if \code{TRUE}, imputed values are coerced to the
+closest value to the non-missing values of the variable.
+if set to "AUTO", 'mlim' decides whether to match
+or not, based on the variable classes. the default is FALSE.}
 
 \item{weights_column}{non-negative integer. a vector of observation weights
 can be provided, which should be of the same length

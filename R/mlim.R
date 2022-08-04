@@ -60,15 +60,14 @@
 #'                   more time in the process of individualized fine-tuning.
 #'                   as a result, the better tuned the model, the more accurate
 #'                   the imputed values are expected to be
-# @param matching logical. if \code{TRUE}, imputed values are coerced to the
-#                 closest value to the non-missing values of the variable.
-#                 the default is "AUTO", where 'mlim' decides whether to match
-#                 or not, based on the variable classes.
+#' @param matching EXPERIMENTAL. logical. if \code{TRUE}, imputed values are coerced to the
+#'                 closest value to the non-missing values of the variable.
+#'                 if set to "AUTO", 'mlim' decides whether to match
+#'                 or not, based on the variable classes. the default is FALSE.
 # @param ordinal_as_integer EXPERIMENTAL. logical, if TRUE, ordinal variables
-#                           are imputed as continuous integers with matching.
+#                           are imputed as continuous integers (regression) with matching.
 #                           if FALSE, they are imputed as categorical, ignoring
-#                           their orders.
-#        from the non-missing values of the imputed valiable.
+#                          their orders.
 #' @param maxiter integer. maximum number of iterations. the default value is \code{10},
 #'        but it can be reduced to \code{3} (not recommended, see below).
 #' @param miniter integer. minimum number of iterations. the default value is
@@ -173,7 +172,7 @@ mlim <- function(data,
                  max_model_runtime_secs = 3600,
                  max_models = 100, # run all that you can
 
-                 #matching = FALSE, #"AUTO", #??? DEBUG IT LATER
+                 matching = FALSE, #"AUTO", #??? EXPERIMENTAL
                  #ordinal_as_integer = FALSE, #??? DEBUG IT LATER
 
                  weights_column = NULL,
@@ -219,7 +218,7 @@ mlim <- function(data,
   # examine the data.frame and the arguments
   #??? matching is deactivated
   syntaxProcessing(data, preimpute, include_algos,
-                   matching=NULL, miniter, maxiter, max_models,
+                   matching=matching, miniter, maxiter, max_models,
                    max_model_runtime_secs,
                    nfolds, weights_column, report)
 
@@ -408,12 +407,12 @@ mlim <- function(data,
 
         # Auto-Matching specifications
         # ============================================================
-        #if (matching == "AUTO") {
-        #  if (FAMILY[z] == 'gaussian_integer') matching <- TRUE
-        #  else if (FAMILY[z] == 'quasibinomial') matching <- TRUE
-        #  else matching <- FALSE
-        #  if (debug) md.log(paste("matching:", matching))
-        #}
+        if (matching == "AUTO") {
+          if (FAMILY[z] == 'gaussian_integer') matching <- TRUE
+          else if (FAMILY[z] == 'quasibinomial') matching <- TRUE
+          else matching <- FALSE
+          if (debug) md.log(paste("matching:", matching))
+        }
 
         # sort_metric specifications
         # ============================================================
@@ -497,12 +496,20 @@ mlim <- function(data,
         # ------------------------------------------------------------
         # Matching
         # ============================================================
-        #if (matching) {
-        #  hex[which(v.na), Y] <- matching(imputed=pred,
-        #                                  nonMiss=unique(na.omit(data[,Y])),
-        #                                  md.log)
-        #}
-        #else {
+        if ((matching & FAMILY[z] == 'gaussian') || (matching & FAMILY[z] == 'gaussian_integer')) {
+          #PRED <<- as.vector(pred)
+          #NONMISS <<- unique(na.omit(data[,Y]))
+          matchedVal <- matching(imputed=as.vector(pred),
+                           nonMiss=unique(na.omit(data[,Y])),
+                           md.log)
+          if (!is.null(matchedVal)) hex[which(v.na), Y] <- h2o::as.h2o(matchedVal)
+          else {
+            md.log("matching failed", trace=FALSE)
+            hex[which(v.na), Y] <- pred #h2o requires numeric subsetting
+          }
+
+        }
+        else {
         #  if (debug) {
             #>>A <<- v.na
             #>>Y <<- Y
@@ -511,10 +518,10 @@ mlim <- function(data,
             #>>PRED <<- pred
             #data[v.na, Y] <- as.vector(pred) #here convert it to a vector
         #  }
-        #  hex[which(v.na), Y] <- pred #h2o requires numeric subsetting
-        #}
+          hex[which(v.na), Y] <- pred #h2o requires numeric subsetting
+        }
 
-        hex[which(v.na), Y] <- pred #h2o requires numeric subsetting
+        #hex[which(v.na), Y] <- pred #h2o requires numeric subsetting
         if (debug) md.log("data was updated in h2o cloud", trace=FALSE)
         Sys.sleep(sleep)
 

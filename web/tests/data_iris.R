@@ -6,7 +6,6 @@ library(mice)
 library(missForest)
 library(missRanger)
 library(VIM)
-library(h2o)
 
 # Add artifitial missing data
 # ===========================================================
@@ -21,6 +20,15 @@ mlimELNET <- mlim(irisNA, init = TRUE, maxiter = 10,
                   max_mem_size = "8G", iteration_stopping_tolerance = .01,
                   shutdown = TRUE, flush=FALSE, seed = 2022)
 (mlimELNETerror <- mixError(mlimELNET, irisNA, iris))
+
+h2o::h2o.shutdown(F)
+ELNETmtch <- mlim(irisNA, init = TRUE, maxiter = 10, matching = TRUE,
+                  include_algos = "ELNET", preimpute = "knn",
+                  report = "mlimELNET.log", verbosity = "debug",
+                  max_models = 1, min_mem_size = "6G", nthreads = 1,
+                  max_mem_size = "8G", iteration_stopping_tolerance = .01,
+                  shutdown = TRUE, flush=FALSE, seed = 2022)
+(ELNETmtchError <- mixError(ELNETmtch, irisNA, iris))
 
 # kNN Imputation with VIM
 # ===========================================================
