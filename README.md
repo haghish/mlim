@@ -10,6 +10,33 @@ The figure below shows the normalized RMSE of the imputation of several algorith
 
 <img src="https://github.com/haghish/mlim/blob/main/web/data_iris.jpeg" width="600" height="400">
 
+Supported algorithms
+--------------------
 
+`mlim` supports several algorithms. However, officially, only __ELNET__ is _recommended for personal computers with limited RAM_. `mlim` is __extremely__ computation hungry and is more suitable for servers with a lot of RAM. However, __ELNET__ converges rather fast and hence, provides a fast, scalable, yet highly flexible solution for missing data imputation. 
+
+| **Algorithm** | **Speed**      | **RAM**        | **CPU**        |
+|:--------------|:---------------|:---------------|:---------------|
+| ELNET         | High           | Low            | Low            |
+| GBM           | Slow           | High           | High           |
+| XGBoost       | Slow           | High           | High           |
+| Ensemble      | Extremely Slow | Extremely High | Extremely High |
+
+Advantages and limitations
+--------------------------
+
+`mlim` fine-tunes models for imputation, a procedure that has never been implemented in other R packages. This procedure often yields much higher accuracy compared to other machine learning imputation methods or missing data imputation procedures because of using more accurate models that are fine-tuned for each feature in the dataset. The cost, however, is computational resources. If you have access to a very powerful machine, with a huge amount of RAM per CPU, then try __GBM__ or __XGBoost__. If you specify a high enough number of models in each fine-tuning process, you are likely to get a more accurate imputation that __ELNET__. Howevver, for personal machines and laptops, __ELNET__ is generally recommended (see below). 
+
+Preimputation
+-------------
+
+`mlim` implements a trick to reduce number of iterations needed for reaching the optimized imputation. Usually, prior to the imputation, the missing data are replaced with mean, mode, or even random values from within the variable. This is a fair start-point for the imputation procedure, but makes the optimization very time consuming. Another possibility would be to use a fast and well-established imputation algorithm for the pre-imputation and then improve the imputed values. `mlim` supports the following algorithms for preimputation:
+
+| **Algorithm**  |    **Speed**   |  **RAM** |  **CPU**  |
+|:---------------|:---------------|:---------|:----------|
+| `kNN`       |    Very fast   |    Low   |    Low    |
+| `ranger`    |      fast      |   High   |    High   |
+| `missForest` |    Very Slow   |   High   | Very High |
+| `mm`        | Extremely fast | Very Low |  Very Low |
 
 __TO BE CONTINUED...__
