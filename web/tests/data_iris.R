@@ -10,50 +10,29 @@ library(h2o)
 
 # Add artifitial missing data
 # ===========================================================
-irisNA <- missRanger::generateNA(iris, p = 0.1, seed = 2022)
-
-# GBM Imputation with mlim (nearly 40 minutes of runtime)
-# ===========================================================
-mlimGBM <- mlim(irisNA, init = TRUE, miniter = 1, maxiter = 1,
-             include_algos = "DRF", preimpute = "knn",
-             report = "mlimGBM.log", verbosity = "debug",
-             max_models = 1, min_mem_size = "120G", nthreads = 21,
-             #weights_column = rep(2, nrow(irisNA)),
-             #iteration_stopping_tolerance = .01,
-             seed = 2022)
-(mlimGBMerror <- mixError(mlimGBM, irisNA, iris))
+irisNA <- missRanger::generateNA(iris, p = 0.5, seed = 2022)
 
 # ELNET Imputation with mlim
 # ===========================================================
 mlimELNET <- mlim(irisNA, init = TRUE, maxiter = 10,
-                include_algos = "ELNET", preimpute = "mm",
-                report = "mlimELNET.log", verbosity = "debug",
-                max_models = 1, min_mem_size = "120G", nthreads = 21,
-                seed = 2022)
-(mlimELNETerror <- mixError(mlimELNET, irisNA, iris))
-
-mlimELNETR <- mlim(irisNA, init = TRUE, maxiter = 10,
-                  include_algos = "ELNET", preimpute = "ranger",
+                  include_algos = "ELNET", preimpute = "knn",
                   report = "mlimELNET.log", verbosity = "debug",
-                  max_models = 1, min_mem_size = "120G", nthreads = 21,
-                  seed = 2022)
-(mlimELNETerrorR <- mixError(mlimELNETR, irisNA, iris))
+                  max_models = 1, min_mem_size = "6G", nthreads = 1,
+                  max_mem_size = "8G", iteration_stopping_tolerance = .01,
+                  shutdown = TRUE, flush=FALSE, seed = 2022)
+(mlimELNETerror <- mixError(mlimELNET, irisNA, iris))
 
 # kNN Imputation with VIM
 # ===========================================================
 kNN <- kNN(irisNA, imp_var=FALSE)
 (kNNerror <- mixError(kNN, irisNA, iris))
 
-# irmi Imputation with VIM
+# MICE Imputation with mice (10 datasets)
 # ===========================================================
-IRMI <- irmi(irisNA, imp_var=FALSE)
-(IRMIerror <- mixError(IRMI, irisNA, iris))
-
-# MICE Imputation with mice (50 datasets)
-# ===========================================================
-mc <- mice(irisNA, m=50, maxit = 50, method = 'pmm', seed = 500)
+m <- 10
+mc <- mice(irisNA, m=m, maxit = 50, method = 'pmm', seed = 500)
 MCerror <- NULL
-for (i in 1:50) MCerror <- c(MCerror, mixError(complete(mc,i), irisNA, iris)[1])
+for (i in 1:m) MCerror <- c(MCerror, mixError(complete(mc,i), irisNA, iris)[1])
 (MCerror <- mean(MCerror))
 
 # Random Forest Imputation with missForest
@@ -62,10 +41,24 @@ set.seed(2022)
 RF <- missForest(irisNA)
 (RFerror <- mixError(RF$ximp, irisNA, iris))
 
-rngr <- missRanger(irisNA, seed = 2022)
+rngr <- missRanger(irisNA, num.trees=100, seed = 2022)
 (missRanger <- mixError(rngr, irisNA, iris))
 
-
+# Create the plot
+# ===========================================================
+plotdata <- data.frame(Error = c(MCerror, RFerror[1], missRanger[1],
+                                 kNNerror[1], mlimELNETerror[1]),
+                       Algorithms = c("MICE", "missForest", "missRanger",
+                                      "kNN", "MLIM ELNET"))
+library(ggplot2)
+ggplot(plotdata, aes(x=Algorithms, y=Error, fill=Algorithms)) +
+  geom_bar(stat="identity")+
+  scale_fill_manual(values = c("#999999", "#E69F00", "#56B4E9", "#009E73",
+                               "#F0E442", "#0072B2", "#D55E00", "#CC79A7")) +
+  ggtitle("Comparison of ML Imputation Algorithms") +
+  theme_minimal() +
+  ylab("NRMSE") +
+  theme(legend.position = "none")
 
 
 

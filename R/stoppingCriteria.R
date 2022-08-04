@@ -11,7 +11,8 @@
 stoppingCriteria <- function(miniter, maxiter,
                              metrics, k,
                              iteration_stopping_metric,
-                             iteration_stopping_tolerance) {
+                             iteration_stopping_tolerance,
+                             md.log) {
 
   # keep running unless...
   running <- TRUE
@@ -23,17 +24,24 @@ stoppingCriteria <- function(miniter, maxiter,
   # there has been no (or too little) improvement
   # ------------------------------------------------------------
   if (running) {
+    error <- mean(metrics[metrics$iteration == k,
+                          iteration_stopping_metric], na.rm = TRUE)
+    print(paste("Iteration error:", error))
+
     if (k >= 2) {
-      error <- mean(metrics[metrics$iteration == k,
-                            iteration_stopping_metric], na.rm = TRUE)
+      errPrevious <- mean(metrics[metrics$iteration == k-1,
+                                  iteration_stopping_metric],
+                          na.rm = TRUE)
+      errImprovement <- error - errPrevious
+      if (!is.na(error) & !is.na(errImprovement)) {
+        percentImprove <- (errImprovement / errPrevious)
+      }
 
-      errImprovement <- error - mean(metrics[metrics$iteration == k-1,
-                                             iteration_stopping_metric],
-                                     na.rm = TRUE)
-
-      if (!is.na(error)) {
-        print(paste("err:", error))
-        running <- errImprovement < (-iteration_stopping_tolerance)
+      if (!is.na(errImprovement)) {
+        print(paste0(iteration_stopping_metric,
+                    " improved by: ", round(-percentImprove*100,4),"%"))
+        #running <- errImprovement < (-iteration_stopping_tolerance)
+        running <- percentImprove < (-iteration_stopping_tolerance)
       }
     }
   }

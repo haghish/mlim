@@ -11,26 +11,26 @@ mlim(
   ignore = NULL,
   init = TRUE,
   save = NULL,
-  iterdata = NULL,
   maxiter = 10L,
   miniter = 2L,
   nfolds = 10L,
   max_model_runtime_secs = 3600,
   max_models = 100,
-  matching = FALSE,
-  ordinal_as_integer = FALSE,
   weights_column = NULL,
   seed = NULL,
   verbosity = NULL,
   report = "mlim.log",
   iteration_stopping_metric = "RMSE",
-  iteration_stopping_tolerance = 0.001,
+  iteration_stopping_tolerance = 0.005,
   stopping_metric = "AUTO",
   stopping_rounds = 3,
   stopping_tolerance = 0.001,
   nthreads = -1,
   max_mem_size = NULL,
   min_mem_size = NULL,
+  flush = FALSE,
+  shutdown = TRUE,
+  sleep = 1,
   ...
 )
 }
@@ -73,13 +73,10 @@ which is very useful feature for imputing large datasets, with a
 long runtime. this argument is activated by default and an
 mlim object is stored in the local directory named \code{"mlim.rds"}.}
 
-\item{iterdata}{logical. if TRUE, the imputed data.frame of each iteration
-will be returned. the default is FALSE.}
-
 \item{maxiter}{integer. maximum number of iterations. the default value is \code{10},
 but it can be reduced to \code{3} (not recommended, see below).}
 
-\item{miniter}{iteger. minimum number of iterations. the default value is
+\item{miniter}{integer. minimum number of iterations. the default value is
 2.}
 
 \item{nfolds}{logical. specify number of k-fold Cross-Validation (CV). values of
@@ -102,17 +99,6 @@ more time in the process of individualized fine-tuning.
 as a result, the better tuned the model, the more accurate
 the imputed values are expected to be}
 
-\item{matching}{logical. if \code{TRUE}, imputed values are coerced to the
-closest value to the non-missing values of the variable.
-the default is "AUTO", where 'mlim' decides whether to match
-or not, based on the variable classes.}
-
-\item{ordinal_as_integer}{EXPERIMENTAL. logical, if TRUE, ordinal variables
-                   are imputed as continuous integers with matching.
-                   if FALSE, they are imputed as categorical, ignoring
-                   their orders.
-from the non-missing values of the imputed valiable.}
-
 \item{weights_column}{non-negative integer. a vector of observation weights
 can be provided, which should be of the same length
 as the dataframe. giving an observation a weight of
@@ -129,7 +115,12 @@ the value can be "warn" (default), "info", "debug", or NULL.}
 
 \item{report}{filename. if a filename is specified, the \code{"md.log"} R
 package is used to generate a Markdown progress report for the
-imputation.}
+imputation. the format of the report is adopted based on the
+\code{'verbosity'} argument. the higher the verbosity, the more
+technical the report becomes. if verbosity equals "debug", then
+a log file is generated, which includes time stamp and shows
+the function that has generated the message. otherwise, a
+reduced markdown-like report is generated.}
 
 \item{iteration_stopping_metric}{character. specify the minimum improvement
 in the estimated error to proceed to the
@@ -138,11 +129,14 @@ the default is 10^-4 for \code{"MAE"}
 (Mean Absolute Error). this criteria is only
 applied from the end of the fourth iteration.}
 
-\item{iteration_stopping_tolerance}{numeric. the minimum value of improvement
+\item{iteration_stopping_tolerance}{numeric. the minimum rate of improvement
 in estimated error metric to qualify the
 imputation for another round of iteration,
 if the \code{maxiter} is not yet reached.
-the default value is 10^-4.}
+the default value is 50^-3, meaning that
+in each iteration, the error must be
+reduced by at least 0.5% of the previous
+iteration.}
 
 \item{stopping_metric}{character.}
 
@@ -161,6 +155,16 @@ large memory size is particularly advised, especially
 for multicore processes.}
 
 \item{min_mem_size}{character. specifies the minimum size.}
+
+\item{flush}{logical (experimental). if TRUE, after each model, the server is
+cleaned to retrieve RAM. this feature is in testing mode.}
+
+\item{shutdown}{logical. if TRUE, h2o server is closed after the imputation.
+the default is TRUE}
+
+\item{sleep}{integer. number of seconds to wait after each interaction with h2o
+server. the default is 1 second. larger values might be needed
+depending on your computation power or dataset size.}
 
 \item{...}{Arguments passed to \code{h2o.automl()}.
 The following arguments are e.g. incompatible with \code{ranger}: \code{write.forest}, \code{probability}, \code{split.select.weights}, \code{dependent.variable.name}, and \code{classification}.}
