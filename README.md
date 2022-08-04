@@ -93,5 +93,3 @@ rngr <- missRanger(irisNA, num.trees=100, seed = 2022)
 ```
 <img src="https://github.com/haghish/mlim/blob/main/web/data_iris_50.png" width="600" height="400">
 
-
-__TO BE CONTINUED...__
