@@ -40,8 +40,10 @@ Preimputation
 | `mm`        | Extremely fast | Very Low |  Very Low |
 
 
-Example
+Example 
 -------
+
+`iris` ia a small dataset with 150 rows only. Let's add 50% of artifitial missing data and compare several state-of-the-art machine learning missing data imputation procedures. __ELNET__ comes up as a winner for a very simple reason! Because it was fine-tuned and all the rest were not. The larger the dataset and the higher the number of features, the difference between __ELNET__ and the others becomes more vivid. 
 
 ```R
 # Comparison of different R packages imputing iris dataset
@@ -89,7 +91,7 @@ RF <- missForest(irisNA)
 rngr <- missRanger(irisNA, num.trees=100, seed = 2022)
 (missRanger <- mixError(rngr, irisNA, iris))
 ```
-
+<img src="https://github.com/haghish/mlim/blob/main/web/data_iris_50.png" width="600" height="400">
 
 
 __TO BE CONTINUED...__
