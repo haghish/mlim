@@ -39,4 +39,57 @@ Preimputation
 | `missForest` |    Very Slow   |   High   | Very High |
 | `mm`        | Extremely fast | Very Low |  Very Low |
 
+
+Example
+-------
+
+```R
+# Comparison of different R packages imputing iris dataset
+# ===========================================================
+rm(list = ls())
+library(mlim)
+library(mice)
+library(missForest)
+library(missRanger)
+library(VIM)
+
+# Add artifitial missing data
+# ===========================================================
+irisNA <- missRanger::generateNA(iris, p = 0.5, seed = 2022)
+
+# ELNET Imputation with mlim
+# ===========================================================
+mlimELNET <- mlim(irisNA, init = TRUE, maxiter = 10,
+                  include_algos = "ELNET", preimpute = "knn",
+                  report = "mlimELNET.log", verbosity = "debug",
+                  max_models = 1, min_mem_size = "6G", nthreads = 1,
+                  max_mem_size = "8G", iteration_stopping_tolerance = .01,
+                  shutdown = TRUE, flush=FALSE, seed = 2022)
+(mlimELNETerror <- mixError(mlimELNET, irisNA, iris))
+
+# kNN Imputation with VIM
+# ===========================================================
+kNN <- kNN(irisNA, imp_var=FALSE)
+(kNNerror <- mixError(kNN, irisNA, iris))
+
+# MICE Imputation with mice (10 datasets)
+# ===========================================================
+m <- 10
+mc <- mice(irisNA, m=m, maxit = 50, method = 'pmm', seed = 500)
+MCerror <- NULL
+for (i in 1:m) MCerror <- c(MCerror, mixError(complete(mc,i), irisNA, iris)[1])
+(MCerror <- mean(MCerror))
+
+# Random Forest Imputation with missForest
+# ===========================================================
+set.seed(2022)
+RF <- missForest(irisNA)
+(RFerror <- mixError(RF$ximp, irisNA, iris))
+
+rngr <- missRanger(irisNA, num.trees=100, seed = 2022)
+(missRanger <- mixError(rngr, irisNA, iris))
+```
+
+
+
 __TO BE CONTINUED...__
