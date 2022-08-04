@@ -17,8 +17,8 @@ Supported algorithms
 
 | **Algorithm** | **Speed**      | **RAM**        | **CPU**        |
 |:--------------|:---------------|:---------------|:---------------|
-| **ELNET**         | High           | Low            | Low            |
-| **GBM**           | Low           | High           | High           |
+| `ELNET`         | High           | Low            | Low            |
+| `GBM`           | Low           | High           | High           |
 <!--| XGBoost       | Low           | High           | High           |
 | Ensemble      | Extremely Low | Extremely High | Extremely High |-->
 
