@@ -1,4 +1,4 @@
-> This R package is still in _Beta Version_. Please E-mail the bugs to <haghish@uio.no> or [report an issue](https://github.com/haghish/mlim/issues). 
+> CITE: Haghish, E. F. (2022). mlim: Missing Data Imputation with Automated Machine Learning [Computer software]. https://CRAN.R-project.org/package=mlim.
 
 # `mlim` : Missing Data Imputation with Automated Machine Learning
 
