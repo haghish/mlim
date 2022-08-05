@@ -21,7 +21,7 @@
 #'        \code{"GBM"},\code{"XGBoost"}, \code{"DRF"},
 #'        \code{"DeepLearning"}, and \code{"StackedEnsemble")}. Note that the
 #'        choice of algorithms to be trained can largely increase the runtime.
-#'        for advice on algorithm selection visit \url{https:github.com/mlim}
+#'        for advice on algorithm selection visit \url{https:github.com/haghish/mlim}
 #' @param preimpute character. specifies the procedure for handling the missing
 #'                  data before initiating the procedures. the default procedure
 #'                  is "iterate", which models the missing data with \code{mlim}

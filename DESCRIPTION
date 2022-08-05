@@ -1,6 +1,6 @@
 Package: mlim
 Type: Package
-Title: Extreme Missing Data Imputation With Automated Machine Learning (AutoML)
+Title: Extreme Missing Data Imputation with Automated Machine Learning (AutoML)
 Version: 0.0.1
 Author: E. F. Haghish
 Maintainer: E. F. Haghish <haghish@uio.no>
