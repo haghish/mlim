@@ -251,7 +251,7 @@ mlim <- function(data,
   if (is.null(report)) report <- tempfile()
   md.log("System information",
          file=report, trace=TRUE, sys.info = TRUE,
-         date=TRUE, time=TRUE, print=TRUE)
+         date=TRUE, time=TRUE) #, print=TRUE
 
   # Run H2O on the statistics server
   # ============================================================
@@ -347,7 +347,7 @@ mlim <- function(data,
   hex <- h2o::as.h2o(data) #ID: data_
   Sys.sleep(sleep)
   hexID <- h2o::h2o.getId(hex)
-  md.log(paste("dataset ID:", hexID), trace=FALSE, print = TRUE)
+  md.log(paste("dataset ID:", hexID), trace=FALSE) #, print = TRUE
 
   Sys.sleep(sleep)
   if (debug) {
