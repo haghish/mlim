@@ -13,14 +13,14 @@ The figure below shows the normalized RMSE of the imputation of several algorith
 Supported algorithms
 --------------------
 
-`mlim` supports several algorithms. However, officially, only __ELNET__ is _recommended for personal computers with limited RAM_. `mlim` is __extremely__ computation hungry and is more suitable for servers with a lot of RAM. However, __ELNET__ converges rather fast and hence, provides a fast, scalable, yet highly flexible solution for missing data imputation. 
+`mlim` supports several algorithms. However, officially, only __ELNET__ is _recommended for personal computers with limited RAM_. `mlim` is __extremely__ computation hungry and is more suitable for servers with a lot of RAM. However, __ELNET__ converges rather fast and hence, provides a fast, scalable, yet highly flexible solution for missing data imputation. Compared to a fine-tuned __GBM__, __ELNET__ generally performs poorer, but their computational demands are vastly different. In order to fine-tune a __GBM__ model that out-performs __ELNER__, you need to include a large number of models to allow `mlim` to search for the ideal parameters for each variable, within each iteration. 
 
 | **Algorithm** | **Speed**      | **RAM**        | **CPU**        |
 |:--------------|:---------------|:---------------|:---------------|
-| ELNET         | High           | Low            | Low            |
-| GBM           | Slow           | High           | High           |
-| XGBoost       | Slow           | High           | High           |
-| Ensemble      | Extremely Slow | Extremely High | Extremely High |
+| `ELNET`         | High           | Low            | Low            |
+| `GBM`           | Low           | High           | High           |
+<!--| XGBoost       | Low           | High           | High           |
+| Ensemble      | Extremely Low | Extremely High | Extremely High |-->
 
 Advantages and limitations
 --------------------------
