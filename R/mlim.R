@@ -1,4 +1,4 @@
-#' @title extreme missing data imputation with automated machine learning
+#' @title missing data imputation with automated machine learning
 #' @description imputes data.frame with mixed variable types using automated
 #'              machine learning (AutoML)
 #'

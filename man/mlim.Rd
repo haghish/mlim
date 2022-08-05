@@ -2,7 +2,7 @@
 % Please edit documentation in R/mlim.R
 \name{mlim}
 \alias{mlim}
-\title{extreme missing data imputation with automated machine learning}
+\title{missing data imputation with automated machine learning}
 \usage{
 mlim(
   data,

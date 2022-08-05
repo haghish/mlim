@@ -1,6 +1,6 @@
 Package: mlim
 Type: Package
-Title: Extreme Missing Data Imputation with Automated Machine Learning (AutoML)
+Title: Missing Data Imputation with Automated Machine Learning (AutoML)
 Version: 0.0.1
 Author: E. F. Haghish
 Maintainer: E. F. Haghish <haghish@uio.no>
@@ -12,7 +12,6 @@ Description: Using automated machine learning, the package fine-tunes an Elastic
 License: MIT + file LICENSE
 Encoding: UTF-8
 Imports: h2o, VIM, missRanger, missForest, memuse, md.log
-LazyData: true
 RoxygenNote: 7.2.1
 URL: https://github.com/haghish/mlim, https://www.sv.uio.no/psi/english/people/aca/haghish/
 BugReports: https://github.com/haghish/mlim/issues
