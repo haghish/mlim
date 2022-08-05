@@ -21,7 +21,7 @@
 #'        \code{"GBM"},\code{"XGBoost"}, \code{"DRF"},
 #'        \code{"DeepLearning"}, and \code{"StackedEnsemble")}. Note that the
 #'        choice of algorithms to be trained can largely increase the runtime.
-#'        for advice on algorithm selection visit \url{https:github.com/haghish/mlim}
+#'        for advice on algorithm selection visit \url{https://github.com/haghish/mlim}
 #' @param preimpute character. specifies the procedure for handling the missing
 #'                  data before initiating the procedures. the default procedure
 #'                  is "iterate", which models the missing data with \code{mlim}
@@ -140,15 +140,16 @@
 #' @examples
 #'
 #' \dontrun{
-#' irisWithNA <- missRanger::generateNA(iris, seed = 34)
+#' data(iris)
+#' irisNA <- missRanger::generateNA(iris, seed = 34)
 #'
-#' # run GBM model with Stack Ensemble
-#' MLIM <- mlim(irisWithNA, md.log = "mlim.log", max_models = 200)
-#' missForest::mixError(MLIM, irisWithNA, iris)
+#' # run ELNET model (recommended)
+#' MLIM <- mlim(irisNA)
+#' missForest::mixError(MLIM, irisNA, iris)
 #'
-#' # run ELNET model (faster)
-#' MLIM <- mlim(irisWithNA, include_algos = "ELNET", md.log = "mlim.log", max_models = 200)
-#' missForest::mixError(MLIM, irisWithNA, iris)
+#' # run GBM model
+#' MLIM <- mlim(irisNA, include_algos = "GBM", max_models = 200)
+#' missForest::mixError(MLIM, irisNA, iris)
 #' }
 #' @export
 
