@@ -13,7 +13,7 @@ The figure below shows the normalized RMSE of the imputation of several algorith
 Supported algorithms
 --------------------
 
-`mlim` supports several algorithms. However, officially, only __ELNET__ is _recommended for personal computers with limited RAM_. `mlim` is __extremely__ computation hungry and is more suitable for servers with a lot of RAM. However, __ELNET__ converges rather fast and hence, provides a fast, scalable, yet highly flexible solution for missing data imputation. Compared to a fine-tuned __GBM__, __ELNET__ generally performs poorer, but their computational demands are vastly different. In order to fine-tune a __GBM__ model that out-performs __ELNER__, you need to include a large number of models to allow `mlim` to search for the ideal parameters for each variable, within each iteration. 
+`mlim` supports several algorithms. However, officially, only __`ELNET`__ is _recommended for personal computers with limited RAM_. `mlim` is __extremely__ computation hungry and is more suitable for servers with a lot of RAM. However, __`ELNET`__ converges rather fast and hence, provides a fast, scalable, yet highly flexible solution for missing data imputation. Compared to a fine-tuned __`GBM`__, __`ELNET`__ generally performs poorer, but their computational demands are vastly different. In order to fine-tune a __`GBM`__ model that out-performs __`ELNET`__, you need to include a large number of models to allow `mlim` to search for the ideal parameters for each variable, within each iteration. 
 
 | **Algorithm** | **Speed**      | **RAM**        | **CPU**        |
 |:--------------|:---------------|:---------------|:---------------|
@@ -22,10 +22,14 @@ Supported algorithms
 <!--| XGBoost       | Low           | High           | High           |
 | Ensemble      | Extremely Low | Extremely High | Extremely High |-->
 
+### `GBM` vs `ELNET`
+
+But which one should you choose, assuming computation resources are not in question? Well, __`GBM`__ is very liokely to outperform __`ELNET`__, if you specify a large enough `max_models` argument to well-tune the algorithm for imputing each feature. That basically means generating more than 100 models, at least. But you will enjoy a slight -- yet probably statistically significant -- improvement in the imputation accuracy. The option is there, for those who can use it, and to my knowledge, fine-tuning __`GBM`__ with large enough number of models will be the most accurate imputation algorithm compared to any other procedure I know. But __`ELNET`__ comes second and compared to its speed advantage, it is indeed charming!
+
 Advantages and limitations
 --------------------------
 
-`mlim` fine-tunes models for imputation, a procedure that has never been implemented in other R packages. This procedure often yields much higher accuracy compared to other machine learning imputation methods or missing data imputation procedures because of using more accurate models that are fine-tuned for each feature in the dataset. The cost, however, is computational resources. If you have access to a very powerful machine, with a huge amount of RAM per CPU, then try __GBM__ or __XGBoost__. If you specify a high enough number of models in each fine-tuning process, you are likely to get a more accurate imputation that __ELNET__. Howevver, for personal machines and laptops, __ELNET__ is generally recommended (see below). 
+`mlim` fine-tunes models for imputation, a procedure that has never been implemented in other R packages. This procedure often yields much higher accuracy compared to other machine learning imputation methods or missing data imputation procedures because of using more accurate models that are fine-tuned for each feature in the dataset. The cost, however, is computational resources. If you have access to a very powerful machine, with a huge amount of RAM per CPU, then try __`GBM`__. If you specify a high enough number of models in each fine-tuning process, you are likely to get a more accurate imputation that __`ELNET`__. However, for personal machines and laptops, __`ELNET`__ is generally recommended (see below). __If your machine is not powerful enough, it is likely that the imputation crashes due to memory problems...__. So, perhaps begin with __`ELNET`__, unless you are working with a powerful server. This is my general advice as long as `mlim` is in Beta version and under development.
 
 Preimputation
 -------------
@@ -43,7 +47,7 @@ Preimputation
 Example 
 -------
 
-`iris` ia a small dataset with 150 rows only. Let's add 50% of artifitial missing data and compare several state-of-the-art machine learning missing data imputation procedures. __ELNET__ comes up as a winner for a very simple reason! Because it was fine-tuned and all the rest were not. The larger the dataset and the higher the number of features, the difference between __ELNET__ and the others becomes more vivid. 
+`iris` ia a small dataset with 150 rows only. Let's add 50% of artifitial missing data and compare several state-of-the-art machine learning missing data imputation procedures. __`ELNET`__ comes up as a winner for a very simple reason! Because it was fine-tuned and all the rest were not. The larger the dataset and the higher the number of features, the difference between __`ELNET`__ and the others becomes more vivid. 
 
 ```R
 # Comparison of different R packages imputing iris dataset
@@ -92,4 +96,8 @@ rngr <- missRanger(irisNA, num.trees=100, seed = 2022)
 (missRanger <- mixError(rngr, irisNA, iris))
 ```
 <img src="https://github.com/haghish/mlim/blob/main/web/data_iris_50.png" width="600" height="400">
+
+But that is not all! `mlim` also outperforms other R packages for imputing categorical and ordinal variables. Here is an example from the `trait` dataset, which is included in the package. 
+
+<img src="https://github.com/haghish/mlim/blob/main/web/trait_categorical.png" width="600" height="400">
 
