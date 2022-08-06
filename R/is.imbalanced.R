@@ -4,7 +4,8 @@
 #' @param x vector.
 #' @author E. F. Haghish
 #' @return data.frame of error metrics.
-#' @export
+#' @keywords Internal
+#' @noRd
 
 is.imbalanced <- function(x) {
   imbalanced <- FALSE

@@ -6,9 +6,6 @@
 #' @importFrom h2o h2o.init as.h2o h2o.automl h2o.predict h2o.ls
 #'             h2o.removeAll h2o.rm h2o.shutdown
 #' @importFrom md.log md.log
-#' @importFrom VIM kNN
-#' @importFrom missRanger missRanger imputeUnivariate
-#' @importFrom missForest missForest
 #' @importFrom memuse Sys.meminfo
 #' @importFrom stats var setNames na.omit
 #' @param data a \code{data.frame} or \code{matrix} with missing data
@@ -31,6 +28,10 @@
 #'                  with a fast algorithm. Currently, "missMDA" procedure is
 #'                  supported, which carries out a fast imputation via
 #'                  \code{missMDA} R package.
+#' @param preimputed_df data.frame. if you have used another software for missing
+#'                      data imputation, you can still optimize the imputation
+#'                      by handing the data.frame to this argument, which will
+#'                      bypass the "preimpute" procedure.
 #' @param init logical. should h2o Java server be initiated? the default is TRUE.
 #'             however, if the Java server is already running, set this argument
 #'             to FALSE.
@@ -156,7 +157,8 @@
 
 mlim <- function(data,
                  include_algos =  "ELNET", #c("GBM", "StackedEnsemble"),
-                 preimpute = "iterate",
+                 preimpute = "missForest",
+                 preimputed_df = NULL,
 
                  # multiple imputation settings
                  #m = FALSE, #boot = FALSE, nboot = 0,
@@ -293,7 +295,7 @@ mlim <- function(data,
   #>>DATA1 <<- data
   #??? make fix the ordinal_as_integer argument later on
   Features <- checkNconvert(data, vars2impute, ignore,
-                            ordinal_as_integer=FALSE, report)
+                            ordinal_as_integer=ordinal_as_integer, report)
   #>>FEAT <<- Features
   CLASS <- Features$class
   FAMILY<- Features$family
@@ -303,30 +305,13 @@ mlim <- function(data,
   # .........................................................
   # PREIMPUTATION
   # .........................................................
-  if (preimpute != "iterate") {
-    if (tolower(preimpute) == "knn") {
-      set.seed(seed)
-      data <- VIM::kNN(data, imp_var=FALSE)
-      md.log("kNN preimputation is done", date=debug, time=debug, trace=FALSE)
-    }
-    else if (tolower(preimpute) == "rf") {
-      set.seed(seed)
-      data <- missForest::missForest(data)$ximp
-      md.log("missForest preimputation is done", date=debug, time=debug, trace=FALSE)
-    }
-    else if (tolower(preimpute) == "ranger") {
-      data <- missRanger::missRanger(data, seed = seed)
-      md.log("missRanger preimputation is done", date=debug, time=debug, trace=FALSE)
-    }
-    else if (tolower(preimpute) == "mm") {
-      data <- meanmode(data)
-      md.log("Mean/Mode preimputation is done", date=debug, time=debug, trace=FALSE)
-    }
+  if (preimpute != "iterate" & is.null(preimputed_df )) {
+    data <- mlim.preimpute(data=data, preimpute=preimpute, report=report)
 
     # reset the relevant predictors
     X <- allPredictors
   }
-
+  else if (!is.null(preimputed_df)) data <- preimputed_df
 
   # ............................................................
   # ............................................................
@@ -612,29 +597,41 @@ mlim <- function(data,
         iterDF <- list(currentData)
         rm(currentData)
         gc()
-
-      #mlimClass <- list(iteration=iterDF, k = k, include_algos=include_algos,
-      #                  ignore=ignore, save = save, iterdata = iterdata,
-      #                  maxiter = maxiter, miniter = miniter, nfolds = nfolds,
-      #                  max_model_runtime_secs = max_model_runtime_secs,
-      #                  max_models = max_models, matching = matching,
-      #                  ordinal_as_integer = ordinal_as_integer,
-      #                  weights_column = weights_column, seed=seed,
-      #                  verbosity=verbosity, report=report,
-      #                  iteration_stopping_metric=iteration_stopping_metric,
-      #                  iteration_stopping_tolerance=iteration_stopping_tolerance,
-      #                  stopping_metric=stopping_metric,stopping_rounds=stopping_rounds,
-      #                  stopping_tolerance=stopping_tolerance,
-      #                  nthreads = nthreads, max_mem_size=max_mem_size,
-      #                  min_mem_size = min_mem_size,
-      #
-      #                  # save the package version used for the imputation
-      #                  pkg=packageVersion("mlim")
-      #                  )
-      #class(mlimClass) <- "mlim"
       }
       # update iteration data
       saveRDS(iterDF, save)
+
+      # .........................................................
+      # POSTIMPUTATION PREPARATION
+      # .........................................................
+      postimpute <- list(data=as.data.frame(hex), metrics = metrics,
+
+                        # loop data
+                        k = k, z=z, X=X, Y=Y, vars2impute=vars2impute, FAMILY=FAMILY,
+
+                        # settings
+                        include_algos=include_algos,
+                        ignore=ignore, save = save,
+                        maxiter = maxiter, miniter = miniter, nfolds = nfolds,
+                        max_model_runtime_secs = max_model_runtime_secs,
+                        max_models = max_models, matching = matching,
+                        ordinal_as_integer = ordinal_as_integer,
+                        weights_column = weights_column, seed=seed,
+                        verbosity=verbosity, report=report,
+                        iteration_stopping_metric=iteration_stopping_metric,
+                        iteration_stopping_tolerance=iteration_stopping_tolerance,
+                        stopping_metric=stopping_metric,stopping_rounds=stopping_rounds,
+                        stopping_tolerance=stopping_tolerance,
+                        nthreads = nthreads, max_mem_size=max_mem_size,
+                        min_mem_size = min_mem_size,
+
+                        # save the package version used for the imputation
+                        pkg=packageVersion("mlim")
+      )
+      class(postimpute) <- "mlim"
+
+      # update iteration data
+      saveRDS(postimpute, save)
     }
 
   }
