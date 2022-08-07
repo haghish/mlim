@@ -24,8 +24,8 @@ syntaxProcessing <- function(data, preimpute, include_algos,  matching, miniter,
     "'nfolds' must be a positive integer equal or more than 10" = nfolds >= 10
   )
 
-  if (miniter < 2 & preimpute == "iterate") stop("'miniter' must not be less than 2")
-  if ( maxiter < 2 & preimpute == "iterate") stop("'maxiter' must not be less than 2")
+  #if (miniter < 2 & preimpute == "iterate") stop("'miniter' must not be less than 2")
+  #if ( maxiter < 2 & preimpute == "iterate") stop("'maxiter' must not be less than 2")
 
   if (!is.null(weights_column)) {
     stopifnot(

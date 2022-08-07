@@ -7,7 +7,8 @@
 mlim(
   data,
   include_algos = "ELNET",
-  preimpute = "iterate",
+  preimpute = "missForest",
+  preimputed_df = NULL,
   ignore = NULL,
   init = TRUE,
   save = NULL,
@@ -16,7 +17,8 @@ mlim(
   nfolds = 10L,
   max_model_runtime_secs = 3600,
   max_models = 100,
-  matching = FALSE,
+  matching = "AUTO",
+  ordinal_as_integer = FALSE,
   weights_column = NULL,
   seed = NULL,
   verbosity = NULL,
@@ -58,6 +60,11 @@ one. You can skip this step by carrying out a quick imputation
 with a fast algorithm. Currently, "missMDA" procedure is
 supported, which carries out a fast imputation via
 \code{missMDA} R package.}
+
+\item{preimputed_df}{data.frame. if you have used another software for missing
+data imputation, you can still optimize the imputation
+by handing the data.frame to this argument, which will
+bypass the "preimpute" procedure.}
 
 \item{ignore}{character vector of column names or index of columns that should
 should be ignored in the process of imputation.}

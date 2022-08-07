@@ -175,8 +175,8 @@ mlim <- function(data,
                  max_model_runtime_secs = 3600,
                  max_models = 100, # run all that you can
 
-                 matching = FALSE, #"AUTO", #??? EXPERIMENTAL
-                 #ordinal_as_integer = FALSE, #??? DEBUG IT LATER
+                 matching = "AUTO", #??? EXPERIMENTAL
+                 ordinal_as_integer = FALSE, #??? DEBUG IT LATER
 
                  weights_column = NULL,
 
@@ -284,6 +284,10 @@ mlim <- function(data,
   allPredictors <- VARS$allPredictors
   vars2impute <- VARS$vars2impute
   X <- VARS$X
+
+  # if there is only one variable to impute, there is no need to iterate!
+  if (length(vars2impute) == 1) maxiter <- 1
+
   #>>xxx <<- X
   #>>v2m <<- vars2impute
   #>>vars <<- VARS
@@ -306,7 +310,8 @@ mlim <- function(data,
   # PREIMPUTATION
   # .........................................................
   if (preimpute != "iterate" & is.null(preimputed_df )) {
-    data <- mlim.preimpute(data=data, preimpute=preimpute, report=report)
+    data <- mlim.preimpute(data=data, preimpute=preimpute,
+                           seed = seed, report=report)
 
     # reset the relevant predictors
     X <- allPredictors
@@ -391,15 +396,6 @@ mlim <- function(data,
         if (debug) md.log(paste("X:",paste(setdiff(X, Y), collapse = ", ")), trace=FALSE)
         if (debug) md.log(paste("Y:",paste(Y, collapse = ", ")), trace=FALSE)
 
-        # Auto-Matching specifications
-        # ============================================================
-        if (matching == "AUTO") {
-          if (FAMILY[z] == 'gaussian_integer') matching <- TRUE
-          else if (FAMILY[z] == 'quasibinomial') matching <- TRUE
-          else matching <- FALSE
-          if (debug) md.log(paste("matching:", matching))
-        }
-
         # sort_metric specifications
         # ============================================================
         if (FAMILY[z] == 'binomial') {
@@ -477,35 +473,7 @@ mlim <- function(data,
         # ------------------------------------------------------------
         metrics <- rbind(metrics, extractMetrics(hex, k, Y, perf, FAMILY[z]))
 
-        if (debug) md.log("performance evaluation", trace=FALSE)
-
-        # ------------------------------------------------------------
-        # Matching
-        # ============================================================
-        if ((matching & FAMILY[z] == 'gaussian') || (matching & FAMILY[z] == 'gaussian_integer')) {
-          #PRED <<- as.vector(pred)
-          #NONMISS <<- unique(na.omit(data[,Y]))
-          matchedVal <- matching(imputed=as.vector(pred),
-                           nonMiss=unique(na.omit(data[,Y])),
-                           md.log)
-          if (!is.null(matchedVal)) hex[which(v.na), Y] <- h2o::as.h2o(matchedVal)
-          else {
-            md.log("matching failed", trace=FALSE)
-            hex[which(v.na), Y] <- pred #h2o requires numeric subsetting
-          }
-
-        }
-        else {
-        #  if (debug) {
-            #>>A <<- v.na
-            #>>Y <<- Y
-            #>>B <<- data[v.na, Y]
-            #>>iDD <<- hexID
-            #>>PRED <<- pred
-            #data[v.na, Y] <- as.vector(pred) #here convert it to a vector
-        #  }
-          hex[which(v.na), Y] <- pred #h2o requires numeric subsetting
-        }
+        hex[which(v.na), Y] <- pred #h2o requires numeric subsetting
 
         #hex[which(v.na), Y] <- pred #h2o requires numeric subsetting
         if (debug) md.log("data was updated in h2o cloud", trace=FALSE)
@@ -567,7 +535,7 @@ mlim <- function(data,
     #>>if (debug) METER <<- metrics
     if (debug) md.log("evaluating stopping criteria", trace=FALSE)
     SC <- stoppingCriteria(miniter, maxiter,
-                           metrics, k,
+                           metrics, k, vars2impute,
                            iteration_stopping_metric,
                            iteration_stopping_tolerance,
                            md.log = report)
@@ -644,7 +612,7 @@ mlim <- function(data,
   md.log("This is the end, beautiful friend...", trace=FALSE)
 
   # if the iterations stops on minimum or maximum, return the last data
-  if (k == miniter || (k == maxiter && running)) {
+  if (k == miniter || (k == maxiter && running) || maxiter == 1) {
     md.log("limit reached", trace=FALSE)
     dataLast <- as.data.frame(hex)
     Sys.sleep(sleep)
@@ -660,6 +628,38 @@ mlim <- function(data,
     h2o::h2o.shutdown(prompt = FALSE)
     Sys.sleep(sleep)
   }
+
+
+  # ------------------------------------------------------------
+  # Auto-Matching specifications
+  # ============================================================
+  if (matching == "AUTO") {
+    z <- 0
+    for (Y in vars2impute) {
+      z <- z + 1
+      v.na <- dataNA[, Y]
+
+      if ((FAMILY[z] == 'gaussian_integer') | (FAMILY[z] == 'quasibinomial')) {
+        if (debug) md.log(paste("matching", Y))
+        #IMPUTED <- dataLast[v.na, Y]
+        #NONMISS <- unique(dataLast[!v.na,Y])
+        #IMPUTED <- round(IMPUTED)
+        #IMPUTED[IMPUTED < min(NONMISS, na.rm = TRUE)] <- min(NONMISS, na.rm = TRUE)
+        #IMPUTED[IMPUTED > max(NONMISS, na.rm = TRUE)] <- max(NONMISS, na.rm = TRUE)
+        #dataLast[v.na, Y] <- IMPUTED
+
+        matchedVal <- matching(imputed=dataLast[v.na, Y],
+                               nonMiss=unique(dataLast[!v.na,Y]),
+                               md.log)
+        #print(matchedVal)
+        if (!is.null(matchedVal)) dataLast[v.na, Y] <- matchedVal
+        else {
+          md.log("matching failed", trace=FALSE)
+        }
+      }
+    }
+  }
+
   return(dataLast)
 }
 

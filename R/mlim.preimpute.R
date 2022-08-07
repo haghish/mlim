@@ -27,25 +27,25 @@
 #' @keywords Internal
 #' @noRd
 
-mlim.preimpute <- function(data, preimpute, report) {
+mlim.preimpute <- function(data, preimpute, seed = NULL, report = NULL) {
 
   if (tolower(preimpute) == "knn") {
     set.seed(seed)
     data <- VIM::kNN(data, imp_var=FALSE)
-    md.log("kNN preimputation is done", date=debug, time=debug, trace=FALSE)
+    if (!is.null(report)) md.log("kNN preimputation is done", date=debug, time=debug, trace=FALSE)
   }
   else if (tolower(preimpute) == "rf") {
     set.seed(seed)
     data <- missForest::missForest(data)$ximp
-    md.log("missForest preimputation is done", date=debug, time=debug, trace=FALSE)
+    if (!is.null(report)) md.log("missForest preimputation is done", date=debug, time=debug, trace=FALSE)
   }
   else if (tolower(preimpute) == "ranger") {
     data <- missRanger::missRanger(data, seed = seed)
-    md.log("missRanger preimputation is done", date=debug, time=debug, trace=FALSE)
+    if (!is.null(report)) md.log("missRanger preimputation is done", date=debug, time=debug, trace=FALSE)
   }
   else if (tolower(preimpute) == "mm") {
     data <- meanmode(data)
-    md.log("Mean/Mode preimputation is done", date=debug, time=debug, trace=FALSE)
+    if (!is.null(report)) md.log("Mean/Mode preimputation is done", date=debug, time=debug, trace=FALSE)
   }
 
   return(data)

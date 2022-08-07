@@ -24,9 +24,9 @@ matching <- function(imputed, nonMiss, md.log) {
 
       # index the unique values and replace them in the vectors
       for (i in unqImputed) {
-        nearest <- which.min(abs(unqNonMiss - i))
+        nearest <- which.min(abs(unqNonMiss - i))[1]
         index <- which(imputed == i)
-        imputed[index] <- nearest
+        imputed[index] <- unqNonMiss[nearest]
       }
 
       md.log("matching successul!")
@@ -39,6 +39,6 @@ matching <- function(imputed, nonMiss, md.log) {
 
 #nonMiss <- c(1:20, 19:1)
 #imputed <- c(11.5, 12.2, 11.51, 14.1, -1, 49, 20, 1, 4)
-#matching(imputed, nonMiss)
+#ching(imputed, nonMiss, F)
 
 

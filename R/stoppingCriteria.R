@@ -9,7 +9,7 @@
 #' @noRd
 
 stoppingCriteria <- function(miniter, maxiter,
-                             metrics, k,
+                             metrics, k, vars2impute,
                              iteration_stopping_metric,
                              iteration_stopping_tolerance,
                              md.log) {
