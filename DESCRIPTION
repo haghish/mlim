@@ -1,7 +1,7 @@
 Package: mlim
 Type: Package
 Title: Missing Data Imputation with Automated Machine Learning
-Version: 0.0.1
+Version: 0.0.3
 Author: E. F. Haghish
 Maintainer: E. F. Haghish <haghish@uio.no>
 Description: Using automated machine learning, the package fine-tunes an Elastic 
