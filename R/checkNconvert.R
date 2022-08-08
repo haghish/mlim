@@ -2,9 +2,9 @@
 #' @title check data.frame features and convert documents
 #' @description extracts features classes
 #' @param data data.frame
-#' @param ordinal_as_integer model ordinal variable as gausian, but force
-#'                           the imputed values to be integers. if FALSE, the
-#'                           feature will be imputed as a multinomial factor
+#' @param ignore.rank (RECOMMENDED) model ordinal variable as gausian, but force
+#'                    the imputed values to be integers and are reverted later. if FALSE, the
+#'                    feature will be imputed as a multinomial factor.
 #' @return character vector of features types.
 #' @examples
 #' \dontrun{
@@ -21,30 +21,30 @@
 #' iris$binary <- iris$Species
 #' iris$binary[iris$binary=="versicolor"] <- "setosa"
 #'
-#' #print(checkNconvert(iris, ordinal_as_integer=TRUE))
+#' #print(checkNconvert(iris))
 #' }
 #' @author E. F. Haghish
 #' @keywords Internal
 #' @noRd
 
 checkNconvert <- function(data, vars2impute, ignore,
-                          ordinal_as_integer=FALSE, md.log=NULL) {
+                          ignore.rank=FALSE, md.log=NULL) {
 
-  # Check all the variables in the data.frame, if not ignored
-  # ============================================================
-  if (!is.null(ignore)) usecols <- colnames(data)[! colnames(data) %in% ignore]
-  else usecols <- colnames(data)
+  mem <- NULL
 
-  ncl <- ncol(data[, usecols])
+  ncl <- ncol(data)
   features <- character(ncl)
   family <- character(ncl)
-  classes <- lapply(data[, usecols], class)
+  classes <- lapply(data, class)
+  COLNAMES <- colnames(df)
+
 
   # get the vartype of the variables that should be imputed
   # convert incompatible variable types
   # ============================================================
   j <- 0
-  for (i in usecols) {
+  orderedIndex <- 0
+  for (i in COLNAMES) {
     j <- j + 1
     # first evaluate the factors and numeric
     if ("factor" %in% classes[[i]])  {
@@ -62,11 +62,13 @@ checkNconvert <- function(data, vars2impute, ignore,
     if ("ordered" %in% classes[[i]])  {
       features[j] <- 'ordered'
       cardinality <- length(unique(data[!is.na(data[, i]), i]))
-      if (cardinality <= 2 & !ordinal_as_integer) {
+      if (cardinality <= 2 & ignore.rank) {
         family[j] <- 'binomial'
         data[,i] <- factor(data[,i], ordered = FALSE)
       }
-      else if (cardinality <= 2 & ordinal_as_integer) {
+      else if (cardinality <= 2 & !ignore.rank) {
+        orderedIndex <- orderedIndex + 1
+        mem[[orderedIndex]] <- factmem(data[, i, drop = FALSE])
         family[j] <- 'quasibinomial'
         #  take the labels if numeric
         if (is.numeric(as.character(data[,i]))) {
@@ -77,11 +79,13 @@ checkNconvert <- function(data, vars2impute, ignore,
           data[,i] <- as.numeric(data[,i])
         }
       }
-      else if (cardinality > 2 & !ordinal_as_integer) {
+      else if (cardinality > 2 & ignore.rank) {
         family[j] <- 'multinomial'
         data[,i] <- factor(data[,i], ordered = FALSE)
       }
-      else if (cardinality > 2 & ordinal_as_integer) {
+      else if (cardinality > 2 & !ignore.rank) {
+        orderedIndex <- orderedIndex + 1
+        mem[[orderedIndex]] <- factmem(data[, i, drop = FALSE])
         family[j] <- 'gaussian_integer'
 
         #  take the labels if numeric
@@ -100,20 +104,21 @@ checkNconvert <- function(data, vars2impute, ignore,
       data[,i] <- as.numeric(data[,i])
     }
     else if ("character" %in% classes[[i]])  {
-      msg <- print(paste(usecols[j], "variable is of class 'character', which",
+      msg <- print(paste(i, "variable is of class 'character', which",
                          "is not supported. either convert it to a 'factor'",
                          "or give it to the 'ignore' argument."))
       stop(msg)
     }
   }
 
-  # only return the class and family of the vars2impute
+  # only return the class and family of the vars2impute, if not ignored
   # ============================================================
-  index <- which(usecols %in% vars2impute)
-
-  return(list(class=features[index],
-              family=family[index],
-              data = data))
+  index <- which((! COLNAMES %in% ignore) &  (COLNAMES %in% vars2impute))
+  return(list(class = features[index],
+              family = family[index],
+              data = data,
+              mem = mem,
+              orderedCols = which(features == "ordered")))
 }
 
 

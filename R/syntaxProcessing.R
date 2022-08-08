@@ -33,6 +33,4 @@ syntaxProcessing <- function(data, preimpute, include_algos,  matching, miniter,
       "'weights_column' must not have any missing observations" = !anyNA(weights_column)
     )
   }
-
-  if (!is.null(md.log)) md.log("Syntax Processing was successful")
 }

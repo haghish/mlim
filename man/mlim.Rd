@@ -6,7 +6,7 @@
 \usage{
 mlim(
   data,
-  include_algos = "ELNET",
+  include_algos = c("GLM", "DRF", "GBM", "StackedEnsemble"),
   preimpute = "missForest",
   preimputed_df = NULL,
   ignore = NULL,
@@ -15,10 +15,10 @@ mlim(
   maxiter = 10L,
   miniter = 2L,
   nfolds = 10L,
-  max_model_runtime_secs = 3600,
-  max_models = 100,
+  training_time = 900,
+  max_models = 200,
   matching = "AUTO",
-  ordinal_as_integer = FALSE,
+  ignore.rank = FALSE,
   weights_column = NULL,
   seed = NULL,
   verbosity = NULL,
@@ -90,9 +90,9 @@ but it can be reduced to \code{3} (not recommended, see below).}
 \item{nfolds}{logical. specify number of k-fold Cross-Validation (CV). values of
 10 or higher are recommended. default is 10.}
 
-\item{max_model_runtime_secs}{integer. maximum runtime (in seconds) for imputing
-each variable in each iteration. the default
-is 3600 seconds but for a large dataset, you
+\item{training_time}{integer. maximum runtime (in seconds) for fine-tuning the
+imputation model for each variable in each iteration. the default
+time is 600 seconds but for a large dataset, you
 might need to provide a larger model development
 time. this argument also influences \code{max_models},
 see below.}
@@ -107,10 +107,21 @@ more time in the process of individualized fine-tuning.
 as a result, the better tuned the model, the more accurate
 the imputed values are expected to be}
 
-\item{matching}{EXPERIMENTAL. logical. if \code{TRUE}, imputed values are coerced to the
+\item{matching}{logical. if \code{TRUE}, imputed values are coerced to the
 closest value to the non-missing values of the variable.
 if set to "AUTO", 'mlim' decides whether to match
-or not, based on the variable classes. the default is FALSE.}
+or not, based on the variable classes. the default is "AUTO".}
+
+\item{ignore.rank}{logical, if FALSE (default), ordinal variables
+are imputed as continuous integers with regression plus matching
+and are reverted to ordinal later again. this procedure is
+recommended. if FALSE, the rank of the categories will be ignored
+the the algorithm will try to optimize for classification accuracy.
+WARNING: the latter often results in very high classification accuracy but at
+the cost of higher rank error. see the "mlim.error" function
+documentation to see how rank error is computed. therefore, if you
+intend to carry out analysis on the rank data as numeric, it is
+recommended that you set this argument to FALSE.}
 
 \item{weights_column}{non-negative integer. a vector of observation weights
 can be provided, which should be of the same length

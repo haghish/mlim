@@ -22,12 +22,12 @@ selectVariables <- function(data, ignore=NULL, verbose=FALSE, md.log=NULL) {
 
   #data[, vars2impute] <- converted$X
 
-  if (verbose) {
-    cat("\n  Variables to impute:\t\t")
-    cat(colnames(data)[vars2impute], sep = ", ")
-    cat("\n")
-
-  }
+  #if (verbose) {
+  #  cat("\n  Variables to impute:\t\t")
+  #  cat(colnames(data)[vars2impute], sep = ", ")
+  #  cat("\n")
+  #
+  #}
 
   if (!is.null(md.log)) {
     md.log(paste("Variables to impute:", paste(colnames(data)[vars2impute],

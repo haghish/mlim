@@ -61,14 +61,20 @@
 #'                   more time in the process of individualized fine-tuning.
 #'                   as a result, the better tuned the model, the more accurate
 #'                   the imputed values are expected to be
-#' @param matching EXPERIMENTAL. logical. if \code{TRUE}, imputed values are coerced to the
+#' @param matching logical. if \code{TRUE}, imputed values are coerced to the
 #'                 closest value to the non-missing values of the variable.
 #'                 if set to "AUTO", 'mlim' decides whether to match
-#'                 or not, based on the variable classes. the default is FALSE.
-# @param ordinal_as_integer EXPERIMENTAL. logical, if TRUE, ordinal variables
-#                           are imputed as continuous integers (regression) with matching.
-#                           if FALSE, they are imputed as categorical, ignoring
-#                          their orders.
+#'                 or not, based on the variable classes. the default is "AUTO".
+#' @param ignore.rank logical, if FALSE (default), ordinal variables
+#'                    are imputed as continuous integers with regression plus matching
+#'                    and are reverted to ordinal later again. this procedure is
+#'                    recommended. if FALSE, the rank of the categories will be ignored
+#'                    the the algorithm will try to optimize for classification accuracy.
+#'                    WARNING: the latter often results in very high classification accuracy but at
+#'                    the cost of higher rank error. see the "mlim.error" function
+#'                    documentation to see how rank error is computed. therefore, if you
+#'                    intend to carry out analysis on the rank data as numeric, it is
+#'                    recommended that you set this argument to FALSE.
 #' @param maxiter integer. maximum number of iterations. the default value is \code{10},
 #'        but it can be reduced to \code{3} (not recommended, see below).
 #' @param miniter integer. minimum number of iterations. the default value is
@@ -156,7 +162,7 @@
 
 
 mlim <- function(data,
-                 include_algos =  "ELNET", #c("GBM", "StackedEnsemble"),
+                 include_algos =  c("GLM", "DRF", "GBM", "StackedEnsemble"),
                  preimpute = "missForest",
                  preimputed_df = NULL,
 
@@ -172,11 +178,11 @@ mlim <- function(data,
                  maxiter = 10L,
                  miniter = 2L,
                  nfolds = 10L,
-                 training_time = 600,
+                 training_time = 900,
                  max_models = 200, # run all that you can
 
                  matching = "AUTO", #??? EXPERIMENTAL
-                 ordinal_as_integer = FALSE, #??? DEBUG IT LATER
+                 ignore.rank = FALSE, #??? DEBUG IT LATER
 
                  weights_column = NULL,
 
@@ -232,9 +238,9 @@ mlim <- function(data,
     keep_cross_validation_predictions <- FALSE
   }
 
-  if ("ELNET" %in% include_algos) {
-    include_algos[which(include_algos == "ELNET")] <- "GLM"
-  }
+  if ("ELNET" %in% include_algos) include_algos[which(include_algos == "ELNET")] <- "GLM"
+  if ("RF" %in% include_algos) include_algos[which(include_algos == "RF")] <- "DRF"
+
 
   # define logging levels and debugging
   if (is.null(verbosity)) verbose <- 0
@@ -247,6 +253,8 @@ mlim <- function(data,
 
   # disable h2o progress_bar
   if (!debug) h2o::h2o.no_progress()
+
+
 
   # Initialize the Markdown report / log
   # ============================================================
@@ -292,19 +300,26 @@ mlim <- function(data,
   #>>v2m <<- vars2impute
   #>>vars <<- VARS
 
-  if (debug) {
+  #if (debug) {
     #>>var2imp <<- vars2impute
-    print(vars2impute)
-  }
+    #print(vars2impute)
+  #}
   #>>DATA1 <<- data
-  #??? make fix the ordinal_as_integer argument later on
+  #??? make fix the ignore.rank argument later on
   Features <- checkNconvert(data, vars2impute, ignore,
-                            ordinal_as_integer=ordinal_as_integer, report)
+                            ignore.rank=ignore.rank, report)
   #>>FEAT <<- Features
-  CLASS <- Features$class
+  #CLASS <- Features$class
   FAMILY<- Features$family
   data  <- Features$data
+  mem <- Features$mem
+  orderedCols <- Features$orderedCols
+  #MEM <<- mem
   rm(Features)
+
+
+
+
 
   # .........................................................
   # PREIMPUTATION
@@ -552,49 +567,67 @@ mlim <- function(data,
     # prepare mlim object for future imputation in the future
     # --------------------------------------------------------------
     if (!is.null(save)) {
-      if (!is.null(iterDF)) {
-        currentData <- as.data.frame(hex)
-        attr(currentData, "metrics") <- metrics
-        iterDF <- append(iterDF, list(currentData))
-        rm(currentData)
-        gc()
-      }
-      else {
-        currentData <- as.data.frame(hex)
-        attr(currentData, "metrics") <- metrics
-        iterDF <- list(currentData)
-        rm(currentData)
-        gc()
-      }
-      # update iteration data
-      saveRDS(iterDF, save)
+      #if (!is.null(iterDF)) {
+      #  currentData <- as.data.frame(hex)
+      #  attr(currentData, "metrics") <- metrics
+      #  iterDF <- append(iterDF, list(currentData))
+      #  rm(currentData)
+      #  gc()
+      #}
+      #else {
+      #  currentData <- as.data.frame(hex)
+      #  attr(currentData, "metrics") <- metrics
+      #  iterDF <- list(currentData)
+      #  rm(currentData)
+      #  gc()
+      #}
+      ## update iteration data
+      #saveRDS(iterDF, save)
 
       # .........................................................
       # POSTIMPUTATION PREPARATION
       # .........................................................
-      postimpute <- list(data=as.data.frame(hex), metrics = metrics,
+      postimpute <- list(
 
-                        # loop data
-                        k = k, z=z, X=X, Y=Y, vars2impute=vars2impute, FAMILY=FAMILY,
+        # Data
+        # ====
+        data=as.data.frame(hex),
+        dataLast=dataLast,
+        metrics = metrics,
+        mem=mem,
+        orderedCols=orderedCols,
 
-                        # settings
-                        include_algos=include_algos,
-                        ignore=ignore, save = save,
-                        maxiter = maxiter, miniter = miniter, nfolds = nfolds,
-                        training_time = training_time,
-                        max_models = max_models, matching = matching,
-                        ordinal_as_integer = ordinal_as_integer,
-                        weights_column = weights_column, seed=seed,
-                        verbosity=verbosity, report=report,
-                        iteration_stopping_metric=iteration_stopping_metric,
-                        iteration_stopping_tolerance=iteration_stopping_tolerance,
-                        stopping_metric=stopping_metric,stopping_rounds=stopping_rounds,
-                        stopping_tolerance=stopping_tolerance,
-                        nthreads = nthreads, max_mem_size=max_mem_size,
-                        min_mem_size = min_mem_size,
+        # loop data
+        # ---------
+        k = k, z=z, X=X, Y=Y, vars2impute=vars2impute, FAMILY=FAMILY,
 
-                        # save the package version used for the imputation
-                        pkg=packageVersion("mlim")
+        # settings
+        # --------
+        include_algos=include_algos,
+        ignore=ignore,
+        save = save,
+        maxiter = maxiter,
+        miniter = miniter,
+        nfolds = nfolds,
+        training_time = training_time,
+        max_models = max_models,
+        matching = matching,
+        ignore.rank = ignore.rank,
+        weights_column = weights_column,
+        seed=seed,
+        verbosity=verbosity,
+        report=report,
+        flush=flush,
+        iteration_stopping_metric=iteration_stopping_metric,
+        iteration_stopping_tolerance=iteration_stopping_tolerance,
+        stopping_metric=stopping_metric,
+        stopping_rounds=stopping_rounds,
+        stopping_tolerance=stopping_tolerance,
+        nthreads = nthreads, max_mem_size=max_mem_size,
+        min_mem_size = min_mem_size,
+
+        # save the package version used for the imputation
+        pkg=packageVersion("mlim")
       )
       class(postimpute) <- "mlim"
 
@@ -658,6 +691,15 @@ mlim <- function(data,
         }
       }
     }
+  }
+
+  # ------------------------------------------------------------
+  # Revert ordinal
+  # ============================================================
+  if (!ignore.rank) {
+    #COLS <<- orderedCols
+    #LAST <<- dataLast
+    dataLast[, orderedCols] <-  revert(dataLast[, orderedCols, drop = FALSE], mem)
   }
 
   return(dataLast)
