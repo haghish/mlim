@@ -27,7 +27,8 @@
 #' @keywords Internal
 #' @noRd
 
-mlim.preimpute <- function(data, preimpute, seed = NULL, report = NULL) {
+mlim.preimpute <- function(data, preimpute, seed = NULL,
+                           report = NULL, debug=FALSE) {
 
   if (tolower(preimpute) == "knn") {
     set.seed(seed)

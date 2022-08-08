@@ -46,9 +46,9 @@
 #' @param min_mem_size character. specifies the minimum size.
 #' @param ignore character vector of column names or index of columns that should
 #'               should be ignored in the process of imputation.
-#' @param max_model_runtime_secs integer. maximum runtime (in seconds) for imputing
-#'                               each variable in each iteration. the default
-#'                               is 3600 seconds but for a large dataset, you
+#' @param training_time integer. maximum runtime (in seconds) for fine-tuning the
+#'                               imputation model for each variable in each iteration. the default
+#'                               time is 600 seconds but for a large dataset, you
 #'                               might need to provide a larger model development
 #'                               time. this argument also influences \code{max_models},
 #'                               see below.
@@ -172,8 +172,8 @@ mlim <- function(data,
                  maxiter = 10L,
                  miniter = 2L,
                  nfolds = 10L,
-                 max_model_runtime_secs = 3600,
-                 max_models = 100, # run all that you can
+                 training_time = 600,
+                 max_models = 200, # run all that you can
 
                  matching = "AUTO", #??? EXPERIMENTAL
                  ordinal_as_integer = FALSE, #??? DEBUG IT LATER
@@ -222,7 +222,7 @@ mlim <- function(data,
   #??? matching is deactivated
   syntaxProcessing(data, preimpute, include_algos,
                    matching=matching, miniter, maxiter, max_models,
-                   max_model_runtime_secs,
+                   training_time,
                    nfolds, weights_column, report)
 
   if ("StackEnsemble" %in% include_algos) {
@@ -311,7 +311,7 @@ mlim <- function(data,
   # .........................................................
   if (preimpute != "iterate" & is.null(preimputed_df )) {
     data <- mlim.preimpute(data=data, preimpute=preimpute,
-                           seed = seed, report=report)
+                           seed = seed, report=report, debug=debug)
 
     # reset the relevant predictors
     X <- allPredictors
@@ -372,7 +372,7 @@ mlim <- function(data,
     # .........................................................
     z <- 0
     for (Y in vars2impute) {
-      if (debug) print(memuse::Sys.meminfo()$freeram)
+      if (debug) print(paste0(Y," (RAM = ",memuse::Sys.meminfo()$freeram,")"))
 
       #print(paste("XXX:   ", X))
       z <- z + 1
@@ -417,7 +417,7 @@ mlim <- function(data,
                             include_algos = include_algos,
                             nfolds = nfolds,
                             exploitation_ratio = 0.1,
-                            max_runtime_secs = max_model_runtime_secs,
+                            max_runtime_secs = training_time,
                             max_models = max_models,
                             weights_column = weights_column[which(!v.na)],
                             keep_cross_validation_predictions =
@@ -441,7 +441,7 @@ mlim <- function(data,
                             include_algos = include_algos,
                             nfolds = nfolds,
                             exploitation_ratio = 0.1,
-                            max_runtime_secs = max_model_runtime_secs,
+                            max_runtime_secs = training_time,
                             max_models = max_models,
                             weights_column = weights_column[which(!v.na)],
                             keep_cross_validation_predictions =
@@ -581,7 +581,7 @@ mlim <- function(data,
                         include_algos=include_algos,
                         ignore=ignore, save = save,
                         maxiter = maxiter, miniter = miniter, nfolds = nfolds,
-                        max_model_runtime_secs = max_model_runtime_secs,
+                        training_time = training_time,
                         max_models = max_models, matching = matching,
                         ordinal_as_integer = ordinal_as_integer,
                         weights_column = weights_column, seed=seed,

@@ -49,9 +49,11 @@ missrank <- function(imputed, incomplete, complete){
 
 
 mlim.error <- function(imputed, incomplete, complete) {
+  rankerror <- NA
   classes <- lapply(complete, class)
   types <- character(length(classes))
   for (i in 1:length(classes)) types[i] <- classes[[i]][1]
+  if ("integer" %in% types) types[which(types == "integer")] <- "numeric"
 
   n <- nrow(imputed)
   err <- rep(NA, 3)
@@ -79,7 +81,9 @@ mlim.error <- function(imputed, incomplete, complete) {
       }
     }
   }
-  return(err)
+
+  return(list(error = err,
+              rankerror = rankerror))
 }
 
 
