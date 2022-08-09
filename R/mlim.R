@@ -9,7 +9,7 @@
 #' @importFrom memuse Sys.meminfo
 #' @importFrom stats var setNames na.omit
 #' @param data a \code{data.frame} or \code{matrix} with missing data
-#' @param include_algos character. specify a vector of algorithms to be used
+#' @param algos character. specify a vector of algorithms to be used
 #'        in the process of auto-tuning. the three main algorithms are
 #'        \code{"GLM"},
 #'        \code{"GBM"},\code{"XGBoost"},
@@ -37,13 +37,13 @@
 #'             to FALSE.
 #' @param nthreads integer. launches H2O using all available CPUs or the specified
 #'                 number of CPUs.
-#' @param max_mem_size character. specifies the minimum size, in bytes, of the
+#' @param max_mem character. specifies the minimum size, in bytes, of the
 #'                     memory allocation pool to H2O. This value must a multiple
 #'                     of 1024 greater than 2MB. Append the letter "m" or "M" to
 #'                     indicate megabytes, or "g" or "G" to indicate gigabytes.
 #'                     large memory size is particularly advised, especially
 #'                     for multicore processes.
-#' @param min_mem_size character. specifies the minimum size.
+#' @param min_mem character. specifies the minimum size.
 #' @param ignore character vector of column names or index of columns that should
 #'               should be ignored in the process of imputation.
 #' @param tuning_time integer. maximum runtime (in seconds) for fine-tuning the
@@ -61,6 +61,12 @@
 #'                   more time in the process of individualized fine-tuning.
 #'                   as a result, the better tuned the model, the more accurate
 #'                   the imputed values are expected to be
+#' @param balance character vector, specifying variable names that should be
+#'                balanced before imputation. balancing the prevalence might
+#'                decrease the overall accuracy of the imputation, because it
+#'                attempts to ensure the representation of the rare outcome.
+#'                this argument is optional and intended for advanced users that
+#'                impute a severely imbalance categorical (nominal) variable.
 #' @param matching logical. if \code{TRUE}, imputed values are coerced to the
 #'                 closest value to the non-missing values of the variable.
 #'                 if set to "AUTO", 'mlim' decides whether to match
@@ -81,7 +87,7 @@
 #'                2.
 #' @param flush logical (experimental). if TRUE, after each model, the server is
 #'              cleaned to retrieve RAM. this feature is in testing mode.
-#' @param nfolds logical. specify number of k-fold Cross-Validation (CV). values of
+#' @param cv logical. specify number of k-fold Cross-Validation (CV). values of
 #'               10 or higher are recommended. default is 10.
 #' @param iteration_stopping_metric character. specify the minimum improvement
 #'                                  in the estimated error to proceed to the
@@ -155,14 +161,14 @@
 #' missForest::mixError(MLIM, irisNA, iris)
 #'
 #' # run GBM model
-#' MLIM <- mlim(irisNA, include_algos = "GBM", max_models = 200)
+#' MLIM <- mlim(irisNA, algos = "GBM", max_models = 200)
 #' missForest::mixError(MLIM, irisNA, iris)
 #' }
 #' @export
 
 
 mlim <- function(data,
-                 include_algos =  c("ELNET", "DRF"),
+                 algos =  c("ELNET", "DRF"),
                  preimpute = "missForest",
                  preimputed_df = NULL,
 
@@ -177,11 +183,13 @@ mlim <- function(data,
                  # computational resources
                  maxiter = 10L,
                  miniter = 2L,
-                 nfolds = 10L,
-                 tuning_time = 600,
-                 max_models = 200, # run all that you can
+                 cv = 10L,
+                 #validation = 0,
+                 tuning_time = 180,
+                 max_models = NULL, # run all that you can
 
                  matching = "AUTO", #??? EXPERIMENTAL
+                 balance = NULL,
                  ignore.rank = FALSE, #??? DEBUG IT LATER
 
                  weights_column = NULL,
@@ -201,8 +209,8 @@ mlim <- function(data,
 
                  # setup the h2o cluster
                  nthreads = -1,
-                 max_mem_size = NULL,
-                 min_mem_size = NULL,
+                 max_mem = NULL,
+                 min_mem = NULL,
                  flush = FALSE,
                  shutdown = TRUE,
                  sleep = 1,
@@ -226,20 +234,23 @@ mlim <- function(data,
 
   # examine the data.frame and the arguments
   #??? matching is deactivated
-  syntaxProcessing(data, preimpute, include_algos,
+  syntaxProcessing(data, preimpute, algos,
                    matching=matching, miniter, maxiter, max_models,
                    tuning_time,
-                   nfolds, weights_column, report)
+                   cv, weights_column, report)
 
-  if ("StackEnsemble" %in% include_algos) {
+  if ("StackEnsemble" %in% algos) {
     keep_cross_validation_predictions <- TRUE
   }
   else {
     keep_cross_validation_predictions <- FALSE
   }
 
-  if ("ELNET" %in% include_algos) include_algos[which(include_algos == "ELNET")] <- "GLM"
-  if ("RF" %in% include_algos) include_algos[which(include_algos == "RF")] <- "DRF"
+  if ("ELNET" %in% algos) algos[which(algos == "ELNET")] <- "GLM"
+  if ("RF" %in% algos) algos[which(algos == "RF")] <- "DRF"
+  if ("XGB" %in% algos) algos[which(algos == "XGB")] <- "XGBoost"
+  if ("DL" %in% algos) algos[which(algos == "DL")] <- "DeepLearning"
+  if ("Ensemble" %in% algos) algos[which(algos == "Ensemble")] <- "StackedEnsemble"
 
   # define logging levels and debugging
   if (is.null(verbosity)) verbose <- 0
@@ -266,8 +277,8 @@ mlim <- function(data,
     sink(file = report, append = TRUE)
     cat("\n") # for Markdown styling
     connection <- init(nthreads = nthreads,
-                       min_mem_size = min_mem_size,
-                       max_mem_size = max_mem_size,
+                       min_mem_size = min_mem,
+                       max_mem_size = max_mem,
                        ignore_config = TRUE,
                        report)
     sink()
@@ -410,8 +421,8 @@ mlim <- function(data,
                             training_frame = hex[which(!v.na), ],
                             sort_metric = sort_metric,
                             project_name = "mlim",
-                            include_algos = include_algos,
-                            nfolds = nfolds,
+                            include_algos = algos,
+                            nfolds = cv,
                             exploitation_ratio = 0.1,
                             max_runtime_secs = tuning_time,
                             max_models = max_models,
@@ -429,13 +440,31 @@ mlim <- function(data,
         # fine-tune a classification model
         # ============================================================
         else if (FAMILY[z] == 'binomial' || FAMILY[z] == 'multinomial') {
+
+          # check balance argument (default is FALSE)
+          balance_classes <- FALSE
+          sort_metric <- "AUC"
+          if (Y %in% balance) {
+            balance_classes <- TRUE
+            sort_metric <- "AUCPR"
+          }
+
+          #???
+          #if (validation > 0) {
+          #  nonMissingObs <- which(!v.na)
+          #  vdFrame <- sort(sample(nonMissingObs,
+          #                    round(validation * length(nonMissingObs) )))
+          #  trainingsample <- sort(setdiff(which(!v.na), vdFrame))
+          #}
+
           fit <- h2o::h2o.automl(x = setdiff(X, Y), y = Y,
-                            #balance_classes = TRUE,
+                            balance_classes = balance_classes,
                             sort_metric = sort_metric,
                             training_frame = hex[which(!v.na), ],
+                            #validation_frame = hex[vdFrame, ],
                             project_name = "mlim",
-                            include_algos = include_algos,
-                            nfolds = nfolds,
+                            include_algos = algos,
+                            nfolds = cv,
                             exploitation_ratio = 0.1,
                             max_runtime_secs = tuning_time,
                             max_models = max_models,
@@ -450,6 +479,7 @@ mlim <- function(data,
         }
 
         Sys.sleep(sleep)
+#print(fit@leaderboard)
 
         if (debug) {
           md.log("model fitted", trace=FALSE)
@@ -522,12 +552,12 @@ mlim <- function(data,
 
           # settings
           # --------
-          include_algos=include_algos,
+          algos=algos,
           ignore=ignore,
           save = save,
           maxiter = maxiter,
           miniter = miniter,
-          nfolds = nfolds,
+          cv = cv,
           tuning_time = tuning_time,
           max_models = max_models,
           matching = matching,
@@ -542,8 +572,8 @@ mlim <- function(data,
           stopping_metric=stopping_metric,
           stopping_rounds=stopping_rounds,
           stopping_tolerance=stopping_tolerance,
-          nthreads = nthreads, max_mem_size=max_mem_size,
-          min_mem_size = min_mem_size,
+          nthreads = nthreads, max_mem=max_mem,
+          min_mem = min_mem,
 
           # save the package version used for the imputation
           pkg=packageVersion("mlim")

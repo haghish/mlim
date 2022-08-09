@@ -6,7 +6,7 @@
 \usage{
 mlim(
   data,
-  include_algos = c("ELNET", "DRF"),
+  algos = c("ELNET", "DRF"),
   preimpute = "missForest",
   preimputed_df = NULL,
   ignore = NULL,
@@ -14,10 +14,11 @@ mlim(
   save = NULL,
   maxiter = 10L,
   miniter = 2L,
-  nfolds = 10L,
-  training_time = 900,
-  max_models = 200,
+  cv = 10L,
+  tuning_time = 180,
+  max_models = NULL,
   matching = "AUTO",
+  balance = NULL,
   ignore.rank = FALSE,
   weights_column = NULL,
   seed = NULL,
@@ -29,8 +30,8 @@ mlim(
   stopping_rounds = 3,
   stopping_tolerance = 0.001,
   nthreads = -1,
-  max_mem_size = NULL,
-  min_mem_size = NULL,
+  max_mem = NULL,
+  min_mem = NULL,
   flush = FALSE,
   shutdown = TRUE,
   sleep = 1,
@@ -40,7 +41,7 @@ mlim(
 \arguments{
 \item{data}{a \code{data.frame} or \code{matrix} with missing data}
 
-\item{include_algos}{character. specify a vector of algorithms to be used
+\item{algos}{character. specify a vector of algorithms to be used
        in the process of auto-tuning. the three main algorithms are
        \code{"GLM"},
        \code{"GBM"},\code{"XGBoost"},
@@ -87,10 +88,10 @@ but it can be reduced to \code{3} (not recommended, see below).}
 \item{miniter}{integer. minimum number of iterations. the default value is
 2.}
 
-\item{nfolds}{logical. specify number of k-fold Cross-Validation (CV). values of
+\item{cv}{logical. specify number of k-fold Cross-Validation (CV). values of
 10 or higher are recommended. default is 10.}
 
-\item{training_time}{integer. maximum runtime (in seconds) for fine-tuning the
+\item{tuning_time}{integer. maximum runtime (in seconds) for fine-tuning the
 imputation model for each variable in each iteration. the default
 time is 600 seconds but for a large dataset, you
 might need to provide a larger model development
@@ -111,6 +112,13 @@ the imputed values are expected to be}
 closest value to the non-missing values of the variable.
 if set to "AUTO", 'mlim' decides whether to match
 or not, based on the variable classes. the default is "AUTO".}
+
+\item{balance}{character vector, specifying variable names that should be
+balanced before imputation. balancing the prevalence might
+decrease the overall accuracy of the imputation, because it
+attempts to ensure the representation of the rare outcome.
+this argument is optional and intended for advanced users that
+impute a severely imbalance categorical (nominal) variable.}
 
 \item{ignore.rank}{logical, if FALSE (default), ordinal variables
 are imputed as continuous integers with regression plus matching
@@ -171,14 +179,14 @@ iteration.}
 \item{nthreads}{integer. launches H2O using all available CPUs or the specified
 number of CPUs.}
 
-\item{max_mem_size}{character. specifies the minimum size, in bytes, of the
+\item{max_mem}{character. specifies the minimum size, in bytes, of the
 memory allocation pool to H2O. This value must a multiple
 of 1024 greater than 2MB. Append the letter "m" or "M" to
 indicate megabytes, or "g" or "G" to indicate gigabytes.
 large memory size is particularly advised, especially
 for multicore processes.}
 
-\item{min_mem_size}{character. specifies the minimum size.}
+\item{min_mem}{character. specifies the minimum size.}
 
 \item{flush}{logical (experimental). if TRUE, after each model, the server is
 cleaned to retrieve RAM. this feature is in testing mode.}
@@ -213,7 +221,7 @@ MLIM <- mlim(irisNA)
 missForest::mixError(MLIM, irisNA, iris)
 
 # run GBM model
-MLIM <- mlim(irisNA, include_algos = "GBM", max_models = 200)
+MLIM <- mlim(irisNA, algos = "GBM", max_models = 200)
 missForest::mixError(MLIM, irisNA, iris)
 }
 }

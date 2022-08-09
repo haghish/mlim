@@ -69,7 +69,7 @@ mlim.error <- function(imputed, incomplete, complete,
                            nrmse = nrmse,
                            missclass = classerror,
                            missrank = rankerror))
-  else return(err)
+  else return(err[!is.na(err)])
 
 }
 
