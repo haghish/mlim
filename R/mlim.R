@@ -46,7 +46,7 @@
 #' @param min_mem_size character. specifies the minimum size.
 #' @param ignore character vector of column names or index of columns that should
 #'               should be ignored in the process of imputation.
-#' @param training_time integer. maximum runtime (in seconds) for fine-tuning the
+#' @param tuning_time integer. maximum runtime (in seconds) for fine-tuning the
 #'                               imputation model for each variable in each iteration. the default
 #'                               time is 600 seconds but for a large dataset, you
 #'                               might need to provide a larger model development
@@ -178,7 +178,7 @@ mlim <- function(data,
                  maxiter = 10L,
                  miniter = 2L,
                  nfolds = 10L,
-                 training_time = 900,
+                 tuning_time = 600,
                  max_models = 200, # run all that you can
 
                  matching = "AUTO", #??? EXPERIMENTAL
@@ -228,7 +228,7 @@ mlim <- function(data,
   #??? matching is deactivated
   syntaxProcessing(data, preimpute, include_algos,
                    matching=matching, miniter, maxiter, max_models,
-                   training_time,
+                   tuning_time,
                    nfolds, weights_column, report)
 
   if ("StackEnsemble" %in% include_algos) {
@@ -392,14 +392,15 @@ mlim <- function(data,
 
         # sort_metric specifications
         # ============================================================
-        if (FAMILY[z] == 'binomial') {
-          # check if Y is imbalanced
-          if (is.imbalanced(data[[Y]])) sort_metric <- "AUCPR"
-          else sort_metric <- "AUC"
-        }
-        else {
-          sort_metric <- "AUTO"
-        }
+        sort_metric <- "AUTO"
+        #if (FAMILY[z] == 'binomial') {
+        #  # check if Y is imbalanced
+        #  if (is.imbalanced(data[[Y]])) sort_metric <- "AUCPR"
+        #  else sort_metric <- "AUC"
+        #}
+        #else {
+        #  sort_metric <- "AUTO"
+        #}
 
         # ------------------------------------------------------------
         # fine-tune a gaussian model
@@ -407,11 +408,12 @@ mlim <- function(data,
         if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer') {
           fit <- h2o::h2o.automl(x = setdiff(X, Y), y = Y,
                             training_frame = hex[which(!v.na), ],
+                            sort_metric = sort_metric,
                             project_name = "mlim",
                             include_algos = include_algos,
                             nfolds = nfolds,
                             exploitation_ratio = 0.1,
-                            max_runtime_secs = training_time,
+                            max_runtime_secs = tuning_time,
                             max_models = max_models,
                             weights_column = weights_column[which(!v.na)],
                             keep_cross_validation_predictions =
@@ -428,14 +430,14 @@ mlim <- function(data,
         # ============================================================
         else if (FAMILY[z] == 'binomial' || FAMILY[z] == 'multinomial') {
           fit <- h2o::h2o.automl(x = setdiff(X, Y), y = Y,
-                            balance_classes = TRUE,
+                            #balance_classes = TRUE,
                             sort_metric = sort_metric,
                             training_frame = hex[which(!v.na), ],
                             project_name = "mlim",
                             include_algos = include_algos,
                             nfolds = nfolds,
                             exploitation_ratio = 0.1,
-                            max_runtime_secs = training_time,
+                            max_runtime_secs = tuning_time,
                             max_models = max_models,
                             weights_column = weights_column[which(!v.na)],
                             keep_cross_validation_predictions =
@@ -526,7 +528,7 @@ mlim <- function(data,
           maxiter = maxiter,
           miniter = miniter,
           nfolds = nfolds,
-          training_time = training_time,
+          tuning_time = tuning_time,
           max_models = max_models,
           matching = matching,
           ignore.rank = ignore.rank,

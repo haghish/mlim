@@ -12,6 +12,18 @@ mlim.error <- function(imputed, incomplete, complete,
                        varwise = FALSE, ignore.rank=FALSE) {
   rankerror <- NA
   err <- NULL
+
+  # make sure the complete dataset is complete!
+  if (length(which(colSums(is.na(df)) > 0)) > 0)
+    stop("'complete dataset has missing values")
+
+  # get the variables with missing data, ignoring the rest
+  naCols <- which(colSums(is.na(incomplete)) > 0)
+  imputed <- imputed[, naCols, drop = FALSE]
+  incomplete <- incomplete[, naCols, drop = FALSE]
+  complete <- complete[, naCols, drop = FALSE]
+
+
   classes <- lapply(complete, class)
   types <- character(length(classes))
   for (i in 1:length(classes)) types[i] <- classes[[i]][1]
@@ -61,3 +73,4 @@ mlim.error <- function(imputed, incomplete, complete,
 
 }
 
+#print((ELNETerror <- mlim.error(ELNET, dfNA, df)))

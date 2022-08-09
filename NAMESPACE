@@ -2,6 +2,7 @@
 
 export(mlim)
 export(mlim.error)
+export(mlim.na)
 importFrom(VIM,kNN)
 importFrom(h2o,as.h2o)
 importFrom(h2o,h2o.automl)
