@@ -162,7 +162,7 @@
 
 
 mlim <- function(data,
-                 include_algos =  c("GLM", "DRF", "GBM", "StackedEnsemble"),
+                 include_algos =  c("ELNET", "DRF"),
                  preimpute = "missForest",
                  preimputed_df = NULL,
 
@@ -211,10 +211,10 @@ mlim <- function(data,
 
   # Load the libraries
   # ============================================================
-  suppressPackageStartupMessages({requireNamespace("h2o")})
-  suppressPackageStartupMessages({requireNamespace("md.log")})
-  suppressPackageStartupMessages({requireNamespace("VIM")})
-  suppressPackageStartupMessages({requireNamespace("missRanger")})
+  #suppressPackageStartupMessages({requireNamespace("h2o")})
+  #suppressPackageStartupMessages({requireNamespace("md.log")})
+  #suppressPackageStartupMessages({requireNamespace("VIM")})
+  #suppressPackageStartupMessages({requireNamespace("missRanger")})
 
   # Syntax processing
   # ============================================================
@@ -241,7 +241,6 @@ mlim <- function(data,
   if ("ELNET" %in% include_algos) include_algos[which(include_algos == "ELNET")] <- "GLM"
   if ("RF" %in% include_algos) include_algos[which(include_algos == "RF")] <- "DRF"
 
-
   # define logging levels and debugging
   if (is.null(verbosity)) verbose <- 0
   else if (verbosity == "warn") verbose <- 1
@@ -253,8 +252,6 @@ mlim <- function(data,
 
   # disable h2o progress_bar
   if (!debug) h2o::h2o.no_progress()
-
-
 
   # Initialize the Markdown report / log
   # ============================================================
@@ -275,6 +272,7 @@ mlim <- function(data,
                        report)
     sink()
 
+    # ??? DO NOT CLOSE ALL THE CONNECTIONS
     sink.reset <- function(){
       for(i in seq_len(sink.number())){
         sink(NULL)
@@ -282,7 +280,7 @@ mlim <- function(data,
     }
     sink.reset()
     #closeAllConnections()
-    print(connection)
+    #print(connection)
   }
 
   # Identify variables for imputation and their models' families
@@ -296,30 +294,14 @@ mlim <- function(data,
   # if there is only one variable to impute, there is no need to iterate!
   if (length(vars2impute) == 1) maxiter <- 1
 
-  #>>xxx <<- X
-  #>>v2m <<- vars2impute
-  #>>vars <<- VARS
-
-  #if (debug) {
-    #>>var2imp <<- vars2impute
-    #print(vars2impute)
-  #}
-  #>>DATA1 <<- data
-  #??? make fix the ignore.rank argument later on
   Features <- checkNconvert(data, vars2impute, ignore,
                             ignore.rank=ignore.rank, report)
-  #>>FEAT <<- Features
-  #CLASS <- Features$class
+
   FAMILY<- Features$family
   data  <- Features$data
   mem <- Features$mem
   orderedCols <- Features$orderedCols
-  #MEM <<- mem
   rm(Features)
-
-
-
-
 
   # .........................................................
   # PREIMPUTATION
@@ -356,8 +338,6 @@ mlim <- function(data,
 
   Sys.sleep(sleep)
   if (debug) {
-    #>>HEX <<- hex
-    #>>iDD <<- hexID
     md.log("data was sent to h2o cloud", date=debug, time=debug, trace=FALSE)
   }
 
@@ -367,8 +347,7 @@ mlim <- function(data,
     k <- k + 1L
 
     if (verbose) {
-      #cat("\nIteration ", k, ":\t", sep = "")
-      cat("\nIteration ", k, ":\n", sep = "")
+      cat("\nIteration ", k, ":\n", sep = "") #":\t"
     }
 
     md.log(paste("Iteration", k), section="section")
@@ -471,7 +450,6 @@ mlim <- function(data,
         Sys.sleep(sleep)
 
         if (debug) {
-          #>>FIT <<- fit
           md.log("model fitted", trace=FALSE)
           md.log("model was executed successfully", trace=FALSE)
         }
@@ -493,9 +471,6 @@ mlim <- function(data,
         #hex[which(v.na), Y] <- pred #h2o requires numeric subsetting
         if (debug) md.log("data was updated in h2o cloud", trace=FALSE)
         Sys.sleep(sleep)
-
-        # ??? save models or their predictions or their datasets + errors
-        # ------------------------------------------------------------
 
         # clean h2o memory
         # ------------------------------------------------------------
@@ -524,6 +499,73 @@ mlim <- function(data,
         X <- union(X, Y)
       }
 
+      # .........................................................
+      # POSTIMPUTATION PREPARATION
+      # .........................................................
+      if (!is.null(save)) {
+
+        postimpute <- list(
+
+          # Data
+          # ====
+          data=as.data.frame(hex),
+          dataLast=dataLast,
+          metrics = metrics,
+          mem=mem,
+          orderedCols=orderedCols,
+
+          # loop data
+          # ---------
+          k = k, z=z, X=X, Y=Y, vars2impute=vars2impute, FAMILY=FAMILY,
+
+          # settings
+          # --------
+          include_algos=include_algos,
+          ignore=ignore,
+          save = save,
+          maxiter = maxiter,
+          miniter = miniter,
+          nfolds = nfolds,
+          training_time = training_time,
+          max_models = max_models,
+          matching = matching,
+          ignore.rank = ignore.rank,
+          weights_column = weights_column,
+          seed=seed,
+          verbosity=verbosity,
+          report=report,
+          flush=flush,
+          iteration_stopping_metric=iteration_stopping_metric,
+          iteration_stopping_tolerance=iteration_stopping_tolerance,
+          stopping_metric=stopping_metric,
+          stopping_rounds=stopping_rounds,
+          stopping_tolerance=stopping_tolerance,
+          nthreads = nthreads, max_mem_size=max_mem_size,
+          min_mem_size = min_mem_size,
+
+          # save the package version used for the imputation
+          pkg=packageVersion("mlim")
+        )
+        class(postimpute) <- "mlim"
+
+        # update iteration data
+        saveRDS(postimpute, save)
+      }
+
+
+      # Flush the Java server to regain RAM
+      # ------------------------------------------------------------
+      #
+      # HELP NEEDED
+      #
+      # this part is problematic. Contact h2o.ai for further help
+      # because removing objects from the server doesn't seem to do
+      # much. moreover, '.h2o.garbageCollect()' breaks some of the
+      # computations for unknown reasons. for now, I can only use
+      # 'gc()' and alternatively, shutdown the Java server and re-run
+      # it when the RAM goes below a certain amount... this feature is
+      # considered a bad practice and should be improved in future releases
+      # ------------------------------------------------------------
       if (flush) {
         currentData <- as.data.frame(hex)
         h2o::h2o.removeAll(timeout_secs = 30)
@@ -561,80 +603,6 @@ mlim <- function(data,
     }
     running <- SC$running
     error <- SC$error
-
-
-
-    # prepare mlim object for future imputation in the future
-    # --------------------------------------------------------------
-    if (!is.null(save)) {
-      #if (!is.null(iterDF)) {
-      #  currentData <- as.data.frame(hex)
-      #  attr(currentData, "metrics") <- metrics
-      #  iterDF <- append(iterDF, list(currentData))
-      #  rm(currentData)
-      #  gc()
-      #}
-      #else {
-      #  currentData <- as.data.frame(hex)
-      #  attr(currentData, "metrics") <- metrics
-      #  iterDF <- list(currentData)
-      #  rm(currentData)
-      #  gc()
-      #}
-      ## update iteration data
-      #saveRDS(iterDF, save)
-
-      # .........................................................
-      # POSTIMPUTATION PREPARATION
-      # .........................................................
-      postimpute <- list(
-
-        # Data
-        # ====
-        data=as.data.frame(hex),
-        dataLast=dataLast,
-        metrics = metrics,
-        mem=mem,
-        orderedCols=orderedCols,
-
-        # loop data
-        # ---------
-        k = k, z=z, X=X, Y=Y, vars2impute=vars2impute, FAMILY=FAMILY,
-
-        # settings
-        # --------
-        include_algos=include_algos,
-        ignore=ignore,
-        save = save,
-        maxiter = maxiter,
-        miniter = miniter,
-        nfolds = nfolds,
-        training_time = training_time,
-        max_models = max_models,
-        matching = matching,
-        ignore.rank = ignore.rank,
-        weights_column = weights_column,
-        seed=seed,
-        verbosity=verbosity,
-        report=report,
-        flush=flush,
-        iteration_stopping_metric=iteration_stopping_metric,
-        iteration_stopping_tolerance=iteration_stopping_tolerance,
-        stopping_metric=stopping_metric,
-        stopping_rounds=stopping_rounds,
-        stopping_tolerance=stopping_tolerance,
-        nthreads = nthreads, max_mem_size=max_mem_size,
-        min_mem_size = min_mem_size,
-
-        # save the package version used for the imputation
-        pkg=packageVersion("mlim")
-      )
-      class(postimpute) <- "mlim"
-
-      # update iteration data
-      saveRDS(postimpute, save)
-    }
-
   }
 
   # ............................................................

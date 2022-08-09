@@ -6,7 +6,7 @@
 \usage{
 mlim(
   data,
-  include_algos = c("GLM", "DRF", "GBM", "StackedEnsemble"),
+  include_algos = c("ELNET", "DRF"),
   preimpute = "missForest",
   preimputed_df = NULL,
   ignore = NULL,

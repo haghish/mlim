@@ -31,19 +31,19 @@ checkNconvert <- function(data, vars2impute, ignore,
                           ignore.rank=FALSE, md.log=NULL) {
 
   mem <- NULL
+  orderedIndex <- 0
 
   ncl <- ncol(data)
   features <- character(ncl)
   family <- character(ncl)
   classes <- lapply(data, class)
-  COLNAMES <- colnames(df)
-
+  COLNAMES <- colnames(data)
 
   # get the vartype of the variables that should be imputed
   # convert incompatible variable types
   # ============================================================
   j <- 0
-  orderedIndex <- 0
+
   for (i in COLNAMES) {
     j <- j + 1
     # first evaluate the factors and numeric
@@ -126,4 +126,7 @@ checkNconvert <- function(data, vars2impute, ignore,
 #get <- checkNconvert(data=DATA1, vars2impute=vars2impute, ignore = NULL)
 #print(get$family)
 #print(get$class)
-
+#data(cars)
+#cars$dist[c(1,4,7,13,16,22,26,29,35,44,45)] <- NA
+#a <- mlim:::selectVariables(data=cars)
+#b <- checkNconvert(data=cars, vars2impute=a$vars2impute, ignore = NULL)

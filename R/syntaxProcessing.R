@@ -10,9 +10,9 @@ syntaxProcessing <- function(data, preimpute, include_algos,  matching, miniter,
                              max_model_runtime_secs, nfolds, weights_column,
                              md.log) {
 
-  if ("GBM" %in% include_algos) {
-    if (nrow(data) < 200) stop("too few rows... use 'ELNET' or 'DRF' instead")
-  }
+  #if ("GBM" %in% include_algos) {
+    #if (nrow(data) < 200) stop("too few rows... use 'ELNET' or 'DRF' instead")
+  #}
 
   stopifnot(
     "'data' is not a data.frame" = is.data.frame(data),
