@@ -126,8 +126,8 @@
 #'               the function that has generated the message. otherwise, a
 #'               reduced markdown-like report is generated.
 #' @param save filename. if a filename is specified, an \code{mlim} object is
-#'             saved after the end of each iteration. this object not only
-#'             includes the imputed dataframe and estimated CV error, but also
+#'             saved after the end of each variable imputation. this object not only
+#'             includes the imputed dataframe and estimated cross-validation error, but also
 #'             includes the information needed for continuing the imputation,
 #'             which is very useful feature for imputing large datasets, with a
 #'             long runtime. this argument is activated by default and an
@@ -662,7 +662,6 @@ mlim <- function(data,
     Sys.sleep(sleep)
   }
 
-
   # ------------------------------------------------------------
   # Auto-Matching specifications
   # ============================================================
@@ -674,12 +673,6 @@ mlim <- function(data,
 
       if ((FAMILY[z] == 'gaussian_integer') | (FAMILY[z] == 'quasibinomial')) {
         if (debug) md.log(paste("matching", Y))
-        #IMPUTED <- dataLast[v.na, Y]
-        #NONMISS <- unique(dataLast[!v.na,Y])
-        #IMPUTED <- round(IMPUTED)
-        #IMPUTED[IMPUTED < min(NONMISS, na.rm = TRUE)] <- min(NONMISS, na.rm = TRUE)
-        #IMPUTED[IMPUTED > max(NONMISS, na.rm = TRUE)] <- max(NONMISS, na.rm = TRUE)
-        #dataLast[v.na, Y] <- IMPUTED
 
         matchedVal <- matching(imputed=dataLast[v.na, Y],
                                nonMiss=unique(dataLast[!v.na,Y]),
@@ -694,11 +687,9 @@ mlim <- function(data,
   }
 
   # ------------------------------------------------------------
-  # Revert ordinal
+  # Revert ordinal transformation
   # ============================================================
   if (!ignore.rank) {
-    #COLS <<- orderedCols
-    #LAST <<- dataLast
     dataLast[, orderedCols] <-  revert(dataLast[, orderedCols, drop = FALSE], mem)
   }
 

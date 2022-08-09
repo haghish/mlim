@@ -74,8 +74,8 @@ however, if the Java server is already running, set this argument
 to FALSE.}
 
 \item{save}{filename. if a filename is specified, an \code{mlim} object is
-saved after the end of each iteration. this object not only
-includes the imputed dataframe and estimated CV error, but also
+saved after the end of each variable imputation. this object not only
+includes the imputed dataframe and estimated cross-validation error, but also
 includes the information needed for continuing the imputation,
 which is very useful feature for imputing large datasets, with a
 long runtime. this argument is activated by default and an
