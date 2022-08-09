@@ -8,13 +8,20 @@
 #' @importFrom md.log md.log
 #' @importFrom memuse Sys.meminfo
 #' @importFrom stats var setNames na.omit
-#' @param data a \code{data.frame} or \code{matrix} with missing data
+#' @param data a \code{data.frame} or \code{matrix} with missing data to be
+#'             imputed. if \code{load.mlim} is provided, this argument will be ignored.
+#' @param load.mlim an object of class "mlim", which includes the data, arguments,
+#'                 and settings for re-running the imputation, from where it was
+#'                 previously stopped. the "mlim" object saves the current state of
+#'                 the imputation and is particularly recommended for large datasets
+#'                 or when the user specifies a computationally extensive settings
+#'                 (e.g. specifying several algorithms, increasing tuning time, etc.).
 #' @param algos character. specify a vector of algorithms to be used
-#'        in the process of auto-tuning. the three main algorithms are
-#'        \code{"GLM"},
-#'        \code{"GBM"},\code{"XGBoost"},
+#'        in the process of auto-tuning. the supported main algorithms are
+#'        \code{"ELNET"}, \code{"RF"},
+#'        \code{"GBM"}, \code{"DL"}, \code{"XGB"} (available for Mac and Linux), and \code{"Ensemble"}.
 #'
-#'        the default is \code{c("GBM")}. the possible algorithms are \code{"GLM"},
+#'        the default is \code{c("ELNET", "RF")}, which tunes fast. the possible algorithms are \code{"GLM"},
 #'        \code{"GBM"},\code{"XGBoost"}, \code{"DRF"},
 #'        \code{"DeepLearning"}, and \code{"StackedEnsemble")}. Note that the
 #'        choice of algorithms to be trained can largely increase the runtime.
@@ -131,7 +138,7 @@
 #'               a log file is generated, which includes time stamp and shows
 #'               the function that has generated the message. otherwise, a
 #'               reduced markdown-like report is generated.
-#' @param save filename. if a filename is specified, an \code{mlim} object is
+#' @param save.mlim filename. if a filename is specified, an \code{mlim} object is
 #'             saved after the end of each variable imputation. this object not only
 #'             includes the imputed dataframe and estimated cross-validation error, but also
 #'             includes the information needed for continuing the imputation,
@@ -178,7 +185,7 @@ mlim <- function(data,
                  ignore = NULL,
                  init = TRUE,
 
-                 save = NULL,
+                 save.mlim = NULL,
 
                  # computational resources
                  maxiter = 10L,
@@ -534,7 +541,7 @@ mlim <- function(data,
       # .........................................................
       # POSTIMPUTATION PREPARATION
       # .........................................................
-      if (!is.null(save)) {
+      if (!is.null(save.mlim)) {
 
         postimpute <- list(
 
@@ -554,7 +561,7 @@ mlim <- function(data,
           # --------
           algos=algos,
           ignore=ignore,
-          save = save,
+          save.mlim = save.mlim,
           maxiter = maxiter,
           miniter = miniter,
           cv = cv,
@@ -581,7 +588,7 @@ mlim <- function(data,
         class(postimpute) <- "mlim"
 
         # update iteration data
-        saveRDS(postimpute, save)
+        saveRDS(postimpute, save.mlim)
       }
 
 
