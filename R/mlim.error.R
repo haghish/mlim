@@ -27,7 +27,7 @@
 #' @author E. F. Haghish
 #' @examples
 #'
-#' \dontrun{
+#' \donttest{
 #' data(iris)
 #'
 #' # add 10% missing values, ensure missingness is stratified for factors

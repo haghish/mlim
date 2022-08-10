@@ -33,7 +33,7 @@ extracts performance metrics from cross-validation
 }
 \examples{
 
-\dontrun{
+\donttest{
 # adding stratified NA to an atomic vector
 x <- as.factor(c(rep("M", 100), rep("F", 900)))
 table(mlim.na(x, p=.5, stratify = TRUE))

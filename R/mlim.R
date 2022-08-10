@@ -159,7 +159,7 @@
 #'
 #' @examples
 #'
-#' \dontrun{
+#' \donttest{
 #' data(iris)
 #' irisNA <- mlim.na(iris, p = 0.1, stratify = TRUE, seed = 2022)
 #'
@@ -167,9 +167,9 @@
 #' MLIM <- mlim(irisNA)
 #' mlim.error(MLIM, irisNA, iris)
 #'
-#' # run GBM model
-#' MLIM <- mlim(irisNA, algos = "GBM", max_models = 200)
-#' missForest::mixError(MLIM, irisNA, iris)
+#' # run GBM model and allow 15 minutes of tuning for each variable
+#' MLIM <- mlim(irisNA, algos = "GBM", tuning_time=60*15)
+#' mlim.error(MLIM, irisNA, iris)
 #' }
 #' @export
 
@@ -220,7 +220,7 @@ mlim <- function(data,
                  min_mem = NULL,
                  flush = FALSE,
                  shutdown = TRUE,
-                 sleep = 1,
+                 sleep = .5,
                  ...
                  ) {
 
