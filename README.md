@@ -44,9 +44,8 @@ Preimputation
 
 | **Algorithm**  |    **Speed**   |  **RAM** |  **CPU**  |
 |:---------------|:---------------|:---------|:----------|
-| `kNN`       |    Very fast   |    Low   |    Low    |
-| `ranger`    |      fast      |   High   |    High   |
-| `missForest` |    Very Slow   |   High   | Very High |
+| `knn`       |    Very fast   |    Low   |    Low    |
+| `rf`    |      fast      |   High   |    High   |
 | `mm`        | Extremely fast | Very Low |  Very Low |
 
 
