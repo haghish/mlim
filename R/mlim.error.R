@@ -45,7 +45,7 @@ mlim.error <- function(imputed, incomplete, complete,
   err <- NULL
 
   # make sure the complete dataset is complete!
-  if (length(which(colSums(is.na(df)) > 0)) > 0)
+  if (length(which(colSums(is.na(complete)) > 0)) > 0)
     stop("'complete dataset has missing values")
 
   # get the variables with missing data, ignoring the rest

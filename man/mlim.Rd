@@ -5,9 +5,10 @@
 \title{missing data imputation with automated machine learning}
 \usage{
 mlim(
-  data,
+  data = NULL,
+  load.mlim = NULL,
   algos = c("ELNET", "DRF"),
-  preimpute = "missForest",
+  preimpute = "rf",
   preimputed_df = NULL,
   ignore = NULL,
   init = TRUE,
@@ -23,15 +24,14 @@ mlim(
   weights_column = NULL,
   seed = NULL,
   verbosity = NULL,
-  report = "mlim.log",
+  report = NULL,
   iteration_stopping_metric = "RMSE",
   iteration_stopping_tolerance = 0.005,
   stopping_metric = "AUTO",
   stopping_rounds = 3,
   stopping_tolerance = 0.001,
-  nthreads = -1,
-  max_mem = NULL,
-  min_mem = NULL,
+  cpu = -1,
+  ram = NULL,
   flush = FALSE,
   shutdown = TRUE,
   sleep = 0.5,
@@ -42,26 +42,29 @@ mlim(
 \item{data}{a \code{data.frame} or \code{matrix} with missing data to be
 imputed. if \code{load.mlim} is provided, this argument will be ignored.}
 
+\item{load.mlim}{an object of class "mlim", which includes the data, arguments,
+and settings for re-running the imputation, from where it was
+previously stopped. the "mlim" object saves the current state of
+the imputation and is particularly recommended for large datasets
+or when the user specifies a computationally extensive settings
+(e.g. specifying several algorithms, increasing tuning time, etc.).}
+
 \item{algos}{character. specify a vector of algorithms to be used
        in the process of auto-tuning. the supported main algorithms are
        \code{"ELNET"}, \code{"RF"},
        \code{"GBM"}, \code{"DL"}, \code{"XGB"} (available for Mac and Linux), and \code{"Ensemble"}.
 
-       the default is \code{c("ELNET", "RF")}, which tunes fast. the possible algorithms are \code{"GLM"},
-       \code{"GBM"},\code{"XGBoost"}, \code{"DRF"},
-       \code{"DeepLearning"}, and \code{"StackedEnsemble")}. Note that the
+       the default is \code{c("ELNET", "RF")}, which tunes fast.Note that the
        choice of algorithms to be trained can largely increase the runtime.
-       for advice on algorithm selection visit \url{https://github.com/haghish/mlim}}
+       for advice on algorithm selection visit \url{https://github.com/haghish/mlim}.
+       GBM, DL, XGB, and Ensemble take the full given "tuning_time" (see below) to
+       tune the best model for imputing he given variable.
+       if \code{load.mlim} is provided, this argument will be ignored.}
 
 \item{preimpute}{character. specifies the procedure for handling the missing
 data before initiating the procedures. the default procedure
-is "iterate", which models the missing data with \code{mlim}
-and then adds them as predictors for imputing the other
-variables. This is the slowest procedure, yet the most accurate
-one. You can skip this step by carrying out a quick imputation
-with a fast algorithm. Currently, "missMDA" procedure is
-supported, which carries out a fast imputation via
-\code{missMDA} R package.}
+is "rf", which models the missing data with parallel Random Forest
+model. possible alternatives are \code{"knn"} or \code{"mm"}.}
 
 \item{preimputed_df}{data.frame. if you have used another software for missing
 data imputation, you can still optimize the imputation
@@ -146,14 +149,14 @@ becomes in the modeling process. the default is NULL.}
 \item{verbosity}{character. controls how much information is printed to console.
 the value can be "warn" (default), "info", "debug", or NULL.}
 
-\item{report}{filename. if a filename is specified, the \code{"md.log"} R
+\item{report}{filename. if a filename is specified (e.g. report = "mlim.md"), the \code{"md.log"} R
 package is used to generate a Markdown progress report for the
 imputation. the format of the report is adopted based on the
 \code{'verbosity'} argument. the higher the verbosity, the more
 technical the report becomes. if verbosity equals "debug", then
 a log file is generated, which includes time stamp and shows
 the function that has generated the message. otherwise, a
-reduced markdown-like report is generated.}
+reduced markdown-like report is generated. default is NULL.}
 
 \item{iteration_stopping_metric}{character. specify the minimum improvement
 in the estimated error to proceed to the
@@ -177,17 +180,13 @@ iteration.}
 
 \item{stopping_tolerance}{numeric.}
 
-\item{nthreads}{integer. launches H2O using all available CPUs or the specified
-number of CPUs.}
+\item{cpu}{integer. number of CPUs to be dedicated for the imputation.
+the default takes all of the available CPUs.}
 
-\item{max_mem}{character. specifies the minimum size, in bytes, of the
-memory allocation pool to H2O. This value must a multiple
-of 1024 greater than 2MB. Append the letter "m" or "M" to
-indicate megabytes, or "g" or "G" to indicate gigabytes.
+\item{ram}{integer. specifies the maximum size, in Gigabytes, of the
+memory allocation.
 large memory size is particularly advised, especially
-for multicore processes.}
-
-\item{min_mem}{character. specifies the minimum size.}
+for multicore processes. the more you give the more you get!}
 
 \item{flush}{logical (experimental). if TRUE, after each model, the server is
 cleaned to retrieve RAM. this feature is in testing mode.}
@@ -201,13 +200,6 @@ depending on your computation power or dataset size.}
 
 \item{...}{Arguments passed to \code{h2o.automl()}.
 The following arguments are e.g. incompatible with \code{ranger}: \code{write.forest}, \code{probability}, \code{split.select.weights}, \code{dependent.variable.name}, and \code{classification}.}
-
-\item{load.mlim}{an object of class "mlim", which includes the data, arguments,
-and settings for re-running the imputation, from where it was
-previously stopped. the "mlim" object saves the current state of
-the imputation and is particularly recommended for large datasets
-or when the user specifies a computationally extensive settings
-(e.g. specifying several algorithms, increasing tuning time, etc.).}
 }
 \value{
 a \code{data.frame}, showing the

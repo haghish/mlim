@@ -2,7 +2,7 @@
 #' @description imputes data.frame with mixed variable types using automated
 #'              machine learning (AutoML)
 #'
-#' @importFrom utils setTxtProgressBar txtProgressBar
+#' @importFrom utils setTxtProgressBar txtProgressBar capture.output packageVersion
 #' @importFrom h2o h2o.init as.h2o h2o.automl h2o.predict h2o.ls
 #'             h2o.removeAll h2o.rm h2o.shutdown
 #' @importFrom md.log md.log
@@ -21,20 +21,16 @@
 #'        \code{"ELNET"}, \code{"RF"},
 #'        \code{"GBM"}, \code{"DL"}, \code{"XGB"} (available for Mac and Linux), and \code{"Ensemble"}.
 #'
-#'        the default is \code{c("ELNET", "RF")}, which tunes fast. the possible algorithms are \code{"GLM"},
-#'        \code{"GBM"},\code{"XGBoost"}, \code{"DRF"},
-#'        \code{"DeepLearning"}, and \code{"StackedEnsemble")}. Note that the
+#'        the default is \code{c("ELNET", "RF")}, which tunes fast.Note that the
 #'        choice of algorithms to be trained can largely increase the runtime.
-#'        for advice on algorithm selection visit \url{https://github.com/haghish/mlim}
+#'        for advice on algorithm selection visit \url{https://github.com/haghish/mlim}.
+#'        GBM, DL, XGB, and Ensemble take the full given "tuning_time" (see below) to
+#'        tune the best model for imputing he given variable.
+#'        if \code{load.mlim} is provided, this argument will be ignored.
 #' @param preimpute character. specifies the procedure for handling the missing
 #'                  data before initiating the procedures. the default procedure
-#'                  is "iterate", which models the missing data with \code{mlim}
-#'                  and then adds them as predictors for imputing the other
-#'                  variables. This is the slowest procedure, yet the most accurate
-#'                  one. You can skip this step by carrying out a quick imputation
-#'                  with a fast algorithm. Currently, "missMDA" procedure is
-#'                  supported, which carries out a fast imputation via
-#'                  \code{missMDA} R package.
+#'                  is "rf", which models the missing data with parallel Random Forest
+#'                  model. possible alternatives are \code{"knn"} or \code{"mm"}.
 #' @param preimputed_df data.frame. if you have used another software for missing
 #'                      data imputation, you can still optimize the imputation
 #'                      by handing the data.frame to this argument, which will
@@ -42,15 +38,13 @@
 #' @param init logical. should h2o Java server be initiated? the default is TRUE.
 #'             however, if the Java server is already running, set this argument
 #'             to FALSE.
-#' @param nthreads integer. launches H2O using all available CPUs or the specified
-#'                 number of CPUs.
-#' @param max_mem character. specifies the minimum size, in bytes, of the
-#'                     memory allocation pool to H2O. This value must a multiple
-#'                     of 1024 greater than 2MB. Append the letter "m" or "M" to
-#'                     indicate megabytes, or "g" or "G" to indicate gigabytes.
+#' @param cpu integer. number of CPUs to be dedicated for the imputation.
+#'                 the default takes all of the available CPUs.
+#' @param ram integer. specifies the maximum size, in Gigabytes, of the
+#'                     memory allocation.
 #'                     large memory size is particularly advised, especially
-#'                     for multicore processes.
-#' @param min_mem character. specifies the minimum size.
+#'                     for multicore processes. the more you give the more you get!
+# @param min_ram character. specifies the minimum size.
 #' @param ignore character vector of column names or index of columns that should
 #'               should be ignored in the process of imputation.
 #' @param tuning_time integer. maximum runtime (in seconds) for fine-tuning the
@@ -130,14 +124,14 @@
 # @param plot logical. If TRUE, estimated error of the imputed dataset is plotted,
 #        showing the reduction in CV error
 
-#' @param report filename. if a filename is specified, the \code{"md.log"} R
+#' @param report filename. if a filename is specified (e.g. report = "mlim.md"), the \code{"md.log"} R
 #'               package is used to generate a Markdown progress report for the
 #'               imputation. the format of the report is adopted based on the
 #'               \code{'verbosity'} argument. the higher the verbosity, the more
 #'               technical the report becomes. if verbosity equals "debug", then
 #'               a log file is generated, which includes time stamp and shows
 #'               the function that has generated the message. otherwise, a
-#'               reduced markdown-like report is generated.
+#'               reduced markdown-like report is generated. default is NULL.
 #' @param save.mlim filename. if a filename is specified, an \code{mlim} object is
 #'             saved after the end of each variable imputation. this object not only
 #'             includes the imputed dataframe and estimated cross-validation error, but also
@@ -174,9 +168,10 @@
 #' @export
 
 
-mlim <- function(data,
+mlim <- function(data = NULL,
+                 load.mlim = NULL,
                  algos =  c("ELNET", "DRF"),
-                 preimpute = "missForest",
+                 preimpute = "rf",
                  preimputed_df = NULL,
 
                  # multiple imputation settings
@@ -204,7 +199,7 @@ mlim <- function(data,
                  # general setup
                  seed = NULL,
                  verbosity = NULL,
-                 report = "mlim.log",
+                 report = NULL,
 
 
                  # stopping criteria
@@ -215,9 +210,8 @@ mlim <- function(data,
                  stopping_tolerance=1e-3,
 
                  # setup the h2o cluster
-                 nthreads = -1,
-                 max_mem = NULL,
-                 min_mem = NULL,
+                 cpu = -1,
+                 ram = NULL,
                  flush = FALSE,
                  shutdown = TRUE,
                  sleep = .5,
@@ -262,6 +256,12 @@ mlim <- function(data,
   if ("DL" %in% algos) algos[which(algos == "DL")] <- "DeepLearning"
   if ("Ensemble" %in% algos) algos[which(algos == "Ensemble")] <- "StackedEnsemble"
 
+  if (!is.null(ram)) {
+    if (!is.numeric(ram)) stop("'ram' must be an integer, specifying amount of RAM in Gigabytes")
+    min_ram <- paste0(ram - 1, "G")
+    ram <- paste0(ram, "G")
+  }
+
   # define logging levels and debugging
   if (is.null(verbosity)) verbose <- 0
   else if (verbosity == "warn") verbose <- 1
@@ -286,9 +286,9 @@ mlim <- function(data,
   if (init) {
     #sink(file = report, append = TRUE)
     #cat("\n") # for Markdown styling
-    capture.output(connection <- init(nthreads = nthreads,
-                       min_mem_size = min_mem,
-                       max_mem_size = max_mem,
+    capture.output(connection <- init(nthreads = cpu,
+                       min_mem_size = min_ram,
+                       max_mem_size = ram,
                        ignore_config = TRUE,
                        report),
                    file = report,
@@ -591,8 +591,8 @@ mlim <- function(data,
           stopping_metric=stopping_metric,
           stopping_rounds=stopping_rounds,
           stopping_tolerance=stopping_tolerance,
-          nthreads = nthreads, max_mem=max_mem,
-          min_mem = min_mem,
+          cpu = cpu, ram=ram,
+          min_ram = min_ram,
 
           # save the package version used for the imputation
           pkg=packageVersion("mlim")

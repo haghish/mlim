@@ -7,7 +7,7 @@
 #'              resources.
 #' @importFrom VIM kNN
 #' @importFrom missRanger missRanger imputeUnivariate
-#' @importFrom missForest missForest
+# @importFrom missForest missForest
 #' @param data data.frame with missing values
 #' @param preimpute character. specify the algorithm for preimputation. the
 #'                  supported options are "kNN", "ranger", "missForest", and "mm"
@@ -37,17 +37,19 @@ mlim.preimpute <- function(data, preimpute, seed = NULL,
   }
   else if (tolower(preimpute) == "rf") {
     set.seed(seed)
-    data <- missForest::missForest(data)$ximp
-    if (!is.null(report)) md.log("missForest preimputation is done", date=debug, time=debug, trace=FALSE)
-  }
-  else if (tolower(preimpute) == "ranger") {
+    #data <- missForest::missForest(data)$ximp
     data <- missRanger::missRanger(data, seed = seed)
-    if (!is.null(report)) md.log("missRanger preimputation is done", date=debug, time=debug, trace=FALSE)
+    if (!is.null(report)) md.log("RF preimputation is done", date=debug, time=debug, trace=FALSE)
   }
+  #else if (tolower(preimpute) == "ranger") {
+  #  data <- missRanger::missRanger(data, seed = seed)
+  #  if (!is.null(report)) md.log("missRanger preimputation is done", date=debug, time=debug, trace=FALSE)
+  #}
   else if (tolower(preimpute) == "mm") {
     data <- meanmode(data)
     if (!is.null(report)) md.log("Mean/Mode preimputation is done", date=debug, time=debug, trace=FALSE)
   }
+  else stop(paste(preimpute, "is not recognized preimputation argument"))
 
   return(data)
 }
