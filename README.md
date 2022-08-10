@@ -2,7 +2,7 @@
 
 - - -
 
-<img src='man/figures/mlim.png' align="right" height="138.5" />
+<img src='man/figures/mlim.png' align="right" height="140" />
 
 # `mlim` : Missing Data Imputation with Automated Machine Learning
 
