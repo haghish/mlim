@@ -161,11 +161,11 @@
 #'
 #' \dontrun{
 #' data(iris)
-#' irisNA <- missRanger::generateNA(iris, seed = 34)
+#' irisNA <- mlim.na(iris, p = 0.1, stratify = TRUE, seed = 2022)
 #'
-#' # run ELNET model (recommended)
+#' # run the default imputation (fastest imputation via 'mlim')
 #' MLIM <- mlim(irisNA)
-#' missForest::mixError(MLIM, irisNA, iris)
+#' mlim.error(MLIM, irisNA, iris)
 #'
 #' # run GBM model
 #' MLIM <- mlim(irisNA, algos = "GBM", max_models = 200)
@@ -195,9 +195,9 @@ mlim <- function(data,
                  tuning_time = 180,
                  max_models = NULL, # run all that you can
 
-                 matching = "AUTO", #??? EXPERIMENTAL
-                 balance = NULL,
-                 ignore.rank = FALSE, #??? DEBUG IT LATER
+                 matching = "AUTO",   #EXPERIMENTAL
+                 balance = NULL,      #EXPERIMENTAL
+                 ignore.rank = FALSE, #EXPERIMENTAL
 
                  weights_column = NULL,
 
@@ -223,6 +223,9 @@ mlim <- function(data,
                  sleep = 1,
                  ...
                  ) {
+
+  #??? before next version
+  if (!is.null(load.mlim)) stop("'load.nlim' is not yet implemented")
 
   # Load the libraries
   # ============================================================
@@ -281,24 +284,28 @@ mlim <- function(data,
   # Run H2O on the statistics server
   # ============================================================
   if (init) {
-    sink(file = report, append = TRUE)
-    cat("\n") # for Markdown styling
-    connection <- init(nthreads = nthreads,
+    #sink(file = report, append = TRUE)
+    #cat("\n") # for Markdown styling
+    capture.output(connection <- init(nthreads = nthreads,
                        min_mem_size = min_mem,
                        max_mem_size = max_mem,
                        ignore_config = TRUE,
-                       report)
-    sink()
+                       report),
+                   file = report,
+                   append = TRUE)
+    #sink()
 
-    # ??? DO NOT CLOSE ALL THE CONNECTIONS
-    sink.reset <- function(){
-      for(i in seq_len(sink.number())){
-        sink(NULL)
-      }
-    }
-    sink.reset()
-    #closeAllConnections()
-    #print(connection)
+    ## ??? DO NOT CLOSE ALL THE CONNECTIONS
+    #sink.reset <- function(){
+    #  for(i in seq_len(sink.number())){
+    #    sink(NULL)
+    #  }
+    #}
+    #sink.reset()
+
+
+    ##closeAllConnections()
+    ##print(connection)
   }
 
   # Identify variables for imputation and their models' families
@@ -342,10 +349,10 @@ mlim <- function(data,
   running <- TRUE
   verboseDigits <- 4L
   error <- setNames(rep(1, length(vars2impute)), vars2impute)
-  if (verbose >= 2) {
-    cat("\n", abbreviate(vars2impute, minlength = verboseDigits + 2L),
-        sep = "\t")
-  }
+  #if (verbose >= 2) {
+  #  cat("\n", abbreviate(vars2impute, minlength = verboseDigits + 2L),
+  #      sep = "\t")
+  #}
 
   # update the fresh data
   # ------------------------------------------------------------
@@ -364,9 +371,9 @@ mlim <- function(data,
     # update the loop
     k <- k + 1L
 
-    if (verbose) {
-      cat("\nIteration ", k, ":\n", sep = "") #":\t"
-    }
+    # always print the iteration
+    cat("\nIteration ", k, ":\n", sep = "") #":\t"
+
 
     md.log(paste("Iteration", k), section="section")
 
@@ -384,6 +391,7 @@ mlim <- function(data,
     # .........................................................
     z <- 0
     for (Y in vars2impute) {
+      if (verbose==0) pb <- txtProgressBar(z, length(vars2impute), style = 3)
       if (debug) print(paste0(Y," (RAM = ",memuse::Sys.meminfo()$freeram,")"))
 
       #print(paste("XXX:   ", X))
@@ -423,7 +431,8 @@ mlim <- function(data,
         # ------------------------------------------------------------
         # fine-tune a gaussian model
         # ============================================================
-        if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer') {
+        if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer'
+            || FAMILY[z] == 'quasibinomial' ) {
           fit <- h2o::h2o.automl(x = setdiff(X, Y), y = Y,
                             training_frame = hex[which(!v.na), ],
                             sort_metric = sort_metric,
@@ -483,6 +492,9 @@ mlim <- function(data,
                             stopping_rounds = stopping_rounds
                             #stopping_tolerance=stopping_tolerance
           )
+        }
+        else {
+          stop(paste(FAMILY[z], "is not recognized"))
         }
 
         Sys.sleep(sleep)
@@ -620,6 +632,9 @@ mlim <- function(data,
         hexID <- h2o::h2o.getId(hex)
         if (debug) md.log("flushed", trace=FALSE)
       }
+
+      # update the statusbar
+      if (verbose==0) setTxtProgressBar(pb, z)
 
     }
 

@@ -4,10 +4,50 @@
 \alias{mlim.na}
 \title{syntaxProcessing}
 \usage{
-mlim.na(x, p = 0.1, classes = NULL, seed = NULL)
+mlim.na(x, p = 0.1, stratify = FALSE, classes = NULL, seed = NULL)
+}
+\arguments{
+\item{x}{data.frame. x must be strictly a data.frame and any other
+data.table classes will be rejected}
+
+\item{p}{percentage of missingness to be added to the data}
+
+\item{stratify}{logical. if TRUE (default), stratified sampling will be
+carried out, when adding NA values to 'factor' variables
+(either ordered or unordered). this feature makes evaluation
+of missing data imputation algorithms more fair, especially
+when the factor levels are imbalanced.}
+
+\item{classes}{character vector, specifying the variable classes that should
+be selected for adding NA values. the default value is NULL,
+meaning all variables will receive NA values with probability of 'p'.
+however, if you wish to add NA values only to a specific classes, e.g.
+'numeric' variables or 'ordered' factors, specify them in this argument.
+e.g. write "classes = c('numeric', 'ordered')" if you wish to add NAs
+only to numeric and ordered factors.}
+
+\item{seed}{integer. a random seed number for reproducing the result (recommended)}
 }
 \description{
 extracts performance metrics from cross-validation
+}
+\examples{
+
+\dontrun{
+# adding stratified NA to an atomic vector
+x <- as.factor(c(rep("M", 100), rep("F", 900)))
+table(mlim.na(x, p=.5, stratify = TRUE))
+
+# adding unstratified NAs to all variables of a data.frame
+data(iris)
+mlim.na(iris, p=0.5, stratify = FALSE, seed = 1)
+
+# or add stratified NAs only to factor variables, ignoring other variables
+mlim.na(iris, p=0.5, stratify = TRUE, classes = "factor", seed = 1)
+
+# or add NAs to numeric variables
+mlim.na(iris, p=0.5, classes = "numeric", seed = 1)
+}
 }
 \author{
 E. F. Haghish

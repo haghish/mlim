@@ -11,7 +11,7 @@ mlim(
   preimputed_df = NULL,
   ignore = NULL,
   init = TRUE,
-  save = NULL,
+  save.mlim = NULL,
   maxiter = 10L,
   miniter = 2L,
   cv = 10L,
@@ -39,14 +39,15 @@ mlim(
 )
 }
 \arguments{
-\item{data}{a \code{data.frame} or \code{matrix} with missing data}
+\item{data}{a \code{data.frame} or \code{matrix} with missing data to be
+imputed. if \code{load.mlim} is provided, this argument will be ignored.}
 
 \item{algos}{character. specify a vector of algorithms to be used
-       in the process of auto-tuning. the three main algorithms are
-       \code{"GLM"},
-       \code{"GBM"},\code{"XGBoost"},
+       in the process of auto-tuning. the supported main algorithms are
+       \code{"ELNET"}, \code{"RF"},
+       \code{"GBM"}, \code{"DL"}, \code{"XGB"} (available for Mac and Linux), and \code{"Ensemble"}.
 
-       the default is \code{c("GBM")}. the possible algorithms are \code{"GLM"},
+       the default is \code{c("ELNET", "RF")}, which tunes fast. the possible algorithms are \code{"GLM"},
        \code{"GBM"},\code{"XGBoost"}, \code{"DRF"},
        \code{"DeepLearning"}, and \code{"StackedEnsemble")}. Note that the
        choice of algorithms to be trained can largely increase the runtime.
@@ -74,7 +75,7 @@ should be ignored in the process of imputation.}
 however, if the Java server is already running, set this argument
 to FALSE.}
 
-\item{save}{filename. if a filename is specified, an \code{mlim} object is
+\item{save.mlim}{filename. if a filename is specified, an \code{mlim} object is
 saved after the end of each variable imputation. this object not only
 includes the imputed dataframe and estimated cross-validation error, but also
 includes the information needed for continuing the imputation,
@@ -200,6 +201,13 @@ depending on your computation power or dataset size.}
 
 \item{...}{Arguments passed to \code{h2o.automl()}.
 The following arguments are e.g. incompatible with \code{ranger}: \code{write.forest}, \code{probability}, \code{split.select.weights}, \code{dependent.variable.name}, and \code{classification}.}
+
+\item{load.mlim}{an object of class "mlim", which includes the data, arguments,
+and settings for re-running the imputation, from where it was
+previously stopped. the "mlim" object saves the current state of
+the imputation and is particularly recommended for large datasets
+or when the user specifies a computationally extensive settings
+(e.g. specifying several algorithms, increasing tuning time, etc.).}
 }
 \value{
 a \code{data.frame}, showing the
@@ -214,11 +222,11 @@ imputes data.frame with mixed variable types using automated
 
 \dontrun{
 data(iris)
-irisNA <- missRanger::generateNA(iris, seed = 34)
+irisNA <- mlim.na(iris, p = 0.1, stratify = TRUE, seed = 2022)
 
-# run ELNET model (recommended)
+# run the default imputation (fastest imputation via 'mlim')
 MLIM <- mlim(irisNA)
-missForest::mixError(MLIM, irisNA, iris)
+mlim.error(MLIM, irisNA, iris)
 
 # run GBM model
 MLIM <- mlim(irisNA, algos = "GBM", max_models = 200)

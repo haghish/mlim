@@ -26,24 +26,48 @@ stoppingCriteria <- function(miniter, maxiter,
   if (running) {
     error <- mean(metrics[metrics$iteration == k,
                           iteration_stopping_metric], na.rm = TRUE)
-    print(paste("Iteration error:", error))
+
+    if (k == 1) cat("\n   ",iteration_stopping_metric,
+                    " = ", round(error,4), "\n", sep = "")
 
     if (k >= 2) {
       errPrevious <- mean(metrics[metrics$iteration == k-1,
                                   iteration_stopping_metric],
                           na.rm = TRUE)
+
       errImprovement <- error - errPrevious
       if (!is.na(error) & !is.na(errImprovement)) {
         percentImprove <- (errImprovement / errPrevious)
       }
 
       if (!is.na(errImprovement)) {
-        print(paste0(iteration_stopping_metric,
-                    " improved by: ", round(-percentImprove*100,4),"%"))
+        if (percentImprove < 0) {
+          cat("\n   ",iteration_stopping_metric,
+              " = ", round(error,4), " (improved by ",
+              round(-percentImprove*100, 3),"%)", "\n", sep = "")
+        }
+        else {
+          cat("\n   ",iteration_stopping_metric,
+              " = ", round(error,4), " (increased by ",
+              round(percentImprove*100, 3),"%)", "\n", sep = "")
+        }
+
+        #print(paste0(iteration_stopping_metric,
+        #            " improved by: ", round(-percentImprove*100,4),"%"))
         #running <- errImprovement < (-iteration_stopping_tolerance)
         running <- percentImprove < (-iteration_stopping_tolerance)
       }
     }
+  }
+
+  # if maximum iteration has been reached and still is running...
+  # ------------------------------------------------------------
+  if (k == maxiter & running) {
+    warning(paste("the imputation could be further improved",
+                  "by increasing number of iterations.",
+                  "if you have saved an mlim object via 'save.mlim'",
+                  "argument, load it and specify a larger 'maxiter' to",
+                  "continue imputing."))
   }
 
   # maximum iteration has been reached

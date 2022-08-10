@@ -12,12 +12,48 @@ mlim.error(imputed, incomplete, complete, varwise = FALSE, ignore.rank = FALSE)
 \item{incomplete}{the dataframe with missing values}
 
 \item{complete}{the original dataframe with no missing values}
+
+\item{varwise}{logical, default is FALSE. if TRUE, in addition to
+mean accuracy for each variable type, the algorithm's
+performance for each variable (column) of the datast is
+also returned. if TRUE, instead of a numeric vector, a
+list is retuned.}
+
+\item{ignore.rank}{logical (default is FALSE, which is recommended). if TRUE,
+the accuracy of imputation of ordered factors (ordinal variables)
+will be evaluated based on 'missclassification rate' instead of
+normalized euclidean distance. this practice is not recommended
+because higher classification rate for ordinal variables does not
+guarantee lower distances between the imputed levels, despite the
+popularity of evaluating ordinal variables based on missclassification
+rate. in other words, assume an ordinal variable has 5 levels (1. strongly
+disagree, 2. disagree, 3. uncertain, 4. agree, 5.strongly agree). in this
+example, if "ignore.rank = TRUE", then an imputation that imputes level
+"5" as "4" is equally inaccurate as other algorithm that imputes level "5"
+as "1". therefore, if you have ordinal variables in your dataset, make sure
+you declare them as "ordered" factors to get the best imputation accuracy.}
+}
+\value{
+a numeric vector is "varwise = FALSE", or otherwise a list
 }
 \description{
 calculates NRMSE, missclassification rate, and miss-ranking
              absolute mean distance, scaled from 0 to 1, where 1 means
              maximum distance between the actual rank of a level with the
              imputed level.
+}
+\examples{
+
+\dontrun{
+data(iris)
+
+# add 10\% missing values, ensure missingness is stratified for factors
+irisNA <- mlim.na(iris, p = 0.1, stratify = TRUE, seed = 2022)
+
+# run the default imputation
+MLIM <- mlim(irisNA)
+mlim.error(MLIM, irisNA, iris)
+}
 }
 \author{
 E. F. Haghish
