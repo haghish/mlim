@@ -2,7 +2,7 @@
 
 - - -
 
-<a href="https://github.com/haghish/mlim"><img src='man/figures/mlim.png' align="right" height="145" /></a>
+<a href="https://github.com/haghish/mlim"><img src='man/figures/mlim.png' align="right" height="150" /></a>
 
 # `mlim` : Missing Data Imputation with Automated Machine Learning
 
