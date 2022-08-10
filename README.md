@@ -1,6 +1,6 @@
 > CITE: Haghish, E. F. (2022). mlim: Missing Data Imputation with Automated Machine Learning [Computer software]. https://CRAN.R-project.org/package=mlim.
 
-# `mlim` : Missing Data Imputation with Automated Machine Learning
+# `mlim` : Missing Data Imputation with Automated Machine Learning<img src='man/figures/mlim.png' align="right" height="138.5" /></a>
 
 <a href="https://github.com/haghish/mlim"><img src="./web/mlim.png" align="left" width="140" hspace="10" vspace="6"></a>
 
