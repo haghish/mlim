@@ -41,7 +41,8 @@
 #' @param cpu integer. number of CPUs to be dedicated for the imputation.
 #'                 the default takes all of the available CPUs.
 #' @param ram integer. specifies the maximum size, in Gigabytes, of the
-#'                     memory allocation.
+#'                     memory allocation. by default, all the available memory is
+#'                     used for the imputation.
 #'                     large memory size is particularly advised, especially
 #'                     for multicore processes. the more you give the more you get!
 # @param min_ram character. specifies the minimum size.
@@ -221,12 +222,15 @@ mlim <- function(data = NULL,
   #??? before next version
   if (!is.null(load.mlim)) stop("'load.nlim' is not yet implemented")
 
-  # Load the libraries
+  # improvements for the next release
   # ============================================================
-  #suppressPackageStartupMessages({requireNamespace("h2o")})
-  #suppressPackageStartupMessages({requireNamespace("md.log")})
-  #suppressPackageStartupMessages({requireNamespace("VIM")})
-  #suppressPackageStartupMessages({requireNamespace("missRanger")})
+  # instead of evaluating the dataset based on iteration error,
+  #    evaluate the individual variables' error and select the
+  #    imputation with the least error.
+  # instead of using all the algorithms at each iteration, add the
+  #    other algorithms when the first algorithm stops being useful.
+  #    perhaps this will help optimizing, while reducing the computation burdon
+  # h2o DRF does not give OOB error, so initial comparison preimputation is not possible
 
   # Syntax processing
   # ============================================================
@@ -237,7 +241,6 @@ mlim <- function(data = NULL,
   verbose <- 0
 
   # examine the data.frame and the arguments
-  #??? matching is deactivated
   syntaxProcessing(data, preimpute, algos,
                    matching=matching, miniter, maxiter, max_models,
                    tuning_time,
@@ -258,6 +261,11 @@ mlim <- function(data = NULL,
 
   if (!is.null(ram)) {
     if (!is.numeric(ram)) stop("'ram' must be an integer, specifying amount of RAM in Gigabytes")
+    min_ram <- paste0(ram - 1, "G")
+    ram <- paste0(ram, "G")
+  }
+  else {
+    ram <- floor(as.numeric(memuse::Sys.meminfo()$freeram)*9.31*1e-10)
     min_ram <- paste0(ram - 1, "G")
     ram <- paste0(ram, "G")
   }
