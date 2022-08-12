@@ -184,7 +184,8 @@ iteration.}
 the default takes all of the available CPUs.}
 
 \item{ram}{integer. specifies the maximum size, in Gigabytes, of the
-memory allocation.
+memory allocation. by default, all the available memory is
+used for the imputation.
 large memory size is particularly advised, especially
 for multicore processes. the more you give the more you get!}
 

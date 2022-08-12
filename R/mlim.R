@@ -194,14 +194,12 @@ mlim <- function(data = NULL,
                  matching = "AUTO",   #EXPERIMENTAL
                  balance = NULL,      #EXPERIMENTAL
                  ignore.rank = FALSE, #EXPERIMENTAL
-
                  weights_column = NULL,
 
                  # general setup
                  seed = NULL,
                  verbosity = NULL,
                  report = NULL,
-
 
                  # stopping criteria
                  iteration_stopping_metric  = "RMSE", #??? mormalize it
@@ -224,13 +222,11 @@ mlim <- function(data = NULL,
 
   # improvements for the next release
   # ============================================================
-  # instead of evaluating the dataset based on iteration error,
-  #    evaluate the individual variables' error and select the
-  #    imputation with the least error.
   # instead of using all the algorithms at each iteration, add the
   #    other algorithms when the first algorithm stops being useful.
   #    perhaps this will help optimizing, while reducing the computation burdon
   # h2o DRF does not give OOB error, so initial comparison preimputation is not possible
+  #    HOWEVER, I can estimate the CV for the preimputation procedure
 
   # Syntax processing
   # ============================================================
@@ -506,42 +502,113 @@ mlim <- function(data = NULL,
         }
 
         Sys.sleep(sleep)
-#print(fit@leaderboard)
+        #print(fit@leaderboard)
 
         if (debug) {
           md.log("model fitted", trace=FALSE)
           md.log("model was executed successfully", trace=FALSE)
         }
 
-        ## do not convert pred to a vector. let it be "H2OFrame"
-        pred <- h2o::h2o.predict(fit@leader, newdata = hex[which(v.na), X])[,1]
-        Sys.sleep(sleep)
-        if (debug) md.log("predictions were generated", trace=FALSE)
+
         perf <- h2o::h2o.performance(fit@leader)
         Sys.sleep(sleep)
-        #>>if (debug) perff <<- perf
 
-        # update metrics
+        # update metrics, and if there is an improvement, update the data
         # ------------------------------------------------------------
-        metrics <- rbind(metrics, extractMetrics(hex, k, Y, perf, FAMILY[z]))
 
-        hex[which(v.na), Y] <- pred #h2o requires numeric subsetting
+        # take it out
+        getDigits <- function(x) {
+          result <- floor(log10(abs(x)))
+          result[!is.finite(result)] = 0
+          return(abs(result))
+        }
+        roundRMSE <- getDigits(iteration_stopping_tolerance) + 1
+        if (roundRMSE == 1) roundRMSE <- 4
 
-        #hex[which(v.na), Y] <- pred #h2o requires numeric subsetting
-        if (debug) md.log("data was updated in h2o cloud", trace=FALSE)
+        iterationMetric <- extractMetrics(hex, k, Y, perf, FAMILY[z])
+
+        if (k == 1) {
+          ## do not convert pred to a vector. let it be "H2OFrame"
+          pred <- h2o::h2o.predict(fit@leader, newdata = hex[which(v.na), X])[,1]
+          Sys.sleep(sleep)
+          if (debug) md.log("predictions were generated", trace=FALSE)
+          hex[which(v.na), Y] <- pred #h2o requires numeric subsetting
+
+          # RAM cleaning-ish, help needed
+          h2o::h2o.rm(pred)
+          if (debug) md.log("prediction was cleaned", trace=FALSE)
+          Sys.sleep(sleep)
+
+          # update the metrics
+          metrics <- rbind(metrics, iterationMetric)
+        }
+        else {
+
+
+
+
+          errPrevious <- min(metrics[metrics$variable == Y, iteration_stopping_metric], na.rm = TRUE)
+          errPrevious <- round(errPrevious, digits = 5)
+
+          checkMetric <- iterationMetric[iterationMetric$variable == Y, iteration_stopping_metric]
+          checkMetric <- round(checkMetric, digits = 5)
+
+
+          # >>> this bit looks like I'm paranoid again... improvement needed
+          if (!is.null(errPrevious)) {
+            if (is.na(errPrevious)) {
+              errPrevious <- 1
+            }
+          }
+          else errPrevious <- 1
+          # <<<
+
+
+
+          errImprovement <- checkMetric - errPrevious
+          percentImprove <- (errImprovement / errPrevious)
+
+          print(errPrevious)
+          print(checkMetric)
+          print(paste(errImprovement, percentImprove))
+
+          #if (percentImprove < -iteration_stopping_tolerance) {
+          if (errImprovement < 0) {
+            print("it was smaller")
+            ## do not convert pred to a vector. let it be "H2OFrame"
+            pred <- h2o::h2o.predict(fit@leader, newdata = hex[which(v.na), X])[,1]
+            Sys.sleep(sleep)
+            if (debug) md.log("predictions were generated", trace=FALSE)
+            hex[which(v.na), Y] <- pred #h2o requires numeric subsetting
+            Sys.sleep(sleep)
+            if (debug) md.log("data was updated in h2o cloud", trace=FALSE)
+
+            # RAM cleaning-ish, help needed
+            h2o::h2o.rm(pred)
+            if (debug) md.log("prediction was cleaned", trace=FALSE)
+
+            # update the metrics
+            metrics <- rbind(metrics, iterationMetric)
+          }
+          else {
+            print("estimated error was increased, do nothing!")
+            #??? drop the variable from var2impute
+            iterationMetric[, iteration_stopping_metric] <- NA
+            metrics <- rbind(metrics, iterationMetric)
+          }
+        }
+
+        h2o::h2o.rm(fit)
+        if (debug) md.log("model was cleaned", trace=FALSE)
         Sys.sleep(sleep)
+
+
 
         # clean h2o memory
         # ------------------------------------------------------------
         #h2o.clean(fit=fit, pred=pred, fun = "erasefit", timeout_secs = 30,
         #          FLUSH = FALSE, retained_elements = c(hexID), md.log = md.log)
-        h2o::h2o.rm(pred)
-        if (debug) md.log("prediction was cleaned", trace=FALSE)
-        Sys.sleep(sleep)
-        h2o::h2o.rm(fit)
-        if (debug) md.log("model was cleaned", trace=FALSE)
-        Sys.sleep(sleep)
-        if (debug) md.log("model performance was cleaned", trace=FALSE)
+
 
         gc()
         gc()
@@ -653,7 +720,7 @@ mlim <- function(data = NULL,
     # ??? needs update for binary and multinomial
     #>>if (debug) METER <<- metrics
     if (debug) md.log("evaluating stopping criteria", trace=FALSE)
-    SC <- stoppingCriteria(miniter, maxiter,
+    SC <- stoppingCriteria(method="varwise_NA", miniter, maxiter,
                            metrics, k, vars2impute,
                            iteration_stopping_metric,
                            iteration_stopping_tolerance,

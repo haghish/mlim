@@ -8,7 +8,8 @@
 #' @keywords Internal
 #' @noRd
 
-stoppingCriteria <- function(miniter, maxiter,
+stoppingCriteria <- function(method = "iteration_RMSE",
+                             miniter, maxiter,
                              metrics, k, vars2impute,
                              iteration_stopping_metric,
                              iteration_stopping_tolerance,
@@ -19,46 +20,67 @@ stoppingCriteria <- function(miniter, maxiter,
   error <- NA
   errImprovement <- NA
 
+  # ............................................................
+  # as long as there is a variable that has been improving,
+  # keep iterating. however, if "double.check = FALSE", ignore
+  # variables that do not improve in any iteration throughout
+  # the rest of the iterations
+  # ............................................................
+  if (method == "varwise_NA") {
+    # as long as there is a variable that it's RMSE is not NA, keep going!
+    if (running) {
+      error <- mean(metrics[metrics$iteration == k,
+                            iteration_stopping_metric], na.rm = TRUE)
 
+      # if all values were NA, well, stop then!
+      if (is.na(error)) running <- FALSE
+    }
+  }
 
-  # there has been no (or too little) improvement
-  # ------------------------------------------------------------
-  if (running) {
-    error <- mean(metrics[metrics$iteration == k,
-                          iteration_stopping_metric], na.rm = TRUE)
+  # ............................................................
+  # Decide the stopping criteria based on average improvement of
+  # RMSE per iteration
+  # ............................................................
+  if (method == "iteration_RMSE") {
+    # there has been no (or too little) improvement, stop!
+    if (running) {
+      error <- mean(metrics[metrics$iteration == k,
+                            iteration_stopping_metric], na.rm = TRUE)
 
-    if (k == 1) cat("\n   ",iteration_stopping_metric,
-                    " = ", round(error,4), "\n", sep = "")
+      if (k == 1) cat("\n   ",iteration_stopping_metric,
+                      " = ", round(error,4), "\n", sep = "")
 
-    if (k >= 2) {
-      errPrevious <- mean(metrics[metrics$iteration == k-1,
-                                  iteration_stopping_metric],
-                          na.rm = TRUE)
+      if (k >= 2) {
+        errPrevious <- mean(metrics[metrics$iteration == k-1,
+                                    iteration_stopping_metric],
+                            na.rm = TRUE)
 
-      errImprovement <- error - errPrevious
-      if (!is.na(error) & !is.na(errImprovement)) {
-        percentImprove <- (errImprovement / errPrevious)
-      }
-
-      if (!is.na(errImprovement)) {
-        if (percentImprove < 0) {
-          cat("\n   ",iteration_stopping_metric,
-              " = ", round(error,4), " (improved by ",
-              round(-percentImprove*100, 3),"%)", "\n", sep = "")
+        errImprovement <- error - errPrevious
+        if (!is.na(error) & !is.na(errImprovement)) {
+          percentImprove <- (errImprovement / errPrevious)
         }
-        else {
-          cat("\n   ",iteration_stopping_metric,
-              " = ", round(error,4), " (increased by ",
-              round(percentImprove*100, 3),"%)", "\n", sep = "")
-        }
 
-        #print(paste0(iteration_stopping_metric,
-        #            " improved by: ", round(-percentImprove*100,4),"%"))
-        #running <- errImprovement < (-iteration_stopping_tolerance)
-        running <- percentImprove < (-iteration_stopping_tolerance)
+        if (!is.na(errImprovement)) {
+          if (percentImprove < 0) {
+            cat("\n   ",iteration_stopping_metric,
+                " = ", round(error,4), " (improved by ",
+                round(-percentImprove*100, 3),"%)", "\n", sep = "")
+          }
+          else {
+            cat("\n   ",iteration_stopping_metric,
+                " = ", round(error,4), " (increased by ",
+                round(percentImprove*100, 3),"%)", "\n", sep = "")
+          }
+
+          #print(paste0(iteration_stopping_metric,
+          #            " improved by: ", round(-percentImprove*100,4),"%"))
+          #running <- errImprovement < (-iteration_stopping_tolerance)
+          running <- percentImprove < (-iteration_stopping_tolerance)
+        }
       }
     }
   }
+
 
   # if maximum iteration has been reached and still is running...
   # ------------------------------------------------------------
