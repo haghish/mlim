@@ -9,13 +9,7 @@
 #' @importFrom memuse Sys.meminfo
 #' @importFrom stats var setNames na.omit
 #' @param data a \code{data.frame} or \code{matrix} with missing data to be
-#'             imputed. if \code{load.mlim} is provided, this argument will be ignored.
-#' @param load.mlim an object of class "mlim", which includes the data, arguments,
-#'                 and settings for re-running the imputation, from where it was
-#'                 previously stopped. the "mlim" object saves the current state of
-#'                 the imputation and is particularly recommended for large datasets
-#'                 or when the user specifies a computationally extensive settings
-#'                 (e.g. specifying several algorithms, increasing tuning time, etc.).
+#'             imputed. if \code{load} is provided, this argument will be ignored.
 #' @param algos character. specify a vector of algorithms to be used
 #'        in the process of auto-tuning. the supported main algorithms are
 #'        \code{"ELNET"}, \code{"RF"},
@@ -26,12 +20,17 @@
 #'        for advice on algorithm selection visit \url{https://github.com/haghish/mlim}.
 #'        GBM, DL, XGB, and Ensemble take the full given "tuning_time" (see below) to
 #'        tune the best model for imputing he given variable.
-#'        if \code{load.mlim} is provided, this argument will be ignored.
+#'        if \code{load} is provided, this argument will be ignored.
 #' @param preimpute character. specifies the procedure for handling the missing
 #'                  data before initiating the procedures. the default procedure
 #'                  is "rf", which models the missing data with parallel Random Forest
-#'                  model. possible alternatives are \code{"knn"} or \code{"mm"}.
-#' @param preimputed_df data.frame. if you have used another software for missing
+#'                  model. possible alternative is \code{"mm"}, which carries out
+#'                  mean/mode replacement. "mm" is much faster, but will dramatically
+#'                  increase the number of required itterations, significantly adding
+#'                  to the required computational resources. if your dataset is very
+#'                  large, consider imputing it before hand and then passing the
+#'                  imputed dataset for optimization (see "preimputed.data")
+#' @param preimputed.data data.frame. if you have used another software for missing
 #'                      data imputation, you can still optimize the imputation
 #'                      by handing the data.frame to this argument, which will
 #'                      bypass the "preimpute" procedure.
@@ -91,26 +90,36 @@
 #'              cleaned to retrieve RAM. this feature is in testing mode.
 #' @param cv logical. specify number of k-fold Cross-Validation (CV). values of
 #'               10 or higher are recommended. default is 10.
-#' @param iteration_stopping_metric character. specify the minimum improvement
-#'                                  in the estimated error to proceed to the
-#'                                  following iteration or stop the imputation.
-#'                                  the default is 10^-4 for \code{"MAE"}
-#'                                  (Mean Absolute Error). this criteria is only
-#'                                  applied from the end of the fourth iteration.
+# @param error_metric character. specify the minimum improvement
+#                                  in the estimated error to proceed to the
+#                                  following iteration or stop the imputation.
+#                                  the default is 10^-4 for \code{"MAE"}
+#                                  (Mean Absolute Error). this criteria is only
+#                                  applied from the end of the fourth iteration.
 #                                  \code{"RMSE"} (Root Mean Square
 #                                  Error). other possible values are \code{"MSE"},
 #                                  \code{"MAE"}, \code{"RMSLE"}.
-#' @param iteration_stopping_tolerance numeric. the minimum rate of improvement
-#'                                     in estimated error metric to qualify the
-#'                                     imputation for another round of iteration,
-#'                                     if the \code{maxiter} is not yet reached.
-#'                                     the default value is 50^-3, meaning that
-#'                                     in each iteration, the error must be
-#'                                     reduced by at least 0.5% of the previous
-#'                                     iteration.
-#' @param stopping_metric character.
-#' @param stopping_rounds integer.
-#' @param stopping_tolerance numeric.
+#' @param tolerance numeric. the minimum rate of improvement in estimated error metric
+#'                  of a variable to qualify the imputation for another round of iteration,
+#'                  if the \code{maxiter} is not yet reached. any improvement of imputation
+#'                  is desirable.  however, specifying values above 0 can reduce the number
+#'                  of required iterations at a marginal increase of imputation error.
+#'                  for larger datasets, value of "1e-3" is recommended. note that the
+#'                  best accuracy is reached when this value is equal to zero.
+#' @param doublecheck logical. default is TRUE (which is conservative). if FALSE, if the estimated
+#'                    imputation error of a variable does not improve, the variable
+#'                    will be not reimputed in the following iterations. in general,
+#'                    deactivating this argument will slightly reduce the imputation
+#'                    accuracy, however, it significantly reduces the computation time.
+#'                    if your dataset is large, you are advised to set this argument to
+#'                    FALSE. (EXPERIMENTAL: consider that by avoiding several iterations
+#'                    that marginally improve the imputation accuracy, you might gain
+#'                    higher accuracy by investing your computational resources in fine-tuning
+#'                    better algorithms such as "GBM")
+#'
+# @param stopping_metric character.
+# @param stopping_rounds integer.
+# @param stopping_tolerance numeric.
 #' @param weights_column non-negative integer. a vector of observation weights
 #'                       can be provided, which should be of the same length
 #'                       as the dataframe. giving an observation a weight of
@@ -133,13 +142,24 @@
 #'               a log file is generated, which includes time stamp and shows
 #'               the function that has generated the message. otherwise, a
 #'               reduced markdown-like report is generated. default is NULL.
-#' @param save.mlim filename. if a filename is specified, an \code{mlim} object is
+#' @param save filename. if a filename is specified, an \code{mlim} object is
 #'             saved after the end of each variable imputation. this object not only
 #'             includes the imputed dataframe and estimated cross-validation error, but also
 #'             includes the information needed for continuing the imputation,
 #'             which is very useful feature for imputing large datasets, with a
 #'             long runtime. this argument is activated by default and an
 #'             mlim object is stored in the local directory named \code{"mlim.rds"}.
+#' @param load an object of class "mlim", which includes the data, arguments,
+#'                 and settings for re-running the imputation, from where it was
+#'                 previously stopped. the "mlim" object saves the current state of
+#'                 the imputation and is particularly recommended for large datasets
+#'                 or when the user specifies a computationally extensive settings
+#'                 (e.g. specifying several algorithms, increasing tuning time, etc.).
+#' @param force.load logical (default is TRUE). if TRUE, when loading the mlim class
+#'                 object, its preserved settings are used for restoring and saving the
+#'                 following itterations. otherwise, if FALSE, the current arguments of
+#'                 mlim are used to overpower the settings of the mlim object. the settings
+#'                 include the full list of the mlim arguments.
 #' @param verbosity character. controls how much information is printed to console.
 #'                  the value can be "warn" (default), "info", "debug", or NULL.
 #' @param shutdown logical. if TRUE, h2o server is closed after the imputation.
@@ -170,18 +190,13 @@
 
 
 mlim <- function(data = NULL,
-                 load.mlim = NULL,
-                 algos =  c("ELNET", "DRF"),
+                 algos =  "AUTO",
                  preimpute = "rf",
-                 preimputed_df = NULL,
-
-                 # multiple imputation settings
-                 #m = FALSE, #boot = FALSE, nboot = 0,
-
+                 preimputed.data = NULL,
                  ignore = NULL,
                  init = TRUE,
-
-                 save.mlim = NULL,
+                 # multiple imputation settings
+                 #m = 1,
 
                  # computational resources
                  maxiter = 10L,
@@ -193,7 +208,7 @@ mlim <- function(data = NULL,
 
                  matching = "AUTO",   #EXPERIMENTAL
                  balance = NULL,      #EXPERIMENTAL
-                 ignore.rank = FALSE, #EXPERIMENTAL
+                 #ignore.rank = FALSE, #EXPERIMENTAL
                  weights_column = NULL,
 
                  # general setup
@@ -202,11 +217,14 @@ mlim <- function(data = NULL,
                  report = NULL,
 
                  # stopping criteria
-                 iteration_stopping_metric  = "RMSE", #??? mormalize it
-                 iteration_stopping_tolerance = 5e-3,
-                 stopping_metric = "AUTO",
-                 stopping_rounds = 3,
-                 stopping_tolerance=1e-3,
+                 tolerance = 0, #1e-3
+                 doublecheck = TRUE,
+
+                 ## simplify the settings by taking these arguments out
+                 #error_metric  = "RMSE", #??? mormalize it
+                 #stopping_metric = "AUTO",
+                 #stopping_rounds = 3,
+                 #stopping_tolerance=1e-3,
 
                  # setup the h2o cluster
                  cpu = -1,
@@ -214,11 +232,15 @@ mlim <- function(data = NULL,
                  flush = FALSE,
                  shutdown = TRUE,
                  sleep = .5,
+
+                 save = NULL,
+                 load = NULL,
+                 force.load = TRUE,
                  ...
                  ) {
 
-  #??? before next version
-  if (!is.null(load.mlim)) stop("'load.nlim' is not yet implemented")
+
+
 
   # improvements for the next release
   # ============================================================
@@ -228,51 +250,114 @@ mlim <- function(data = NULL,
   # h2o DRF does not give OOB error, so initial comparison preimputation is not possible
   #    HOWEVER, I can estimate the CV for the preimputation procedure
 
-  # Syntax processing
+
+  # Simplify the syntax by taking arguments that are less relevant to the majority
+  # of the users out
   # ============================================================
-  iterDF  <- NULL
-  metrics <- NULL
-  error   <- NULL
-  debug   <- FALSE
-  verbose <- 0
+  #stopping_metric <- "AUTO"
+  #stopping_rounds <- 3
+  #stopping_tolerance <- 1e-3
+  error_metric  <- "RMSE"
+  ignore.rank <- FALSE #EXPERIMENTAL
 
-  # examine the data.frame and the arguments
-  syntaxProcessing(data, preimpute, algos,
-                   matching=matching, miniter, maxiter, max_models,
-                   tuning_time,
-                   cv, weights_column, report)
+  # feature request:
+  # ??? add arguments in syntaxProcessing to make sure load is well-prepared
 
-  if ("StackEnsemble" %in% algos) {
-    keep_cross_validation_predictions <- TRUE
+  # ============================================================
+  # ============================================================
+  # LOAD SETTINGS FROM mlim class object
+  # ============================================================
+  # ============================================================
+  if (!is.null(load)) {
+    if (class(load) != "mlim") stop("'load' must be of class 'mlim'")
+
+    # Data
+    # ----------------------------------
+    data        <- load$data
+    dataLast    <- load$dataLast
+    metrics     <- load$metrics
+    mem         <- load$mem
+    orderedCols <- load$orderedCols
+
+    # Loop data
+    # ----------------------------------
+    k           <- load$k
+    z           <- load$z
+    X           <- load$X
+    Y           <- load$Y
+    vars2impute <- load$vars2impute
+    FAMILY      <- load$FAMILY
+
+    # settings
+    # ----------------------------------
+    if (force.load) {
+      algos          <- load$algos
+      ignore         <- load$ignore
+      save           <- load$save
+      maxiter        <- load$maxiter
+      miniter        <- load$miniter
+      cv             <- load$cv
+      tuning_time    <- load$tuning_time
+      max_models     <- load$max_models
+      matching       <- load$matching
+      ignore.rank    <- load$ignore.rank #KEEP IT HIDDEN
+      weights_column <- load$weights_column
+      seed           <- load$seed
+      verbosity      <- load$verbosity
+      verbose        <- load$verbose #KEEP IT HIDDEN
+      debug          <- load$debug   #KEEP IT HIDDEN
+      report         <- load$report
+      flush          <- load$flush
+      error_metric   <- load$error_metric #KEEP IT HIDDEN
+      error          <- load$error  #KEEP IT HIDDEN
+      tolerance      <- load$tolerance
+      cpu            <- load$cpu
+      max_ram        <- load$max_ram
+      min_ram        <- load$min_ram #KEEP IT HIDDEN
+      pkg            <- load$pkg #KEEP IT HIDDEN
+    }
+    else {
+      cat("The following settings are ignored from the loaded 'mlim' object:\n\nn")
+      cat("'algos', 'ignore', 'save', 'maxiter', 'miniter', 'cv', \n")
+      cat("'tuning_time', 'max_models', 'matching', 'weights_column', \n")
+      cat("'seed', 'verbosity', 'report', 'flush', 'tolerance', 'cpu', 'ram'\n")
+
+      synt <- syntaxProcessing(data, preimpute, algos, ram,
+                               matching=matching, miniter, maxiter, max_models,
+                               tuning_time, cv, weights_column,
+                               verbosity, report)
+
+      min_ram <- synt$min_ram
+      max_ram <- synt$max_ram
+      keep_cross_validation_predictions <- synt$keep_cross_validation_predictions
+      algos <- synt$algos
+      verbose <- synt$verbose
+      debug <- synt$debug
+    }
   }
+
+  # ============================================================
+  # ============================================================
+  # Prepare the imputation settings
+  # ============================================================
+  # ============================================================
   else {
-    keep_cross_validation_predictions <- FALSE
-  }
+    metrics <- NULL
+    error   <- NULL
+    debug   <- FALSE
+    verbose <- 0
 
-  if ("ELNET" %in% algos) algos[which(algos == "ELNET")] <- "GLM"
-  if ("RF" %in% algos) algos[which(algos == "RF")] <- "DRF"
-  if ("XGB" %in% algos) algos[which(algos == "XGB")] <- "XGBoost"
-  if ("DL" %in% algos) algos[which(algos == "DL")] <- "DeepLearning"
-  if ("Ensemble" %in% algos) algos[which(algos == "Ensemble")] <- "StackedEnsemble"
+    synt <- syntaxProcessing(data, preimpute, algos, ram,
+                             matching=matching, miniter, maxiter, max_models,
+                             tuning_time, cv, weights_column,
+                             verbosity, report)
 
-  if (!is.null(ram)) {
-    if (!is.numeric(ram)) stop("'ram' must be an integer, specifying amount of RAM in Gigabytes")
-    min_ram <- paste0(ram - 1, "G")
-    ram <- paste0(ram, "G")
-  }
-  else {
-    ram <- floor(as.numeric(memuse::Sys.meminfo()$freeram)*9.31*1e-10)
-    min_ram <- paste0(ram - 1, "G")
-    ram <- paste0(ram, "G")
-  }
-
-  # define logging levels and debugging
-  if (is.null(verbosity)) verbose <- 0
-  else if (verbosity == "warn") verbose <- 1
-  else if (verbosity == "info") verbose <- 2
-  else if (verbosity == "debug") {
-    verbose <- 3
-    debug <- TRUE
+    min_ram <- synt$min_ram
+    max_ram <- synt$max_ram
+    keep_cross_validation_predictions <- synt$keep_cross_validation_predictions
+    algos <- synt$algos
+    verbose <- synt$verbose
+    debug <- synt$debug
   }
 
   # disable h2o progress_bar
@@ -285,14 +370,14 @@ mlim <- function(data = NULL,
          file=report, trace=TRUE, sys.info = TRUE,
          date=TRUE, time=TRUE) #, print=TRUE
 
-  # Run H2O on the statistics server
+  # Run H2O on the statistics server¤
   # ============================================================
   if (init) {
     #sink(file = report, append = TRUE)
     #cat("\n") # for Markdown styling
     capture.output(connection <- init(nthreads = cpu,
                        min_mem_size = min_ram,
-                       max_mem_size = ram,
+                       max_mem_size = max_ram,
                        ignore_config = TRUE,
                        report),
                    file = report,
@@ -335,40 +420,37 @@ mlim <- function(data = NULL,
   # .........................................................
   # PREIMPUTATION
   # .........................................................
-  if (preimpute != "iterate" & is.null(preimputed_df )) {
+  if (preimpute != "iterate" & is.null(preimputed.data)) {
     data <- mlim.preimpute(data=data, preimpute=preimpute,
                            seed = seed, report=report, debug=debug)
 
     # reset the relevant predictors
     X <- allPredictors
   }
-  else if (!is.null(preimputed_df)) data <- preimputed_df
+  else if (!is.null(preimputed.data)) data <- preimputed.data
 
   # ............................................................
   # ............................................................
   # ITERATION LOOP
   # ............................................................
   # ............................................................
-  k <- 0L
-  running <- TRUE
-  verboseDigits <- 4L
-  error <- setNames(rep(1, length(vars2impute)), vars2impute)
-  #if (verbose >= 2) {
-  #  cat("\n", abbreviate(vars2impute, minlength = verboseDigits + 2L),
-  #      sep = "\t")
-  #}
+  if (is.null(load)) {
+    k <- 0L
+    error <- setNames(rep(1, length(vars2impute)), vars2impute)
+  }
+
+
 
   # update the fresh data
   # ------------------------------------------------------------
+  running <- TRUE
   hex <- h2o::as.h2o(data) #ID: data_
   Sys.sleep(sleep)
   hexID <- h2o::h2o.getId(hex)
   md.log(paste("dataset ID:", hexID), trace=FALSE) #, print = TRUE
 
   Sys.sleep(sleep)
-  if (debug) {
-    md.log("data was sent to h2o cloud", date=debug, time=debug, trace=FALSE)
-  }
+  if (debug) md.log("data was sent to h2o cloud", date=debug, time=debug, trace=FALSE)
 
   while (running) {
 
@@ -385,7 +467,7 @@ mlim <- function(data = NULL,
 
     dataLast <- as.data.frame(hex)
     attr(dataLast, "metrics") <- metrics
-    attr(dataLast, "nrmse") <- error
+    attr(dataLast, "rmse") <- error
 
 
     #>>if (debug) LASTDATA <<- dataLast
@@ -449,9 +531,9 @@ mlim <- function(data = NULL,
                             weights_column = weights_column[which(!v.na)],
                             keep_cross_validation_predictions =
                               keep_cross_validation_predictions,
-                            seed = seed,
-                            stopping_metric = stopping_metric,
-                            stopping_rounds = stopping_rounds
+                            seed = seed
+                            #stopping_metric = stopping_metric,
+                            #stopping_rounds = stopping_rounds
                             #stopping_tolerance=stopping_tolerance
           )
         }
@@ -491,9 +573,9 @@ mlim <- function(data = NULL,
                             weights_column = weights_column[which(!v.na)],
                             keep_cross_validation_predictions =
                               keep_cross_validation_predictions,
-                            seed = seed,
-                            stopping_metric = stopping_metric,
-                            stopping_rounds = stopping_rounds
+                            seed = seed
+                            #stopping_metric = stopping_metric,
+                            #stopping_rounds = stopping_rounds
                             #stopping_tolerance=stopping_tolerance
           )
         }
@@ -515,14 +597,7 @@ mlim <- function(data = NULL,
 
         # update metrics, and if there is an improvement, update the data
         # ------------------------------------------------------------
-
-        # take it out
-        getDigits <- function(x) {
-          result <- floor(log10(abs(x)))
-          result[!is.finite(result)] = 0
-          return(abs(result))
-        }
-        roundRMSE <- getDigits(iteration_stopping_tolerance) + 1
+        roundRMSE <- getDigits(tolerance) + 1
         if (roundRMSE == 1) roundRMSE <- 4
 
         iterationMetric <- extractMetrics(hex, k, Y, perf, FAMILY[z])
@@ -544,13 +619,9 @@ mlim <- function(data = NULL,
         }
         else {
 
-
-
-
-          errPrevious <- min(metrics[metrics$variable == Y, iteration_stopping_metric], na.rm = TRUE)
+          errPrevious <- min(metrics[metrics$variable == Y, error_metric], na.rm = TRUE)
           errPrevious <- round(errPrevious, digits = 5)
-
-          checkMetric <- iterationMetric[iterationMetric$variable == Y, iteration_stopping_metric]
+          checkMetric <- iterationMetric[iterationMetric$variable == Y, error_metric]
           checkMetric <- round(checkMetric, digits = 5)
 
 
@@ -563,18 +634,10 @@ mlim <- function(data = NULL,
           else errPrevious <- 1
           # <<<
 
-
-
           errImprovement <- checkMetric - errPrevious
           percentImprove <- (errImprovement / errPrevious)
 
-          print(errPrevious)
-          print(checkMetric)
-          print(paste(errImprovement, percentImprove))
-
-          #if (percentImprove < -iteration_stopping_tolerance) {
-          if (errImprovement < 0) {
-            print("it was smaller")
+          if (percentImprove < -tolerance) { #if error decreased
             ## do not convert pred to a vector. let it be "H2OFrame"
             pred <- h2o::h2o.predict(fit@leader, newdata = hex[which(v.na), X])[,1]
             Sys.sleep(sleep)
@@ -590,11 +653,14 @@ mlim <- function(data = NULL,
             # update the metrics
             metrics <- rbind(metrics, iterationMetric)
           }
-          else {
-            print("estimated error was increased, do nothing!")
-            #??? drop the variable from var2impute
-            iterationMetric[, iteration_stopping_metric] <- NA
+
+          else { #if the error increased
+            iterationMetric[, error_metric] <- NA
             metrics <- rbind(metrics, iterationMetric)
+            if (!doublecheck) {
+              print(vars2impute)
+              vars2impute <- setdiff(vars2impute, Y)
+            }
           }
         }
 
@@ -602,13 +668,10 @@ mlim <- function(data = NULL,
         if (debug) md.log("model was cleaned", trace=FALSE)
         Sys.sleep(sleep)
 
-
-
         # clean h2o memory
         # ------------------------------------------------------------
         #h2o.clean(fit=fit, pred=pred, fun = "erasefit", timeout_secs = 30,
         #          FLUSH = FALSE, retained_elements = c(hexID), md.log = md.log)
-
 
         gc()
         gc()
@@ -616,7 +679,6 @@ mlim <- function(data = NULL,
         #h2o:::.h2o.garbageCollect()
         #h2o:::.h2o.garbageCollect()
         #h2o:::.h2o.garbageCollect()
-
       }
 
       # Update the predictors during the first iteration
@@ -628,7 +690,7 @@ mlim <- function(data = NULL,
       # .........................................................
       # POSTIMPUTATION PREPARATION
       # .........................................................
-      if (!is.null(save.mlim)) {
+      if (!is.null(save)) {
 
         postimpute <- list(
 
@@ -648,7 +710,7 @@ mlim <- function(data = NULL,
           # --------
           algos=algos,
           ignore=ignore,
-          save.mlim = save.mlim,
+          save = save,
           maxiter = maxiter,
           miniter = miniter,
           cv = cv,
@@ -659,14 +721,17 @@ mlim <- function(data = NULL,
           weights_column = weights_column,
           seed=seed,
           verbosity=verbosity,
+          verbose = verbose,
+          debug = debug,
           report=report,
           flush=flush,
-          iteration_stopping_metric=iteration_stopping_metric,
-          iteration_stopping_tolerance=iteration_stopping_tolerance,
-          stopping_metric=stopping_metric,
-          stopping_rounds=stopping_rounds,
-          stopping_tolerance=stopping_tolerance,
-          cpu = cpu, ram=ram,
+          error_metric=error_metric,
+          tolerance=tolerance,
+          error = error, #PROBABLY NOT NEEDED ???
+          #stopping_metric=stopping_metric,
+          #stopping_rounds=stopping_rounds,
+          #stopping_tolerance=stopping_tolerance,
+          cpu = cpu, max_ram=max_ram,
           min_ram = min_ram,
 
           # save the package version used for the imputation
@@ -675,7 +740,7 @@ mlim <- function(data = NULL,
         class(postimpute) <- "mlim"
 
         # update iteration data
-        saveRDS(postimpute, save.mlim)
+        saveRDS(postimpute, save)
       }
 
 
@@ -710,7 +775,6 @@ mlim <- function(data = NULL,
 
       # update the statusbar
       if (verbose==0) setTxtProgressBar(pb, z)
-
     }
 
 
@@ -722,12 +786,12 @@ mlim <- function(data = NULL,
     if (debug) md.log("evaluating stopping criteria", trace=FALSE)
     SC <- stoppingCriteria(method="varwise_NA", miniter, maxiter,
                            metrics, k, vars2impute,
-                           iteration_stopping_metric,
-                           iteration_stopping_tolerance,
+                           error_metric,
+                           tolerance,
                            md.log = report)
     if (debug) {
       md.log(paste("running: ", SC$running), trace=FALSE)
-      md.log(paste("Estimated",iteration_stopping_metric,
+      md.log(paste("Estimated",error_metric,
                    "error:", SC$error), trace=FALSE)
     }
     running <- SC$running
@@ -747,7 +811,7 @@ mlim <- function(data = NULL,
     dataLast <- as.data.frame(hex)
     Sys.sleep(sleep)
     attr(dataLast, "metrics") <- metrics
-    attr(dataLast, iteration_stopping_metric) <- error
+    attr(dataLast, error_metric) <- error
   }
   else {
     md.log("return previous iteration's data", trace=FALSE)

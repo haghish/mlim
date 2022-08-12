@@ -1,16 +1,18 @@
 
 #' @title syntaxProcessing
 #' @description extracts performance metrics from cross-validation
+#' @importFrom memuse Sys.meminfo
 #' @author E. F. Haghish
 #' @keywords Internal
 #' @noRd
 
 
-syntaxProcessing <- function(data, preimpute, include_algos,  matching, miniter, maxiter, max_models,
-                             max_model_runtime_secs, nfolds, weights_column,
-                             md.log) {
+syntaxProcessing <- function(data, preimpute, algos, ram,
+                             matching, miniter, maxiter, max_models,
+                             tuning_time, cv, weights_column,
+                             verbosity, md.log) {
 
-  #if ("GBM" %in% include_algos) {
+  #if ("GBM" %in% algos) {
     #if (nrow(data) < 200) stop("too few rows... use 'ELNET' or 'DRF' instead")
   #}
 
@@ -20,8 +22,8 @@ syntaxProcessing <- function(data, preimpute, include_algos,  matching, miniter,
     #"'formula' should be a formula!" = inherits(formula, "formula"),
     #length(formula <- as.character(formula)) == 3L,
     #"'max_models' must be a positive integer equal or more than 1" = max_models >= 1,
-    #"'max_model_runtime_secs' must be a positive integer" = max_model_runtime_secs >= 2,
-    "'nfolds' must be a positive integer equal or more than 10" = nfolds >= 10
+    #"'tuning_time' must be a positive integer" = tuning_time >= 2,
+    "'cv' must be a positive integer equal or more than 10" = cv >= 10
   )
 
   #if (miniter < 2 & preimpute == "iterate") stop("'miniter' must not be less than 2")
@@ -33,4 +35,46 @@ syntaxProcessing <- function(data, preimpute, include_algos,  matching, miniter,
       "'weights_column' must not have any missing observations" = !anyNA(weights_column)
     )
   }
+
+
+  if (!is.null(ram)) {
+    if (!is.numeric(ram)) stop("'ram' must be an integer, specifying amount of RAM in Gigabytes")
+    min_ram <- paste0(ram - 1, "G")
+    max_ram <- paste0(ram, "G")
+  }
+  else {
+    ram <- floor(as.numeric(memuse::Sys.meminfo()$freeram)*9.31*1e-10)
+    min_ram <- paste0(ram - 1, "G")
+    max_ram <- paste0(ram, "G")
+  }
+
+  if ("StackEnsemble" %in% algos) {
+    keep_cross_validation_predictions <- TRUE
+  }
+  else {
+    keep_cross_validation_predictions <- FALSE
+  }
+
+  if (length(algos) == 1 & algos == "AUTO") algos <- c("GLM", "DRF")
+  if ("ELNET" %in% algos) algos[which(algos == "ELNET")] <- "GLM"
+  if ("RF" %in% algos) algos[which(algos == "RF")] <- "DRF"
+  if ("XGB" %in% algos) algos[which(algos == "XGB")] <- "XGBoost"
+  if ("DL" %in% algos) algos[which(algos == "DL")] <- "DeepLearning"
+  if ("Ensemble" %in% algos) algos[which(algos == "Ensemble")] <- "StackedEnsemble"
+
+  # define logging levels and debugging
+  if (is.null(verbosity)) verbose <- 0
+  else if (verbosity == "warn") verbose <- 1
+  else if (verbosity == "info") verbose <- 2
+  else if (verbosity == "debug") {
+    verbose <- 3
+    debug <- TRUE
+  }
+
+  return(list(min_ram=min_ram,
+              max_ram=max_ram,
+              keep_cross_validation_predictions=keep_cross_validation_predictions,
+              algos=algos,
+              verbose=verbose,
+              debug=debug))
 }

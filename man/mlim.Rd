@@ -6,13 +6,11 @@
 \usage{
 mlim(
   data = NULL,
-  load.mlim = NULL,
-  algos = c("ELNET", "DRF"),
+  algos = "AUTO",
   preimpute = "rf",
-  preimputed_df = NULL,
+  preimputed.data = NULL,
   ignore = NULL,
   init = TRUE,
-  save.mlim = NULL,
   maxiter = 10L,
   miniter = 2L,
   cv = 10L,
@@ -20,34 +18,26 @@ mlim(
   max_models = NULL,
   matching = "AUTO",
   balance = NULL,
-  ignore.rank = FALSE,
   weights_column = NULL,
   seed = NULL,
   verbosity = NULL,
   report = NULL,
-  iteration_stopping_metric = "RMSE",
-  iteration_stopping_tolerance = 0.005,
-  stopping_metric = "AUTO",
-  stopping_rounds = 3,
-  stopping_tolerance = 0.001,
+  tolerance = 0,
+  doublecheck = TRUE,
   cpu = -1,
   ram = NULL,
   flush = FALSE,
   shutdown = TRUE,
   sleep = 0.5,
+  save = NULL,
+  load = NULL,
+  force.load = TRUE,
   ...
 )
 }
 \arguments{
 \item{data}{a \code{data.frame} or \code{matrix} with missing data to be
-imputed. if \code{load.mlim} is provided, this argument will be ignored.}
-
-\item{load.mlim}{an object of class "mlim", which includes the data, arguments,
-and settings for re-running the imputation, from where it was
-previously stopped. the "mlim" object saves the current state of
-the imputation and is particularly recommended for large datasets
-or when the user specifies a computationally extensive settings
-(e.g. specifying several algorithms, increasing tuning time, etc.).}
+imputed. if \code{load} is provided, this argument will be ignored.}
 
 \item{algos}{character. specify a vector of algorithms to be used
        in the process of auto-tuning. the supported main algorithms are
@@ -59,14 +49,19 @@ or when the user specifies a computationally extensive settings
        for advice on algorithm selection visit \url{https://github.com/haghish/mlim}.
        GBM, DL, XGB, and Ensemble take the full given "tuning_time" (see below) to
        tune the best model for imputing he given variable.
-       if \code{load.mlim} is provided, this argument will be ignored.}
+       if \code{load} is provided, this argument will be ignored.}
 
 \item{preimpute}{character. specifies the procedure for handling the missing
 data before initiating the procedures. the default procedure
 is "rf", which models the missing data with parallel Random Forest
-model. possible alternatives are \code{"knn"} or \code{"mm"}.}
+model. possible alternative is \code{"mm"}, which carries out
+mean/mode replacement. "mm" is much faster, but will dramatically
+increase the number of required itterations, significantly adding
+to the required computational resources. if your dataset is very
+large, consider imputing it before hand and then passing the
+imputed dataset for optimization (see "preimputed.data")}
 
-\item{preimputed_df}{data.frame. if you have used another software for missing
+\item{preimputed.data}{data.frame. if you have used another software for missing
 data imputation, you can still optimize the imputation
 by handing the data.frame to this argument, which will
 bypass the "preimpute" procedure.}
@@ -77,14 +72,6 @@ should be ignored in the process of imputation.}
 \item{init}{logical. should h2o Java server be initiated? the default is TRUE.
 however, if the Java server is already running, set this argument
 to FALSE.}
-
-\item{save.mlim}{filename. if a filename is specified, an \code{mlim} object is
-saved after the end of each variable imputation. this object not only
-includes the imputed dataframe and estimated cross-validation error, but also
-includes the information needed for continuing the imputation,
-which is very useful feature for imputing large datasets, with a
-long runtime. this argument is activated by default and an
-mlim object is stored in the local directory named \code{"mlim.rds"}.}
 
 \item{maxiter}{integer. maximum number of iterations. the default value is \code{10},
 but it can be reduced to \code{3} (not recommended, see below).}
@@ -124,17 +111,6 @@ attempts to ensure the representation of the rare outcome.
 this argument is optional and intended for advanced users that
 impute a severely imbalance categorical (nominal) variable.}
 
-\item{ignore.rank}{logical, if FALSE (default), ordinal variables
-are imputed as continuous integers with regression plus matching
-and are reverted to ordinal later again. this procedure is
-recommended. if FALSE, the rank of the categories will be ignored
-the the algorithm will try to optimize for classification accuracy.
-WARNING: the latter often results in very high classification accuracy but at
-the cost of higher rank error. see the "mlim.error" function
-documentation to see how rank error is computed. therefore, if you
-intend to carry out analysis on the rank data as numeric, it is
-recommended that you set this argument to FALSE.}
-
 \item{weights_column}{non-negative integer. a vector of observation weights
 can be provided, which should be of the same length
 as the dataframe. giving an observation a weight of
@@ -158,27 +134,24 @@ a log file is generated, which includes time stamp and shows
 the function that has generated the message. otherwise, a
 reduced markdown-like report is generated. default is NULL.}
 
-\item{iteration_stopping_metric}{character. specify the minimum improvement
-in the estimated error to proceed to the
-following iteration or stop the imputation.
-the default is 10^-4 for \code{"MAE"}
-(Mean Absolute Error). this criteria is only
-applied from the end of the fourth iteration.}
+\item{tolerance}{numeric. the minimum rate of improvement in estimated error metric
+of a variable to qualify the imputation for another round of iteration,
+if the \code{maxiter} is not yet reached. any improvement of imputation
+is desirable.  however, specifying values above 0 can reduce the number
+of required iterations at a marginal increase of imputation error.
+for larger datasets, value of "1e-3" is recommended. note that the
+best accuracy is reached when this value is equal to zero.}
 
-\item{iteration_stopping_tolerance}{numeric. the minimum rate of improvement
-in estimated error metric to qualify the
-imputation for another round of iteration,
-if the \code{maxiter} is not yet reached.
-the default value is 50^-3, meaning that
-in each iteration, the error must be
-reduced by at least 0.5% of the previous
-iteration.}
-
-\item{stopping_metric}{character.}
-
-\item{stopping_rounds}{integer.}
-
-\item{stopping_tolerance}{numeric.}
+\item{doublecheck}{logical. default is TRUE (which is conservative). if FALSE, if the estimated
+imputation error of a variable does not improve, the variable
+will be not reimputed in the following iterations. in general,
+deactivating this argument will slightly reduce the imputation
+accuracy, however, it significantly reduces the computation time.
+if your dataset is large, you are advised to set this argument to
+FALSE. (EXPERIMENTAL: consider that by avoiding several iterations
+that marginally improve the imputation accuracy, you might gain
+higher accuracy by investing your computational resources in fine-tuning
+better algorithms such as "GBM")}
 
 \item{cpu}{integer. number of CPUs to be dedicated for the imputation.
 the default takes all of the available CPUs.}
@@ -199,8 +172,40 @@ the default is TRUE}
 server. the default is 1 second. larger values might be needed
 depending on your computation power or dataset size.}
 
+\item{save}{filename. if a filename is specified, an \code{mlim} object is
+saved after the end of each variable imputation. this object not only
+includes the imputed dataframe and estimated cross-validation error, but also
+includes the information needed for continuing the imputation,
+which is very useful feature for imputing large datasets, with a
+long runtime. this argument is activated by default and an
+mlim object is stored in the local directory named \code{"mlim.rds"}.}
+
+\item{load}{an object of class "mlim", which includes the data, arguments,
+and settings for re-running the imputation, from where it was
+previously stopped. the "mlim" object saves the current state of
+the imputation and is particularly recommended for large datasets
+or when the user specifies a computationally extensive settings
+(e.g. specifying several algorithms, increasing tuning time, etc.).}
+
+\item{force.load}{logical (default is TRUE). if TRUE, when loading the mlim class
+object, its preserved settings are used for restoring and saving the
+following itterations. otherwise, if FALSE, the current arguments of
+mlim are used to overpower the settings of the mlim object. the settings
+include the full list of the mlim arguments.}
+
 \item{...}{Arguments passed to \code{h2o.automl()}.
 The following arguments are e.g. incompatible with \code{ranger}: \code{write.forest}, \code{probability}, \code{split.select.weights}, \code{dependent.variable.name}, and \code{classification}.}
+
+\item{ignore.rank}{logical, if FALSE (default), ordinal variables
+are imputed as continuous integers with regression plus matching
+and are reverted to ordinal later again. this procedure is
+recommended. if FALSE, the rank of the categories will be ignored
+the the algorithm will try to optimize for classification accuracy.
+WARNING: the latter often results in very high classification accuracy but at
+the cost of higher rank error. see the "mlim.error" function
+documentation to see how rank error is computed. therefore, if you
+intend to carry out analysis on the rank data as numeric, it is
+recommended that you set this argument to FALSE.}
 }
 \value{
 a \code{data.frame}, showing the

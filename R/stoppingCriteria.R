@@ -2,7 +2,7 @@
 #' @description evaluates the stopping criteria
 #' @param metrics estimated error from CV
 #' @param k iteration round
-#' @param iteration_stopping_metric character. stopping metric for the iteration
+#' @param error_metric character. stopping metric for the iteration. default is "RMSE"
 #' @return logical. if TRUE, the imputation goes on to the next iteration
 #' @author E. F. Haghish
 #' @keywords Internal
@@ -11,8 +11,8 @@
 stoppingCriteria <- function(method = "iteration_RMSE",
                              miniter, maxiter,
                              metrics, k, vars2impute,
-                             iteration_stopping_metric,
-                             iteration_stopping_tolerance,
+                             error_metric,
+                             tolerance,
                              md.log) {
 
   # keep running unless...
@@ -30,7 +30,7 @@ stoppingCriteria <- function(method = "iteration_RMSE",
     # as long as there is a variable that it's RMSE is not NA, keep going!
     if (running) {
       error <- mean(metrics[metrics$iteration == k,
-                            iteration_stopping_metric], na.rm = TRUE)
+                            error_metric], na.rm = TRUE)
 
       # if all values were NA, well, stop then!
       if (is.na(error)) running <- FALSE
@@ -40,19 +40,22 @@ stoppingCriteria <- function(method = "iteration_RMSE",
   # ............................................................
   # Decide the stopping criteria based on average improvement of
   # RMSE per iteration
+  #
   # ............................................................
   if (method == "iteration_RMSE") {
     # there has been no (or too little) improvement, stop!
     if (running) {
       error <- mean(metrics[metrics$iteration == k,
-                            iteration_stopping_metric], na.rm = TRUE)
+                            error_metric], na.rm = TRUE)
 
-      if (k == 1) cat("\n   ",iteration_stopping_metric,
+      if (k == 1) cat("\n   ",error_metric,
                       " = ", round(error,4), "\n", sep = "")
 
       if (k >= 2) {
-        errPrevious <- mean(metrics[metrics$iteration == k-1,
-                                    iteration_stopping_metric],
+        # get the rmse's that made NA, because of saturation
+        available <- !is.na(metrics[metrics$iteration == k, error_metric])
+        errPrevious <- mean(metrics[metrics$iteration == k-1 & available,
+                                    error_metric],
                             na.rm = TRUE)
 
         errImprovement <- error - errPrevious
@@ -62,20 +65,20 @@ stoppingCriteria <- function(method = "iteration_RMSE",
 
         if (!is.na(errImprovement)) {
           if (percentImprove < 0) {
-            cat("\n   ",iteration_stopping_metric,
+            cat("\n   ",error_metric,
                 " = ", round(error,4), " (improved by ",
                 round(-percentImprove*100, 3),"%)", "\n", sep = "")
           }
           else {
-            cat("\n   ",iteration_stopping_metric,
+            cat("\n   ",error_metric,
                 " = ", round(error,4), " (increased by ",
                 round(percentImprove*100, 3),"%)", "\n", sep = "")
           }
 
-          #print(paste0(iteration_stopping_metric,
+          #print(paste0(error_metric,
           #            " improved by: ", round(-percentImprove*100,4),"%"))
-          #running <- errImprovement < (-iteration_stopping_tolerance)
-          running <- percentImprove < (-iteration_stopping_tolerance)
+          #running <- errImprovement < (-tolerance)
+          running <- percentImprove < (-tolerance)
         }
       }
     }

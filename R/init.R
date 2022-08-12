@@ -3,7 +3,6 @@
 #' @description extracts performance metrics from cross-validation
 #' @author E. F. Haghish
 #' @return connection object
-#' @author E. F. Haghish
 #' @keywords Internal
 #' @noRd
 

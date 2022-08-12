@@ -5,15 +5,14 @@
 #'              optimize the imputed dataset with mlim. this procedure usually
 #'              requires less iterations and will savea lot of computation
 #'              resources.
-#' @importFrom VIM kNN
+# @importFrom VIM kNN
 #' @importFrom missRanger missRanger imputeUnivariate
 # @importFrom missForest missForest
 #' @param data data.frame with missing values
 #' @param preimpute character. specify the algorithm for preimputation. the
-#'                  supported options are "kNN", "ranger", "missForest", and "mm"
-#'                  (mean-mode replacement). "ranger" and "missForest" both
-#'                  implement Random Forest procedures and are generally
-#'                  recommended. For very large datasets use "kNN".
+#'                  supported options are "rf" (Random Forest) and "mm"
+#'                  (mean-mode replacement). the default is "rf", which carries
+#'                  a parallel random forest imputation, using all the CPUs available.
 #' @param report filename. if a filename is specified, the \code{"md.log"} R
 #'               package is used to generate a Markdown progress report for the
 #'               imputation. the format of the report is adopted based on the
@@ -30,13 +29,12 @@
 mlim.preimpute <- function(data, preimpute, seed = NULL,
                            report = NULL, debug=FALSE) {
 
-  if (tolower(preimpute) == "knn") {
-    set.seed(seed)
-    data <- VIM::kNN(data, imp_var=FALSE)
-    if (!is.null(report)) md.log("kNN preimputation is done", date=debug, time=debug, trace=FALSE)
-  }
-  else if (tolower(preimpute) == "rf") {
-    set.seed(seed)
+  #if (tolower(preimpute) == "knn") {
+  #  set.seed(seed)
+  #  data <- VIM::kNN(data, imp_var=FALSE)
+  #  if (!is.null(report)) md.log("kNN preimputation is done", date=debug, time=debug, trace=FALSE)
+  #}
+  if (tolower(preimpute) == "rf") {
     #data <- missForest::missForest(data)$ximp
     data <- missRanger::missRanger(data, seed = seed)
     if (!is.null(report)) md.log("RF preimputation is done", date=debug, time=debug, trace=FALSE)
