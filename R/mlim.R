@@ -509,8 +509,6 @@ mlim <- function(data = NULL,
   }
 
   for (MIit in 1:m) {
-    # do not bootstrap for the first iteration
-
     dataLast <- iteration_loop(MIit, dataNA, data, boot=MIit>1, #bootstrap if MIit is mroe than 1
                                metrics, tolerance, doublecheck,
                                k, X, Y, z,
@@ -528,10 +526,9 @@ mlim <- function(data = NULL,
                                miniter, matching, ignore.rank,
                                verbosity, error, cpu, max_ram=max_ram, min_ram=min_ram,
                                shutdown=FALSE, clean = TRUE)
-xxx <<- dataLast
+
     if (m > 1) MI[[MIit]] <- dataLast
     else MI <- dataLast
-yyy <<- MI
   }
 
   if (shutdown) {

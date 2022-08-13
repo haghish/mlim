@@ -96,23 +96,34 @@ mlim.error <- function(imputed, incomplete, complete,
       }
     }
 
-    if (varwise) return(list(mean = err,
-                             nrmse = nrmse,
-                             missclass = classerror,
-                             missrank = rankerror))
+
+    if (varwise) {
+      vwa <- err[!is.na(err)]
+      if (length(nrmse) > 1) vwa <- c(vwa, nrmse)
+      else if (!is.na(nrmse)) vwa <- c(vwa, nrmse)
+      if (length(classerror) > 1) vwa <- c(vwa, classerror)
+      else if (!is.na(classerror)) vwa <- c(vwa, classerror)
+      if (length(rankerror) > 1) vwa <- c(vwa, rankerror)
+      else if (!is.na(rankerror)) vwa <- c(vwa, rankerror)
+      return(vwa)
+    }
     else return(err[!is.na(err)])
   }
-  else if ("mlim.mi" %in% class(imputed)) {
+
+
+  else if ("mlim.mi" %in% class(imputed) |
+           "list" %in% class(imputed) |
+           "mids" %in% class(imputed)) {
     mat <- NULL
     for (i in 1:length(imputed)) {
       tmp <- imputed[[i]]
       class(tmp) <- c("mlim", "data.frame")
       mat <- rbind(mat, mlim.error(tmp, incomplete, complete,
-                                   varwise = FALSE, ignore.rank=FALSE))
+                                   varwise = varwise, ignore.rank=ignore.rank))
     }
     return(mat)
   }
-  else stop("'imputed' must be of class 'data.frame', 'mlim', or 'mlim.mi'")
+  else stop("'imputed' must be of class 'data.frame', 'list', 'mlim', 'mlim.mi', or 'mids'")
 }
 
 #mlim.error(ELNET, irisNA, iris)
