@@ -1,10 +1,10 @@
 #' @title prepare "mids" class object
 #' @description takes "mlim" object and prepares a "mids" class for data analysis with
 #'              multiple imputation.
+#' @importFrom mice as.mids
 #' @param mlim array of class "mlim", returned by "mlim" function
-#' @param X
-#' @param seed integer. a random seed number for reproducing the result (recommended)
-#' @author E. F. Haghish
+#' @param incomplete the original data.frame with NAs
+#' @author E. F. Haghish, based on code from 'prelim' frunction in missMDA R package
 #' @examples
 #'
 #' \donttest{
@@ -24,12 +24,11 @@
 #' }
 #' @export
 
-mlim.mids <- function (mlim, X) {
-    if (any(c("MIFAMD", "MIPCA","MIMCA") %in% class(mlim))) {
-      longformat <- rbind(X, do.call(rbind, mlim$res.MI))
-      longformat <- cbind(.imp = rep(0:length(mlim$res.MI),
-                                     each = nrow(X)),
-                          .id = rep(1:nrow(X), (length(mlim$res.MI) + 1)), longformat)
+mlim.mids <- function (mlim, incomplete) {
+    if (any(c("mlim", "mlim.mi") %in% class(mlim))) {
+      longformat <- rbind(incomplete, do.call(rbind, mlim))
+      longformat <- cbind(.imp = rep(0:length(mlim), each = nrow(incomplete)),
+                          .id = rep(1:nrow(incomplete), (length(mlim) + 1)), longformat)
       rownames(longformat) <- NULL
       mids <- as.mids(longformat)
     }
@@ -39,3 +38,6 @@ mlim.mids <- function (mlim, X) {
 
     return(mids)
 }
+
+
+#mid <- mlim.mids(ELNET, irisNA)

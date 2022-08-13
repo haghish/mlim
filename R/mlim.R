@@ -10,6 +10,8 @@
 #' @importFrom stats var setNames na.omit
 #' @param data a \code{data.frame} or \code{matrix} with missing data to be
 #'             imputed. if \code{load} is provided, this argument will be ignored.
+#' @param m integer, specifying number of multiple imputations. the default value is
+#'          1, carrying out a single imputation.
 #' @param algos character vector, specifying algorithms to be used for missing data
 #'              imputation. the default is 'c("RF", "ELNET", "GBM")', which uses
 #'              Random Forest for a fast initial imputation and then uses ELNET to
@@ -105,16 +107,16 @@
 #'                 closest value to the non-missing values of the variable.
 #'                 if set to "AUTO", 'mlim' decides whether to match
 #'                 or not, based on the variable classes. the default is "AUTO".
-#' @param ignore.rank logical, if FALSE (default), ordinal variables
-#'                    are imputed as continuous integers with regression plus matching
-#'                    and are reverted to ordinal later again. this procedure is
-#'                    recommended. if FALSE, the rank of the categories will be ignored
-#'                    the the algorithm will try to optimize for classification accuracy.
-#'                    WARNING: the latter often results in very high classification accuracy but at
-#'                    the cost of higher rank error. see the "mlim.error" function
-#'                    documentation to see how rank error is computed. therefore, if you
-#'                    intend to carry out analysis on the rank data as numeric, it is
-#'                    recommended that you set this argument to FALSE.
+# @param ignore.rank logical, if FALSE (default), ordinal variables
+#                    are imputed as continuous integers with regression plus matching
+#                    and are reverted to ordinal later again. this procedure is
+#                    recommended. if FALSE, the rank of the categories will be ignored
+#                    the the algorithm will try to optimize for classification accuracy.
+#                    WARNING: the latter often results in very high classification accuracy but at
+#                    the cost of higher rank error. see the "mlim.error" function
+#                    documentation to see how rank error is computed. therefore, if you
+#                    intend to carry out analysis on the rank data as numeric, it is
+#                    recommended that you set this argument to FALSE.
 #' @param maxiter integer. maximum number of iterations. the default value is \code{15},
 #'        but it can be reduced to \code{3} (not recommended, see below).
 #' @param miniter integer. minimum number of iterations. the default value is

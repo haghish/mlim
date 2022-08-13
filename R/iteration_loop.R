@@ -4,7 +4,6 @@
 #' @author E. F. Haghish
 #' @keywords Internal
 #' @noRd
-
 iteration_loop <- function(MIit, dataNA, data, boot, metrics, tolerance, doublecheck,
                     k, X, Y, z,
 
