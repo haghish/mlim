@@ -5,11 +5,12 @@
 #' @keywords Internal
 #' @noRd
 
-iterate <- function(dataNA, data, hex, metrics, tolerance, doublecheck,
+iterate <- function(dataNA, data, bdata, boot, hex, bhex=NULL, metrics, tolerance, doublecheck,
                     k, X, Y, z,
 
                     # loop data
-                    vars2impute, allPredictors, preimpute, impute, postimpute,
+                    vars2impute, vars2postimpute, storeVars2impute,
+                    allPredictors, preimpute, impute, postimpute,
 
                     # settings
                     error_metric, FAMILY, cv, tuning_time,
@@ -25,11 +26,22 @@ iterate <- function(dataNA, data, hex, metrics, tolerance, doublecheck,
                     verbosity, error, cpu, max_ram, min_ram
                     ) {
 
+  # for the first dataframe imputation
+  if (is.null(bhex)) bhex <- hex
+  ZZ <- z
+  if (z >= length(vars2impute)) ZZ <- length(vars2impute) - 1
 
-  if (verbose==0) pb <- txtProgressBar(z-1, length(vars2impute), style = 3)
+  if (verbose==0) pb <- txtProgressBar(ZZ, length(vars2impute), style = 3)
   if (debug) print(paste0(Y," (RAM = ", memuse::Sys.meminfo()$freeram,")"))
 
-  v.na <- dataNA[, Y]
+  if (!boot) {
+    v.na <- dataNA[, Y]
+    y.na <- v.na
+  }
+  else {
+    v.na <- dataNA[, Y]
+    y.na <- rownames(bdata) %in% which(v.na)
+  }
 
   if (debug) {
     md.log(Y, section="subsection")
@@ -67,7 +79,7 @@ iterate <- function(dataNA, data, hex, metrics, tolerance, doublecheck,
     if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer'
         || FAMILY[z] == 'quasibinomial' ) {
       fit <- h2o::h2o.automl(x = setdiff(X, Y), y = Y,
-                             training_frame = hex[which(!v.na), ],
+                             training_frame = bhex[which(!y.na), ],
                              sort_metric = sort_metric,
                              project_name = "mlim",
                              include_algos = impute,
@@ -75,7 +87,7 @@ iterate <- function(dataNA, data, hex, metrics, tolerance, doublecheck,
                              exploitation_ratio = 0.1,
                              max_runtime_secs = tuning_time,
                              max_models = max_models,
-                             weights_column = weights_column[which(!v.na)],
+                             weights_column = weights_column[which(!y.na)],
                              keep_cross_validation_predictions =
                                keep_cross_validation_predictions,
                              seed = seed
@@ -100,24 +112,24 @@ iterate <- function(dataNA, data, hex, metrics, tolerance, doublecheck,
 
       #???
       #if (validation > 0) {
-      #  nonMissingObs <- which(!v.na)
+      #  nonMissingObs <- which(!y.na)
       #  vdFrame <- sort(sample(nonMissingObs,
       #                    round(validation * length(nonMissingObs) )))
-      #  trainingsample <- sort(setdiff(which(!v.na), vdFrame))
+      #  trainingsample <- sort(setdiff(which(!y.na), vdFrame))
       #}
 
       fit <- h2o::h2o.automl(x = setdiff(X, Y), y = Y,
                              balance_classes = balance_classes,
                              sort_metric = sort_metric,
-                             training_frame = hex[which(!v.na), ],
-                             #validation_frame = hex[vdFrame, ],
+                             training_frame = bhex[which(!y.na), ],
+                             #validation_frame = bhex[vdFrame, ],
                              project_name = "mlim",
                              include_algos = impute,
                              nfolds = cv,
                              exploitation_ratio = 0.1,
                              max_runtime_secs = tuning_time,
                              max_models = max_models,
-                             weights_column = weights_column[which(!v.na)],
+                             weights_column = weights_column[which(!y.na)],
                              keep_cross_validation_predictions =
                                keep_cross_validation_predictions,
                              seed = seed
@@ -147,7 +159,7 @@ iterate <- function(dataNA, data, hex, metrics, tolerance, doublecheck,
     roundRMSE <- getDigits(tolerance) + 1
     if (roundRMSE == 1) roundRMSE <- 4
 
-    iterationMetric <- extractMetrics(hex, k, Y, perf, FAMILY[z])
+    iterationMetric <- extractMetrics(bhex, k, Y, perf, FAMILY[z])
 #print(iterationMetric)
 
     if (k == 1) {
@@ -183,7 +195,8 @@ iterate <- function(dataNA, data, hex, metrics, tolerance, doublecheck,
       errImprovement <- checkMetric - errPrevious
       percentImprove <- (errImprovement / errPrevious)
 
-      if (percentImprove < -tolerance) { #if error decreased
+      # IF ERROR DECREASED
+      if (percentImprove < -tolerance) {
         if (debug) print(paste(errImprovement, percentImprove, -tolerance))
         ## do not convert pred to a vector. let it be "H2OFrame"
         pred <- h2o::h2o.predict(fit@leader, newdata = hex[which(v.na), X])[,1]
@@ -192,6 +205,13 @@ iterate <- function(dataNA, data, hex, metrics, tolerance, doublecheck,
         hex[which(v.na), Y] <- pred #h2o requires numeric subsetting
         Sys.sleep(sleep)
         if (debug) md.log("data was updated in h2o cloud", trace=FALSE)
+
+        # also update the bootstraped data
+        if (boot) {
+          pred <- h2o::h2o.predict(fit@leader, newdata = bhex[which(y.na), X])[,1]
+          bhex[which(y.na), Y] <- pred
+          Sys.sleep(sleep)
+        }
 
         # RAM cleaning-ish, help needed
         h2o::h2o.rm(pred)
@@ -326,6 +346,7 @@ iterate <- function(dataNA, data, hex, metrics, tolerance, doublecheck,
 
   return(list(X=X,
               hex = hex,
+              bhex = bhex,
               metrics = metrics,
               vars2impute=vars2impute))
 }

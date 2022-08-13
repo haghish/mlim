@@ -19,6 +19,8 @@ syntaxProcessing <- function(data, preimpute, impute, ram,
   # default values
   verbose <- NULL
   debug   <- FALSE
+  min_ram <- NULL
+  max_ram <- NULL
 
   stopifnot(
     "'data' is not a data.frame" = is.data.frame(data),

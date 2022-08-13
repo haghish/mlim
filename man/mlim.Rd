@@ -6,6 +6,7 @@
 \usage{
 mlim(
   data = NULL,
+  m = 1,
   algos = c("RF", "ELNET", "GBM"),
   preimputed.data = NULL,
   ignore = NULL,

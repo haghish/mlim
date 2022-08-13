@@ -107,7 +107,8 @@ stoppingCriteria <- function(method = "iteration_RMSE",
   # if maximum iteration has been reached and still is running...
   # ------------------------------------------------------------
   if (k == maxiter & running) {
-    warning(paste("the imputation could be further improved",
+    cat("\n")
+    warning(paste("\n\nthe imputation could be further improved",
                   "by increasing number of iterations.",
                   "if you have saved an mlim object via 'save.mlim'",
                   "argument, load it and specify a larger 'maxiter' to",

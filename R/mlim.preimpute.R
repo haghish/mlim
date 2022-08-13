@@ -35,7 +35,7 @@ mlim.preimpute <- function(data, preimpute, seed = NULL,
   #  if (!is.null(report)) md.log("kNN preimputation is done", date=debug, time=debug, trace=FALSE)
   #}
   if (tolower(preimpute) == "rf") {
-    cat("preimputation with automated Random Forest...\n")
+    cat("\nRandom Forest preimputation in progress...\n")
     data <- missRanger::missRanger(data, num.trees=1000, mtry=1,
                                    verbose = 0, returnOOB=TRUE, seed = seed)
     if (!is.null(report)) md.log("RF preimputation is done", date=debug, time=debug, trace=FALSE)
