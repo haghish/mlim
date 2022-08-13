@@ -39,6 +39,9 @@ mlim(
 \item{data}{a \code{data.frame} or \code{matrix} with missing data to be
 imputed. if \code{load} is provided, this argument will be ignored.}
 
+\item{m}{integer, specifying number of multiple imputations. the default value is
+1, carrying out a single imputation.}
+
 \item{algos}{character vector, specifying algorithms to be used for missing data
              imputation. the default is 'c("RF", "ELNET", "GBM")', which uses
              Random Forest for a fast initial imputation and then uses ELNET to
@@ -188,17 +191,6 @@ include the full list of the mlim arguments.}
 
 \item{...}{Arguments passed to \code{h2o.automl()}.
 The following arguments are e.g. incompatible with \code{ranger}: \code{write.forest}, \code{probability}, \code{split.select.weights}, \code{dependent.variable.name}, and \code{classification}.}
-
-\item{ignore.rank}{logical, if FALSE (default), ordinal variables
-are imputed as continuous integers with regression plus matching
-and are reverted to ordinal later again. this procedure is
-recommended. if FALSE, the rank of the categories will be ignored
-the the algorithm will try to optimize for classification accuracy.
-WARNING: the latter often results in very high classification accuracy but at
-the cost of higher rank error. see the "mlim.error" function
-documentation to see how rank error is computed. therefore, if you
-intend to carry out analysis on the rank data as numeric, it is
-recommended that you set this argument to FALSE.}
 }
 \value{
 a \code{data.frame}, showing the

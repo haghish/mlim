@@ -1,6 +1,6 @@
 Package: mlim
 Type: Package
-Title: Missing Data Imputation with Automated Machine Learning
+Title: Multiple Imputation with Automated Machine Learning
 Version: 0.1.0
 Authors@R: 
     person("E. F. Haghish",
@@ -17,6 +17,7 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 Imports:
     h2o (>= 3.34.0.0),
+    mice,
     missRanger,
     memuse,
     md.log (>= 0.2.0)

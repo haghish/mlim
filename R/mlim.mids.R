@@ -8,19 +8,21 @@
 #' @examples
 #'
 #' \donttest{
-#' # adding stratified NA to an atomic vector
-#' x <- as.factor(c(rep("M", 100), rep("F", 900)))
-#' table(mlim.na(x, p=.5, stratify = TRUE))
+#' data(iris)
+#' require(mice)
+#' irisNA <- mlim.na(iris, p = 0.1, seed = 2022)
 #'
 #' # adding unstratified NAs to all variables of a data.frame
-#' data(iris)
-#' mlim.na(iris, p=0.5, stratify = FALSE, seed = 1)
+#' MLIM <- mlim(irisNA, m=5, tuning_time = 180, doublecheck = T, seed = 2022)
 #'
-#' # or add stratified NAs only to factor variables, ignoring other variables
-#' mlim.na(iris, p=0.5, stratify = TRUE, classes = "factor", seed = 1)
+#' # create the mids object for MICE package
+#' mids <- mlim.mids(MLIM, irisNA)
 #'
-#' # or add NAs to numeric variables
-#' mlim.na(iris, p=0.5, classes = "numeric", seed = 1)
+#' # run an analysis on the mids data (just as example)
+#' fit <- with(data=mids, exp=glm(Species~ Sepal.Length, family = "binomial"))
+#'
+#' # then, pool the results!
+#' summary(pool(fit))
 #' }
 #' @export
 
