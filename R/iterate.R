@@ -1,0 +1,331 @@
+#' @title iterate
+#' @description runs imputation iterations for different settings
+#' @return list
+#' @author E. F. Haghish
+#' @keywords Internal
+#' @noRd
+
+iterate <- function(dataNA, data, hex, metrics, tolerance, doublecheck,
+                    k, X, Y, z,
+
+                    # loop data
+                    vars2impute, allPredictors, preimpute, impute, postimpute,
+
+                    # settings
+                    error_metric, FAMILY, cv, tuning_time,
+                    max_models, weights_column,
+                    keep_cross_validation_predictions,
+                    balance, seed, save, flush,
+
+                    verbose, debug, report, sleep,
+
+                    # saving settings
+                    dataLast, mem, orderedCols, ignore, maxiter,
+                    miniter, matching, ignore.rank,
+                    verbosity, error, cpu, max_ram, min_ram
+                    ) {
+
+
+  if (verbose==0) pb <- txtProgressBar(z-1, length(vars2impute), style = 3)
+  if (debug) print(paste0(Y," (RAM = ", memuse::Sys.meminfo()$freeram,")"))
+
+  v.na <- dataNA[, Y]
+
+  if (debug) {
+    md.log(Y, section="subsection")
+    md.log(paste("family:", FAMILY[z]))
+  }
+
+  md.log(paste(X, collapse = ","))
+
+  if (length(X) == 0L) {
+    if (debug) md.log("uni impute", trace=FALSE)
+    #??? change this with a self-written function
+    hex[[Y]] <- h2o::as.h2o(missRanger::imputeUnivariate(data[[Y]]))
+    Sys.sleep(sleep)
+  }
+  else {
+
+    if (debug) md.log(paste("X:",paste(setdiff(X, Y), collapse = ", ")), trace=FALSE)
+    if (debug) md.log(paste("Y:",paste(Y, collapse = ", ")), trace=FALSE)
+
+    # sort_metric specifications
+    # ============================================================
+    sort_metric <- "AUTO"
+    #if (FAMILY[z] == 'binomial') {
+    #  # check if Y is imbalanced
+    #  if (is.imbalanced(data[[Y]])) sort_metric <- "AUCPR"
+    #  else sort_metric <- "AUC"
+    #}
+    #else {
+    #  sort_metric <- "AUTO"
+    #}
+
+    # ------------------------------------------------------------
+    # fine-tune a gaussian model
+    # ============================================================
+    if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer'
+        || FAMILY[z] == 'quasibinomial' ) {
+      fit <- h2o::h2o.automl(x = setdiff(X, Y), y = Y,
+                             training_frame = hex[which(!v.na), ],
+                             sort_metric = sort_metric,
+                             project_name = "mlim",
+                             include_algos = impute,
+                             nfolds = cv,
+                             exploitation_ratio = 0.1,
+                             max_runtime_secs = tuning_time,
+                             max_models = max_models,
+                             weights_column = weights_column[which(!v.na)],
+                             keep_cross_validation_predictions =
+                               keep_cross_validation_predictions,
+                             seed = seed
+                             #stopping_metric = stopping_metric,
+                             #stopping_rounds = stopping_rounds
+                             #stopping_tolerance=stopping_tolerance
+      )
+    }
+
+    # ------------------------------------------------------------
+    # fine-tune a classification model
+    # ============================================================
+    else if (FAMILY[z] == 'binomial' || FAMILY[z] == 'multinomial') {
+
+      # check balance argument (default is FALSE)
+      balance_classes <- FALSE
+      sort_metric <- "AUC"
+      if (Y %in% balance) {
+        balance_classes <- TRUE
+        sort_metric <- "AUCPR"
+      }
+
+      #???
+      #if (validation > 0) {
+      #  nonMissingObs <- which(!v.na)
+      #  vdFrame <- sort(sample(nonMissingObs,
+      #                    round(validation * length(nonMissingObs) )))
+      #  trainingsample <- sort(setdiff(which(!v.na), vdFrame))
+      #}
+
+      fit <- h2o::h2o.automl(x = setdiff(X, Y), y = Y,
+                             balance_classes = balance_classes,
+                             sort_metric = sort_metric,
+                             training_frame = hex[which(!v.na), ],
+                             #validation_frame = hex[vdFrame, ],
+                             project_name = "mlim",
+                             include_algos = impute,
+                             nfolds = cv,
+                             exploitation_ratio = 0.1,
+                             max_runtime_secs = tuning_time,
+                             max_models = max_models,
+                             weights_column = weights_column[which(!v.na)],
+                             keep_cross_validation_predictions =
+                               keep_cross_validation_predictions,
+                             seed = seed
+                             #stopping_metric = stopping_metric,
+                             #stopping_rounds = stopping_rounds
+                             #stopping_tolerance=stopping_tolerance
+      )
+    }
+    else {
+      stop(paste(FAMILY[z], "is not recognized"))
+    }
+
+    Sys.sleep(sleep)
+    #print(fit@leaderboard)
+
+    if (debug) {
+      md.log("model fitted", trace=FALSE)
+      md.log("model was executed successfully", trace=FALSE)
+    }
+
+
+    perf <- h2o::h2o.performance(fit@leader)
+    Sys.sleep(sleep)
+
+    # update metrics, and if there is an improvement, update the data
+    # ------------------------------------------------------------
+    roundRMSE <- getDigits(tolerance) + 1
+    if (roundRMSE == 1) roundRMSE <- 4
+
+    iterationMetric <- extractMetrics(hex, k, Y, perf, FAMILY[z])
+#print(iterationMetric)
+
+    if (k == 1) {
+      ## do not convert pred to a vector. let it be "H2OFrame"
+      pred <- h2o::h2o.predict(fit@leader, newdata = hex[which(v.na), X])[,1]
+      Sys.sleep(sleep)
+      if (debug) md.log("predictions were generated", trace=FALSE)
+      hex[which(v.na), Y] <- pred #h2o requires numeric subsetting
+
+      # RAM cleaning-ish, help needed
+      h2o::h2o.rm(pred)
+      if (debug) md.log("prediction was cleaned", trace=FALSE)
+      Sys.sleep(sleep)
+
+      # update the metrics
+      metrics <- rbind(metrics, iterationMetric)
+    }
+    else {
+      errPrevious <- min(metrics[metrics$variable == Y, error_metric], na.rm = TRUE)
+      errPrevious <- round(errPrevious, digits = 5)
+      checkMetric <- iterationMetric[iterationMetric$variable == Y, error_metric]
+      checkMetric <- round(checkMetric, digits = 5)
+
+      # >>> this bit looks like I'm paranoid again... improvement needed
+      if (!is.null(errPrevious)) {
+        if (is.na(errPrevious)) {
+          errPrevious <- 1
+        }
+      }
+      else errPrevious <- 1
+      # <<<
+
+      errImprovement <- checkMetric - errPrevious
+      percentImprove <- (errImprovement / errPrevious)
+
+      if (percentImprove < -tolerance) { #if error decreased
+        if (debug) print(paste(errImprovement, percentImprove, -tolerance))
+        ## do not convert pred to a vector. let it be "H2OFrame"
+        pred <- h2o::h2o.predict(fit@leader, newdata = hex[which(v.na), X])[,1]
+        Sys.sleep(sleep)
+        if (debug) md.log("predictions were generated", trace=FALSE)
+        hex[which(v.na), Y] <- pred #h2o requires numeric subsetting
+        Sys.sleep(sleep)
+        if (debug) md.log("data was updated in h2o cloud", trace=FALSE)
+
+        # RAM cleaning-ish, help needed
+        h2o::h2o.rm(pred)
+        if (debug) md.log("prediction was cleaned", trace=FALSE)
+
+        # update the metrics
+        metrics <- rbind(metrics, iterationMetric)
+      }
+
+      else { #if the error increased
+        if (debug) print(paste("INCREASED", errImprovement, percentImprove, -tolerance))
+        iterationMetric[, error_metric] <- NA
+        metrics <- rbind(metrics, iterationMetric)
+        if (!doublecheck) {
+          vars2impute <- setdiff(vars2impute, Y)
+        }
+      }
+    }
+
+    h2o::h2o.rm(fit)
+    if (debug) md.log("model was cleaned", trace=FALSE)
+    Sys.sleep(sleep)
+
+    # clean h2o memory
+    # ------------------------------------------------------------
+    #h2o.clean(fit=fit, pred=pred, fun = "erasefit", timeout_secs = 30,
+    #          FLUSH = FALSE, retained_elements = c(hexID), md.log = md.log)
+
+    gc()
+    gc()
+    # tell back-end cluster nodes to do three back-to-back JVM full GCs.
+    #h2o:::.h2o.garbageCollect()
+    #h2o:::.h2o.garbageCollect()
+    #h2o:::.h2o.garbageCollect()
+  }
+
+  # Update the predictors during the first iteration
+  # ------------------------------------------------------------
+  if (preimpute == "iterate" && k == 1L && (Y %in% allPredictors)) {
+    X <- union(X, Y)
+  }
+
+  # .........................................................
+  # POSTIMPUTATION PREPARATION
+  # .........................................................
+  if (!is.null(save)) {
+
+    postimpute <- list(
+
+      # Data
+      # ====
+      data=as.data.frame(hex),
+      dataLast=dataLast,
+      metrics = metrics,
+      mem=mem,
+      orderedCols=orderedCols,
+
+      # loop data
+      # ---------
+      k = k, z=z, X=X, Y=Y, vars2impute=vars2impute, FAMILY=FAMILY,
+
+      # settings
+      # --------
+      impute=impute,
+      postimpute=postimpute,
+      ignore=ignore,
+      save = save,
+      maxiter = maxiter,
+      miniter = miniter,
+      cv = cv,
+      tuning_time = tuning_time,
+      max_models = max_models,
+      matching = matching,
+      ignore.rank = ignore.rank,
+      weights_column = weights_column,
+      seed=seed,
+      verbosity=verbosity,
+      verbose = verbose,
+      debug = debug,
+      report=report,
+      flush=flush,
+      error_metric=error_metric,
+      tolerance=tolerance,
+      error = error, #PROBABLY NOT NEEDED ???
+      #stopping_metric=stopping_metric,
+      #stopping_rounds=stopping_rounds,
+      #stopping_tolerance=stopping_tolerance,
+      cpu = cpu,
+      max_ram=max_ram,
+      min_ram = min_ram,
+
+      # save the package version used for the imputation
+      pkg=packageVersion("mlim")
+    )
+    class(postimpute) <- "mlim"
+
+    # update iteration data
+    saveRDS(postimpute, save)
+  }
+
+  # Flush the Java server to regain RAM
+  # ------------------------------------------------------------
+  #
+  # HELP NEEDED
+  #
+  # this part is problematic. Contact h2o.ai for further help
+  # because removing objects from the server doesn't seem to do
+  # much. moreover, '.h2o.garbageCollect()' breaks some of the
+  # computations for unknown reasons. for now, I can only use
+  # 'gc()' and alternatively, shutdown the Java server and re-run
+  # it when the RAM goes below a certain amount... this feature is
+  # considered a bad practice and should be improved in future releases
+  # ------------------------------------------------------------
+  if (flush) {
+    currentData <- as.data.frame(hex)
+    h2o::h2o.removeAll(timeout_secs = 30)
+    Sys.sleep(sleep)
+    gc()
+    gc()
+    #h2o:::.h2o.garbageCollect()
+    #h2o:::.h2o.garbageCollect()
+    #h2o:::.h2o.garbageCollect()
+    Sys.sleep(sleep)
+    hex <- h2o::as.h2o(currentData) #ID: data_
+    Sys.sleep(sleep)
+    hexID <- h2o::h2o.getId(hex)
+    if (debug) md.log("flushed", trace=FALSE)
+  }
+
+  # update the statusbar
+  if (verbose==0) setTxtProgressBar(pb, z)
+
+  return(list(X=X,
+              hex = hex,
+              metrics = metrics,
+              vars2impute=vars2impute))
+}

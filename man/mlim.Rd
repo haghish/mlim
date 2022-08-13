@@ -6,8 +6,7 @@
 \usage{
 mlim(
   data = NULL,
-  algos = "AUTO",
-  preimpute = "rf",
+  algos = c("RF", "ELNET", "GBM"),
   preimputed.data = NULL,
   ignore = NULL,
   init = TRUE,
@@ -39,27 +38,20 @@ mlim(
 \item{data}{a \code{data.frame} or \code{matrix} with missing data to be
 imputed. if \code{load} is provided, this argument will be ignored.}
 
-\item{algos}{character. specify a vector of algorithms to be used
-       in the process of auto-tuning. the supported main algorithms are
-       \code{"ELNET"}, \code{"RF"},
-       \code{"GBM"}, \code{"DL"}, \code{"XGB"} (available for Mac and Linux), and \code{"Ensemble"}.
+\item{algos}{character vector, specifying algorithms to be used for missing data
+             imputation. the default is 'c("RF", "ELNET", "GBM")', which uses
+             Random Forest for a fast initial imputation and then uses ELNET to
+             improve the imputation and once ELNET stops improving, attempts using
+             "GBM", as long as the 'maxiter' argument is not reached. in other words,
+             "mlim" carries out 3 rounds of imputation, which are 1) preimputation with "RF",
+             2) imputation with "ELNET", and 3) postimputation with "GBM". the reason for
+             this setup is that in general, "RF" is faster than a fine-tuned "ELNET" and
+             "ELNET" fine-tunes much faster than "GBM".
 
-       the default is \code{c("ELNET", "RF")}, which tunes fast.Note that the
-       choice of algorithms to be trained can largely increase the runtime.
-       for advice on algorithm selection visit \url{https://github.com/haghish/mlim}.
-       GBM, DL, XGB, and Ensemble take the full given "tuning_time" (see below) to
-       tune the best model for imputing he given variable.
-       if \code{load} is provided, this argument will be ignored.}
-
-\item{preimpute}{character. specifies the procedure for handling the missing
-data before initiating the procedures. the default procedure
-is "rf", which models the missing data with parallel Random Forest
-model. possible alternative is \code{"mm"}, which carries out
-mean/mode replacement. "mm" is much faster, but will dramatically
-increase the number of required itterations, significantly adding
-to the required computational resources. if your dataset is very
-large, consider imputing it before hand and then passing the
-imputed dataset for optimization (see "preimputed.data")}
+             in addition to these algorithms, \code{"DL"} (Deep Learning) and \code{"XGB"}
+             (Extreme Gradient Boosting, only available in Mac OS and Linux) are also
+             supported.  "GBM", "DL", "XGB", and "Ensemble" take the full given "tuning_time" (see below) to
+       tune the best model for imputing he given variable.}
 
 \item{preimputed.data}{data.frame. if you have used another software for missing
 data imputation, you can still optimize the imputation
@@ -73,7 +65,7 @@ should be ignored in the process of imputation.}
 however, if the Java server is already running, set this argument
 to FALSE.}
 
-\item{maxiter}{integer. maximum number of iterations. the default value is \code{10},
+\item{maxiter}{integer. maximum number of iterations. the default value is \code{15},
 but it can be reduced to \code{3} (not recommended, see below).}
 
 \item{miniter}{integer. minimum number of iterations. the default value is
@@ -227,7 +219,7 @@ MLIM <- mlim(irisNA)
 mlim.error(MLIM, irisNA, iris)
 
 # run GBM model and allow 15 minutes of tuning for each variable
-MLIM <- mlim(irisNA, algos = "GBM", tuning_time=60*15)
+MLIM <- mlim(irisNA, impute = "GBM", tuning_time=60*15)
 mlim.error(MLIM, irisNA, iris)
 }
 }

@@ -35,14 +35,11 @@ mlim.preimpute <- function(data, preimpute, seed = NULL,
   #  if (!is.null(report)) md.log("kNN preimputation is done", date=debug, time=debug, trace=FALSE)
   #}
   if (tolower(preimpute) == "rf") {
-    #data <- missForest::missForest(data)$ximp
-    data <- missRanger::missRanger(data, seed = seed)
+    cat("preimputation with automated Random Forest...\n")
+    data <- missRanger::missRanger(data, num.trees=1000, mtry=1,
+                                   verbose = 0, returnOOB=TRUE, seed = seed)
     if (!is.null(report)) md.log("RF preimputation is done", date=debug, time=debug, trace=FALSE)
   }
-  #else if (tolower(preimpute) == "ranger") {
-  #  data <- missRanger::missRanger(data, seed = seed)
-  #  if (!is.null(report)) md.log("missRanger preimputation is done", date=debug, time=debug, trace=FALSE)
-  #}
   else if (tolower(preimpute) == "mm") {
     data <- meanmode(data)
     if (!is.null(report)) md.log("Mean/Mode preimputation is done", date=debug, time=debug, trace=FALSE)

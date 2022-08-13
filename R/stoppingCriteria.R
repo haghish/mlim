@@ -13,6 +13,7 @@ stoppingCriteria <- function(method = "iteration_RMSE",
                              metrics, k, vars2impute,
                              error_metric,
                              tolerance,
+                             postimpute, runpostimpute,
                              md.log) {
 
   # keep running unless...
@@ -32,8 +33,26 @@ stoppingCriteria <- function(method = "iteration_RMSE",
       error <- mean(metrics[metrics$iteration == k,
                             error_metric], na.rm = TRUE)
 
-      # if all values were NA, well, stop then!
-      if (is.na(error)) running <- FALSE
+      if (is.na(error)) {
+
+        # if all values were NA, well, stop then, if there is no postimpute!
+        if (is.null(postimpute)) {
+          if (is.na(error)) running <- FALSE
+        }
+        else {
+          if (!runpostimpute) {
+            runpostimpute <- TRUE
+            vars2impute <- NULL #avoid the loops on the base imputer
+          }
+          else {
+            running <- FALSE
+            runpostimpute <- FALSE
+          }
+        }
+      }
+
+
+
     }
   }
 
@@ -99,5 +118,11 @@ stoppingCriteria <- function(method = "iteration_RMSE",
   # ------------------------------------------------------------
   if (k == maxiter) running <- FALSE
 
-  return(list(running = running, error = error, improvement <- errImprovement))
+  if (!running) runpostimpute <- FALSE
+
+  return(list(running = running,
+              error = error,
+              vars2impute = vars2impute,
+              improvement = errImprovement,
+              runpostimpute = runpostimpute))
 }

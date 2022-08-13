@@ -7,14 +7,18 @@
 #' @noRd
 
 
-syntaxProcessing <- function(data, preimpute, algos, ram,
+syntaxProcessing <- function(data, preimpute, impute, ram,
                              matching, miniter, maxiter, max_models,
                              tuning_time, cv, weights_column,
-                             verbosity, md.log) {
+                             verbosity, report) {
 
-  #if ("GBM" %in% algos) {
+  #if ("GBM" %in% impute) {
     #if (nrow(data) < 200) stop("too few rows... use 'ELNET' or 'DRF' instead")
   #}
+
+  # default values
+  verbose <- NULL
+  debug   <- FALSE
 
   stopifnot(
     "'data' is not a data.frame" = is.data.frame(data),
@@ -48,19 +52,19 @@ syntaxProcessing <- function(data, preimpute, algos, ram,
     max_ram <- paste0(ram, "G")
   }
 
-  if ("StackEnsemble" %in% algos) {
+  if ("StackEnsemble" %in% impute) {
     keep_cross_validation_predictions <- TRUE
   }
   else {
     keep_cross_validation_predictions <- FALSE
   }
 
-  if (length(algos) == 1 & algos == "AUTO") algos <- c("GLM", "DRF")
-  if ("ELNET" %in% algos) algos[which(algos == "ELNET")] <- "GLM"
-  if ("RF" %in% algos) algos[which(algos == "RF")] <- "DRF"
-  if ("XGB" %in% algos) algos[which(algos == "XGB")] <- "XGBoost"
-  if ("DL" %in% algos) algos[which(algos == "DL")] <- "DeepLearning"
-  if ("Ensemble" %in% algos) algos[which(algos == "Ensemble")] <- "StackedEnsemble"
+  if (length(impute) == 1 & impute == "AUTO") impute <- c("GLM", "DRF")
+  if ("ELNET" %in% impute) impute[which(impute == "ELNET")] <- "GLM"
+  if ("RF" %in% impute) impute[which(impute == "RF")] <- "DRF"
+  if ("XGB" %in% impute) impute[which(impute == "XGB")] <- "XGBoost"
+  if ("DL" %in% impute) impute[which(impute == "DL")] <- "DeepLearning"
+  if ("Ensemble" %in% impute) impute[which(impute == "Ensemble")] <- "StackedEnsemble"
 
   # define logging levels and debugging
   if (is.null(verbosity)) verbose <- 0
@@ -74,7 +78,7 @@ syntaxProcessing <- function(data, preimpute, algos, ram,
   return(list(min_ram=min_ram,
               max_ram=max_ram,
               keep_cross_validation_predictions=keep_cross_validation_predictions,
-              algos=algos,
+              impute=impute,
               verbose=verbose,
               debug=debug))
 }
