@@ -1,3 +1,5 @@
+[![CRAN version](http://www.r-pkg.org/badges/version/mlim)](https://cran.r-project.org/package=mlim) [![](https://cranlogs.r-pkg.org/badges/mlim)](https://cran.r-project.org/package=mlim) [![](https://cranlogs.r-pkg.org/badges/grand-total/mlim?color=orange)](https://cran.r-project.org/package=mlim)
+
 > CITE: Haghish, E. F. (2022). mlim: Multiple Imputation with Automated Machine Learning [Computer software]. https://CRAN.R-project.org/package=mlim. 
 
 - - -
