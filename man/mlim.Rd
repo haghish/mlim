@@ -10,12 +10,11 @@ mlim(
   algos = c("RF", "ELNET", "GBM"),
   preimputed.data = NULL,
   ignore = NULL,
-  init = TRUE,
+  tuning_time = 180,
+  max_models = NULL,
   maxiter = 10L,
   miniter = 2L,
   cv = 10L,
-  tuning_time = 180,
-  max_models = NULL,
   matching = "AUTO",
   balance = NULL,
   weights_column = NULL,
@@ -27,6 +26,7 @@ mlim(
   cpu = -1,
   ram = NULL,
   flush = FALSE,
+  init = TRUE,
   shutdown = TRUE,
   sleep = 0.5,
   save = NULL,
@@ -65,19 +65,6 @@ bypass the "preimpute" procedure.}
 \item{ignore}{character vector of column names or index of columns that should
 should be ignored in the process of imputation.}
 
-\item{init}{logical. should h2o Java server be initiated? the default is TRUE.
-however, if the Java server is already running, set this argument
-to FALSE.}
-
-\item{maxiter}{integer. maximum number of iterations. the default value is \code{15},
-but it can be reduced to \code{3} (not recommended, see below).}
-
-\item{miniter}{integer. minimum number of iterations. the default value is
-2.}
-
-\item{cv}{logical. specify number of k-fold Cross-Validation (CV). values of
-10 or higher are recommended. default is 10.}
-
 \item{tuning_time}{integer. maximum runtime (in seconds) for fine-tuning the
 imputation model for each variable in each iteration. the default
 time is 600 seconds but for a large dataset, you
@@ -94,6 +81,15 @@ this value should be consistent with increasing
 more time in the process of individualized fine-tuning.
 as a result, the better tuned the model, the more accurate
 the imputed values are expected to be}
+
+\item{maxiter}{integer. maximum number of iterations. the default value is \code{15},
+but it can be reduced to \code{3} (not recommended, see below).}
+
+\item{miniter}{integer. minimum number of iterations. the default value is
+2.}
+
+\item{cv}{logical. specify number of k-fold Cross-Validation (CV). values of
+10 or higher are recommended. default is 10.}
 
 \item{matching}{logical. if \code{TRUE}, imputed values are coerced to the
 closest value to the non-missing values of the variable.
@@ -161,6 +157,10 @@ for multicore processes. the more you give the more you get!}
 \item{flush}{logical (experimental). if TRUE, after each model, the server is
 cleaned to retrieve RAM. this feature is in testing mode.}
 
+\item{init}{logical. should h2o Java server be initiated? the default is TRUE.
+however, if the Java server is already running, set this argument
+to FALSE.}
+
 \item{shutdown}{logical. if TRUE, h2o server is closed after the imputation.
 the default is TRUE}
 
@@ -168,7 +168,7 @@ the default is TRUE}
 server. the default is 1 second. larger values might be needed
 depending on your computation power or dataset size.}
 
-\item{save}{filename. if a filename is specified, an \code{mlim} object is
+\item{save}{(NOT YET IMPLEMENTED FOR R). filename. if a filename is specified, an \code{mlim} object is
 saved after the end of each variable imputation. this object not only
 includes the imputed dataframe and estimated cross-validation error, but also
 includes the information needed for continuing the imputation,
@@ -176,14 +176,14 @@ which is very useful feature for imputing large datasets, with a
 long runtime. this argument is activated by default and an
 mlim object is stored in the local directory named \code{"mlim.rds"}.}
 
-\item{load}{an object of class "mlim", which includes the data, arguments,
+\item{load}{(NOT YET IMPLEMENTED FOR R). an object of class "mlim", which includes the data, arguments,
 and settings for re-running the imputation, from where it was
 previously stopped. the "mlim" object saves the current state of
 the imputation and is particularly recommended for large datasets
 or when the user specifies a computationally extensive settings
 (e.g. specifying several algorithms, increasing tuning time, etc.).}
 
-\item{force.load}{logical (default is TRUE). if TRUE, when loading the mlim class
+\item{force.load}{(NOT YET IMPLEMENTED FOR R).logical (default is TRUE). if TRUE, when loading the mlim class
 object, its preserved settings are used for restoring and saving the
 following itterations. otherwise, if FALSE, the current arguments of
 mlim are used to overpower the settings of the mlim object. the settings

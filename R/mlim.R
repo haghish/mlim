@@ -177,24 +177,6 @@
 #'               a log file is generated, which includes time stamp and shows
 #'               the function that has generated the message. otherwise, a
 #'               reduced markdown-like report is generated. default is NULL.
-#' @param save filename. if a filename is specified, an \code{mlim} object is
-#'             saved after the end of each variable imputation. this object not only
-#'             includes the imputed dataframe and estimated cross-validation error, but also
-#'             includes the information needed for continuing the imputation,
-#'             which is very useful feature for imputing large datasets, with a
-#'             long runtime. this argument is activated by default and an
-#'             mlim object is stored in the local directory named \code{"mlim.rds"}.
-#' @param load an object of class "mlim", which includes the data, arguments,
-#'                 and settings for re-running the imputation, from where it was
-#'                 previously stopped. the "mlim" object saves the current state of
-#'                 the imputation and is particularly recommended for large datasets
-#'                 or when the user specifies a computationally extensive settings
-#'                 (e.g. specifying several algorithms, increasing tuning time, etc.).
-#' @param force.load logical (default is TRUE). if TRUE, when loading the mlim class
-#'                 object, its preserved settings are used for restoring and saving the
-#'                 following itterations. otherwise, if FALSE, the current arguments of
-#'                 mlim are used to overpower the settings of the mlim object. the settings
-#'                 include the full list of the mlim arguments.
 #' @param verbosity character. controls how much information is printed to console.
 #'                  the value can be "warn" (default), "info", "debug", or NULL.
 #' @param shutdown logical. if TRUE, h2o server is closed after the imputation.
@@ -202,6 +184,24 @@
 #' @param sleep integer. number of seconds to wait after each interaction with h2o
 #'              server. the default is 1 second. larger values might be needed
 #'              depending on your computation power or dataset size.
+#' @param save (NOT YET IMPLEMENTED FOR R). filename. if a filename is specified, an \code{mlim} object is
+#'             saved after the end of each variable imputation. this object not only
+#'             includes the imputed dataframe and estimated cross-validation error, but also
+#'             includes the information needed for continuing the imputation,
+#'             which is very useful feature for imputing large datasets, with a
+#'             long runtime. this argument is activated by default and an
+#'             mlim object is stored in the local directory named \code{"mlim.rds"}.
+#' @param load (NOT YET IMPLEMENTED FOR R). an object of class "mlim", which includes the data, arguments,
+#'                 and settings for re-running the imputation, from where it was
+#'                 previously stopped. the "mlim" object saves the current state of
+#'                 the imputation and is particularly recommended for large datasets
+#'                 or when the user specifies a computationally extensive settings
+#'                 (e.g. specifying several algorithms, increasing tuning time, etc.).
+#' @param force.load (NOT YET IMPLEMENTED FOR R).logical (default is TRUE). if TRUE, when loading the mlim class
+#'                 object, its preserved settings are used for restoring and saving the
+#'                 following itterations. otherwise, if FALSE, the current arguments of
+#'                 mlim are used to overpower the settings of the mlim object. the settings
+#'                 include the full list of the mlim arguments.
 #' @return a \code{data.frame}, showing the
 #'         estimated imputation error from the cross validation within the data.frame's
 #'         attribution
@@ -225,27 +225,21 @@
 
 
 mlim <- function(data = NULL,
-                 # multiple imputation settings
                  m = 1,
-                 #preimpute = "rf",
-                 #impute = "AUTO",
-                 #postimpute = "AUTO",
                  algos = c("RF", "ELNET", "GBM"), #preimpute, impute, postimpute
                  preimputed.data = NULL,
                  ignore = NULL,
-                 init = TRUE,
-
 
                  # computational resources
+                 tuning_time = 180,
+                 max_models = NULL, # run all that you can
                  maxiter = 10L,
                  miniter = 2L,
                  cv = 10L,
                  #validation = 0,
-                 tuning_time = 180,
-                 max_models = NULL, # run all that you can
 
-                 matching = "AUTO",   #EXPERIMENTAL
-                 balance = NULL,      #EXPERIMENTAL
+                 matching = "AUTO",    #EXPERIMENTAL
+                 balance = NULL,       #EXPERIMENTAL
                  #ignore.rank = FALSE, #EXPERIMENTAL
                  weights_column = NULL,
 
@@ -259,6 +253,9 @@ mlim <- function(data = NULL,
                  doublecheck = TRUE,
 
                  ## simplify the settings by taking these arguments out
+                 #preimpute = "rf",
+                 #impute = "AUTO",
+                 #postimpute = "AUTO",
                  #error_metric  = "RMSE", #??? mormalize it
                  #stopping_metric = "AUTO",
                  #stopping_rounds = 3,
@@ -268,9 +265,11 @@ mlim <- function(data = NULL,
                  cpu = -1,
                  ram = NULL,
                  flush = FALSE,
+                 init = TRUE,
                  shutdown = TRUE,
                  sleep = .5,
 
+                 # NOT YET IMPLEMENTED
                  save = NULL,
                  load = NULL,
                  force.load = TRUE,
@@ -278,7 +277,11 @@ mlim <- function(data = NULL,
                  ) {
 
 
-
+  # initial warnings
+  # ============================================================
+  if (m > 1) {
+    cat("multiple imputation feature is in test-mode and its algorithm can change in the future\n")
+  }
 
   # improvements for the next release
   # ============================================================

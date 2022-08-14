@@ -4,12 +4,12 @@
 \alias{mlim.mids}
 \title{prepare "mids" class object}
 \usage{
-mlim.mids(mlim, X)
+mlim.mids(mlim, incomplete)
 }
 \arguments{
 \item{mlim}{array of class "mlim", returned by "mlim" function}
 
-\item{seed}{integer. a random seed number for reproducing the result (recommended)}
+\item{incomplete}{the original data.frame with NAs}
 }
 \description{
 takes "mlim" object and prepares a "mids" class for data analysis with
@@ -18,21 +18,23 @@ takes "mlim" object and prepares a "mids" class for data analysis with
 \examples{
 
 \donttest{
-# adding stratified NA to an atomic vector
-x <- as.factor(c(rep("M", 100), rep("F", 900)))
-table(mlim.na(x, p=.5, stratify = TRUE))
+data(iris)
+require(mice)
+irisNA <- mlim.na(iris, p = 0.1, seed = 2022)
 
 # adding unstratified NAs to all variables of a data.frame
-data(iris)
-mlim.na(iris, p=0.5, stratify = FALSE, seed = 1)
+MLIM <- mlim(irisNA, m=5, tuning_time = 180, doublecheck = T, seed = 2022)
 
-# or add stratified NAs only to factor variables, ignoring other variables
-mlim.na(iris, p=0.5, stratify = TRUE, classes = "factor", seed = 1)
+# create the mids object for MICE package
+mids <- mlim.mids(MLIM, irisNA)
 
-# or add NAs to numeric variables
-mlim.na(iris, p=0.5, classes = "numeric", seed = 1)
+# run an analysis on the mids data (just as example)
+fit <- with(data=mids, exp=glm(Species~ Sepal.Length, family = "binomial"))
+
+# then, pool the results!
+summary(pool(fit))
 }
 }
 \author{
-E. F. Haghish
+E. F. Haghish, based on code from 'prelim' frunction in missMDA R package
 }

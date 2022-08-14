@@ -34,12 +34,12 @@ as "1". therefore, if you have ordinal variables in your dataset, make sure
 you declare them as "ordered" factors to get the best imputation accuracy.}
 }
 \value{
-a numeric vector is "varwise = FALSE", or otherwise a list
+numeric vector
 }
 \description{
 calculates NRMSE, missclassification rate, and miss-ranking
-             absolute mean distance, scaled from 0 to 1, where 1 means
-             maximum distance between the actual rank of a level with the
+             absolute mean distance, scaled between 0 to 1, where 1 means
+             maximum distance between the actual rank of a level and the
              imputed level.
 }
 \examples{
@@ -53,6 +53,9 @@ irisNA <- mlim.na(iris, p = 0.1, stratify = TRUE, seed = 2022)
 # run the default imputation
 MLIM <- mlim(irisNA)
 mlim.error(MLIM, irisNA, iris)
+
+# get error estimations for each variable
+mlim.error(MLIM, irisNA, iris, varwise = TRUE)
 }
 }
 \author{

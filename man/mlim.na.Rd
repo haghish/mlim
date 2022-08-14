@@ -2,7 +2,7 @@
 % Please edit documentation in R/mlim.na.R
 \name{mlim.na}
 \alias{mlim.na}
-\title{syntaxProcessing}
+\title{add stratified/unstratified artificial missing observations}
 \usage{
 mlim.na(x, p = 0.1, stratify = FALSE, classes = NULL, seed = NULL)
 }
@@ -29,7 +29,13 @@ only to numeric and ordered factors.}
 \item{seed}{integer. a random seed number for reproducing the result (recommended)}
 }
 \description{
-extracts performance metrics from cross-validation
+to examine the performance of imputation algorithms, artificial
+             missing data are added to datasets and then imputed, to compare
+             the original observations with the imputed values. this function
+             can add stratified or unstratified artificial missing data. stratified
+             missing data can be particularly useful if your categorical or ordinal
+             variables are imbalanced, i.e., one category appears at a much higher
+             rate than others.
 }
 \examples{
 
