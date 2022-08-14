@@ -1,7 +1,7 @@
 #' @title imputation error
 #' @description calculates NRMSE, missclassification rate, and miss-ranking
-#'              absolute mean distance, scaled from 0 to 1, where 1 means
-#'              maximum distance between the actual rank of a level with the
+#'              absolute mean distance, scaled between 0 to 1, where 1 means
+#'              maximum distance between the actual rank of a level and the
 #'              imputed level.
 #' @param imputed the imputed dataframe
 #' @param incomplete the dataframe with missing values
@@ -36,8 +36,11 @@
 #' # run the default imputation
 #' MLIM <- mlim(irisNA)
 #' mlim.error(MLIM, irisNA, iris)
+#'
+#' # get error estimations for each variable
+#' mlim.error(MLIM, irisNA, iris, varwise = TRUE)
 #' }
-#' @return a numeric vector is "varwise = FALSE", or otherwise a list
+#' @return numeric vector
 #' @export
 mlim.error <- function(imputed, incomplete, complete,
                        varwise = FALSE, ignore.rank=FALSE) {
@@ -96,7 +99,6 @@ mlim.error <- function(imputed, incomplete, complete,
       }
     }
 
-
     if (varwise) {
       vwa <- err[!is.na(err)]
       if (length(nrmse) > 1) vwa <- c(vwa, nrmse)
@@ -109,7 +111,6 @@ mlim.error <- function(imputed, incomplete, complete,
     }
     else return(err[!is.na(err)])
   }
-
 
   else if ("mlim.mi" %in% class(imputed) |
            "list" %in% class(imputed) |

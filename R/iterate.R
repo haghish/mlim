@@ -1,5 +1,10 @@
 #' @title iterate
-#' @description runs imputation iterations for different settings
+#' @description runs imputation iterations for different settings, both single
+#'              imputation and multiple imputation.in addition, it can do iterations
+#'              for both "imputation" and "postimputation". postimputation begins if
+#'              a powerful algorithm - that requires a lot of time for fine-tuning -
+#'              is specified for the imputation. such algorithms are used last in the imputation
+#'              to save time.
 #' @return list
 #' @author E. F. Haghish
 #' @keywords Internal

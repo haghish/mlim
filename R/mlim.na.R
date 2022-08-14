@@ -1,5 +1,11 @@
-#' @title syntaxProcessing
-#' @description extracts performance metrics from cross-validation
+#' @title add stratified/unstratified artificial missing observations
+#' @description to examine the performance of imputation algorithms, artificial
+#'              missing data are added to datasets and then imputed, to compare
+#'              the original observations with the imputed values. this function
+#'              can add stratified or unstratified artificial missing data. stratified
+#'              missing data can be particularly useful if your categorical or ordinal
+#'              variables are imbalanced, i.e., one category appears at a much higher
+#'              rate than others.
 #' @param x data.frame. x must be strictly a data.frame and any other
 #'          data.table classes will be rejected
 #' @param p percentage of missingness to be added to the data
