@@ -10,8 +10,8 @@
 # @importFrom missForest missForest
 #' @param data data.frame with missing values
 #' @param preimpute character. specify the algorithm for preimputation. the
-#'                  supported options are "rf" (Random Forest) and "mm"
-#'                  (mean-mode replacement). the default is "rf", which carries
+#'                  supported options are "RF" (Random Forest) and "mm"
+#'                  (mean-mode replacement). the default is "RF", which carries
 #'                  a parallel random forest imputation, using all the CPUs available.
 #' @param report filename. if a filename is specified, the \code{"md.log"} R
 #'               package is used to generate a Markdown progress report for the

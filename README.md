@@ -10,7 +10,7 @@
 [![CRAN version](http://www.r-pkg.org/badges/version/mlim?color=2eb8b3)](https://cran.r-project.org/package=mlim) [![](https://cranlogs.r-pkg.org/badges/mlim?color=a958d1)](https://cran.r-project.org/package=mlim) [![](https://cranlogs.r-pkg.org/badges/grand-total/mlim?color=772eb8)](https://cran.r-project.org/package=mlim)
 <!-- https://shields.io/ -->
 
-In reccent years, there have been several attempts for using machine learning for missing data imputation. Yet, `mlim` R package is unique because it is the first R package to implement automation for missing data imputation. In other words, `mlim` implements automated machine learning and brings the state-of-the-arts of this technique, which is expected to result in imputation with lower imputation error compared to other standard procedures of missing data imputation. 
+In reccent years, there have been several attempts for using machine learning for missing data imputation. Yet, `mlim` R package is unique because it is the first R package to implement automated machine learning for multiple imputation and brings the state-of-the-arts of machine learning to provide a versatile solution for missing data. Not only `mlim` supports various data types (continuous, categorical, ordinal) as well as data formats (cross-sectional or longitudinal datasets), but also, it is expected to result in lower imputation error compared to other standard procedures of missing data imputation. Simply put, for each variable in the dataset, `mlim` automatically fine-tunes a fast machine learning model, which results in significantly lower imputation error. 
 
 The figure below shows the normalized RMSE of the imputation of several algorithms, including `MICE`, `missForest`, `missRanger`, and `mlim`. Here, two of `mlim`'s algorithms, Elastic Net (ELNET) and Gradient Boosting Machine (GBM) are used for the imputation and the result are compared with Random Forest imputations as well as Multiple Imputation with Chained Equations (MICE), which uses Predictive Mean Matching (PMM). This imputation was carried out on __iris__ dataset in R, by adding 10% artifitial missing data and comparing the imputed values with the original. 
 
@@ -19,12 +19,25 @@ The figure below shows the normalized RMSE of the imputation of several algorith
 Supported algorithms
 --------------------
 
-`mlim` supports several algorithms. However, officially, only __`ELNET`__ is _recommended for personal computers with limited RAM_. `mlim` is __extremely__ computation hungry and is more suitable for servers with a lot of RAM. However, __`ELNET`__ converges rather fast and hence, provides a fast, scalable, yet highly flexible solution for missing data imputation. Compared to a fine-tuned __`GBM`__, __`ELNET`__ generally performs poorer, but their computational demands are vastly different. In order to fine-tune a __`GBM`__ model that out-performs __`ELNET`__, you need to include a large number of models to allow `mlim` to search for the ideal parameters for each variable, within each iteration. 
+`mlim` supports several algorithms:
 
+- `ELNET` (Elastic Net) 
+- `RF`    (Random Forest and Extremely Randomized Trees) 
+- `GBM` (Gradient Boosting Machine) 
+- `XGB` (Extreme Gradient Boosting) 
+- `Ensemble` (Stacked Ensemble) 
+
+> `ELNET` is the default imputation algorithm. Among all of the above, ELNET is the easist and fastest to fine-tune, 
+because it has fewer parameters. By default, `mlim` uses a secondary algorithm for improving the imputation results (TO BE CONTINUED...)
+
+<!-- However, officially, only __`ELNET`__ is _recommended for personal computers with limited RAM_. `mlim` is computation hungry and is more suitable for servers with a lot of RAM. However, __`ELNET`__ converges rather fast and hence, provides a fast, scalable, yet highly flexible solution for missing data imputation. Compared to a fine-tuned __`GBM`__, __`ELNET`__ generally performs poorer, but their computational demands are vastly different. In order to fine-tune a __`GBM`__ model that out-performs __`ELNET`__, you need to include a large number of models to allow `mlim` to search for the ideal parameters for each variable, within each iteration. 
+-->
+<!--
 | **Algorithm** | **Speed**      | **RAM**        | **CPU**        |
 |:--------------|:---------------|:---------------|:---------------|
 | `ELNET`         | High           | Low            | Low            |
 | `GBM`           | Low           | High           | High           |
+-->
 <!--| XGBoost       | Low           | High           | High           |
 | Ensemble      | Extremely Low | Extremely High | Extremely High |-->
 
@@ -39,6 +52,8 @@ Advantages and limitations
 
 `mlim` fine-tunes models for imputation, a procedure that has never been implemented in other R packages. This procedure often yields much higher accuracy compared to other machine learning imputation methods or missing data imputation procedures because of using more accurate models that are fine-tuned for each feature in the dataset. The cost, however, is computational resources. If you have access to a very powerful machine, with a huge amount of RAM per CPU, then try __`GBM`__. If you specify a high enough number of models in each fine-tuning process, you are likely to get a more accurate imputation that __`ELNET`__. However, for personal machines and laptops, __`ELNET`__ is generally recommended (see below). __If your machine is not powerful enough, it is likely that the imputation crashes due to memory problems...__. So, perhaps begin with __`ELNET`__, unless you are working with a powerful server. This is my general advice as long as `mlim` is in Beta version and under development.
 
+
+<!--
 Preimputation
 -------------
 
@@ -50,6 +65,7 @@ Preimputation
 | `rf`    |      fast      |   High   |    High   |
 | `mm`        | Extremely fast | Very Low |  Very Low |
 
+-->
 
 Example 
 -------

@@ -264,7 +264,7 @@ iterate <- function(dataNA, data, bdata, boot, hex, bhex=NULL, metrics, toleranc
   # .........................................................
   if (!is.null(save)) {
 
-    postimpute <- list(
+    savestate <- list(
 
       # Data
       # ====
@@ -311,10 +311,10 @@ iterate <- function(dataNA, data, bdata, boot, hex, bhex=NULL, metrics, toleranc
       # save the package version used for the imputation
       pkg=packageVersion("mlim")
     )
-    class(postimpute) <- "mlim"
+    class(savestate) <- "mlim"
 
     # update iteration data
-    saveRDS(postimpute, save)
+    saveRDS(savestate, save)
   }
 
   # Flush the Java server to regain RAM

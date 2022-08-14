@@ -61,13 +61,6 @@ syntaxProcessing <- function(data, preimpute, impute, ram,
     keep_cross_validation_predictions <- FALSE
   }
 
-  if (length(impute) == 1 & impute == "AUTO") impute <- c("GLM", "DRF")
-  if ("ELNET" %in% impute) impute[which(impute == "ELNET")] <- "GLM"
-  if ("RF" %in% impute) impute[which(impute == "RF")] <- "DRF"
-  if ("XGB" %in% impute) impute[which(impute == "XGB")] <- "XGBoost"
-  if ("DL" %in% impute) impute[which(impute == "DL")] <- "DeepLearning"
-  if ("Ensemble" %in% impute) impute[which(impute == "Ensemble")] <- "StackedEnsemble"
-
   # define logging levels and debugging
   if (is.null(verbosity)) verbose <- 0
   else if (verbosity == "warn") verbose <- 1
@@ -80,7 +73,6 @@ syntaxProcessing <- function(data, preimpute, impute, ram,
   return(list(min_ram=min_ram,
               max_ram=max_ram,
               keep_cross_validation_predictions=keep_cross_validation_predictions,
-              impute=impute,
               verbose=verbose,
               debug=debug))
 }

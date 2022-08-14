@@ -308,13 +308,12 @@ mlim <- function(data = NULL,
   ignore.rank <- FALSE #EXPERIMENTAL
   set.seed(seed)
 
-  preimpute <- algos[1]
-  impute <- algos[2]
-  postimpute <- algos[3:length(algos)]
+  alg <- algoSelector(algos)
+  preimpute <- "RF" #alg$preimpute
+  impute <- alg$impute
+  postimpute <- alg$postimpute
 
-  if ("XGB" %in% algos & Sys.info()["sysname"] == "Windows") {
-    stop("XGB is not available in Windows")
-  }
+
 
   #if (is.null(postimpute)) {
   #  if (impute == "AUTO") postimpute <- "DRF"
@@ -339,7 +338,7 @@ mlim <- function(data = NULL,
   # ============================================================
   # ============================================================
   if (!is.null(load)) {
-    if (class(load) != "mlim") stop("'load' must be of class 'mlim'")
+    if (inherits(load, "mlim")) stop("'load' must be of class 'mlim'")
 
     # Data
     # ----------------------------------
@@ -400,7 +399,6 @@ mlim <- function(data = NULL,
       min_ram <- synt$min_ram
       max_ram <- synt$max_ram
       keep_cross_validation_predictions <- synt$keep_cross_validation_predictions
-      impute <- synt$impute
       verbose <- synt$verbose
       debug <- synt$debug
     }
@@ -419,7 +417,6 @@ mlim <- function(data = NULL,
     min_ram <- synt$min_ram
     max_ram <- synt$max_ram
     keep_cross_validation_predictions <- synt$keep_cross_validation_predictions
-    impute <- synt$impute
     verbose <- synt$verbose
     debug <- synt$debug
   }
