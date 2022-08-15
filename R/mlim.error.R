@@ -24,6 +24,10 @@
 #'                "5" as "4" is equally inaccurate as other algorithm that imputes level "5"
 #'                as "1". therefore, if you have ordinal variables in your dataset, make sure
 #'                you declare them as "ordered" factors to get the best imputation accuracy.
+#' @param transform character. it can be either "standardize", which standardizes the
+#'                numeric variables before evaluating the imputation error, or
+#'                "normalize", which change the scale of continuous variables to
+#'                range from 0 to 1. the default is NULL.
 #' @author E. F. Haghish
 #' @examples
 #'
@@ -43,7 +47,8 @@
 #' @return numeric vector
 #' @export
 mlim.error <- function(imputed, incomplete, complete,
-                       varwise = FALSE, ignore.rank=FALSE) {
+                       varwise = FALSE, transform = NULL,
+                       ignore.rank=FALSE) {
 
   rankerror <- NA
   err <- NULL
@@ -80,10 +85,30 @@ mlim.error <- function(imputed, incomplete, complete,
       ind <- which(types == t)
 
       if (t == "numeric") {
-        nrmse <-  nrmse(imputed[,ind, drop = FALSE],
-                        incomplete[,ind, drop = FALSE],
-                        complete[,ind, drop = FALSE])
-        if (!is.null(nrmse)) err[1] <- mean(nrmse, na.rm = TRUE)
+        if (is.null(transform)) {
+          nrmse <-  nrmse(imputed[,ind, drop = FALSE],
+                          incomplete[,ind, drop = FALSE],
+                          complete[,ind, drop = FALSE])
+          if (!is.null(nrmse)) err[1] <- mean(nrmse, na.rm = TRUE)
+        }
+        else {
+          if (transform == "standardize") {
+            v1 <- scale(imputed[,ind, drop = FALSE])
+            v2 <- scale(incomplete[,ind, drop = FALSE])
+            v3 <- scale(complete[,ind, drop = FALSE])
+          }
+          else if (transform == "normalize") {
+            v1 <- normalize(imputed[,ind, drop = FALSE])
+            v2 <- normalize(incomplete[,ind, drop = FALSE])
+            v3 <- normalize(complete[,ind, drop = FALSE])
+          }
+          else {
+            stop(paste(transform, "is not a recognized transformation"))
+          }
+          nrmse <-  nrmse(v1, v2, v3)
+          if (!is.null(nrmse)) err[1] <- mean(nrmse, na.rm = TRUE)
+        }
+
       }
       else if (t == 'ordered' & !ignore.rank) {
         rankerror <- missrank(imputed[,ind, drop = FALSE],
@@ -129,3 +154,11 @@ mlim.error <- function(imputed, incomplete, complete,
 
 #mlim.error(ELNET, irisNA, iris)
 #print((ELNETerror <- mlim.error(ELNET, dfNA, df)))
+
+# if we standardize numeric vars, RMSE and MAE can be more than 1
+
+
+
+
+
+

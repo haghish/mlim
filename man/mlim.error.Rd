@@ -4,7 +4,14 @@
 \alias{mlim.error}
 \title{imputation error}
 \usage{
-mlim.error(imputed, incomplete, complete, varwise = FALSE, ignore.rank = FALSE)
+mlim.error(
+  imputed,
+  incomplete,
+  complete,
+  varwise = FALSE,
+  transform = NULL,
+  ignore.rank = FALSE
+)
 }
 \arguments{
 \item{imputed}{the imputed dataframe}
@@ -18,6 +25,11 @@ mean accuracy for each variable type, the algorithm's
 performance for each variable (column) of the datast is
 also returned. if TRUE, instead of a numeric vector, a
 list is retuned.}
+
+\item{transform}{character. it can be either "standardize", which standardizes the
+numeric variables before evaluating the imputation error, or
+"normalize", which change the scale of continuous variables to
+range from 0 to 1. the default is NULL.}
 
 \item{ignore.rank}{logical (default is FALSE, which is recommended). if TRUE,
 the accuracy of imputation of ordered factors (ordinal variables)
