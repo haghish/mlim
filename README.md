@@ -90,7 +90,7 @@ Example
 
 ```R
 # Comparison of different R packages imputing iris dataset
-# ===========================================================
+# ===============================================================================
 rm(list = ls())
 library(mlim)
 library(mice)
@@ -99,26 +99,26 @@ library(missRanger)
 library(VIM)
 
 # Add artifitial missing data
-# ===========================================================
+# ===============================================================================
 irisNA <- mlim.na(iris, p = 0.5, stratified = TRUE, seed = 2022)
 
-# Single imputation with mlim
-# ===========================================================
-MLIM <- mlim(irisNA, m=1, seed = 2022, tuning_time = 180)
+# Single imputation with mlim, giving it 180 seconds to fine-tune each variable
+# ===============================================================================
+MLIM <- mlim(irisNA, m=1, seed = 2022, tuning_time = 180) 
 print(MLIMerror <- mlim.error(MLIM, irisNA, iris))
 
 # kNN Imputation with VIM
-# ===========================================================
+# ===============================================================================
 kNN <- kNN(irisNA, imp_var=FALSE)
 print(kNNerror <- mlim.error(kNN, irisNA, iris))
 
 # Single imputation with MICE (for the sake of demonstration)
-# ===========================================================
+# ===============================================================================
 MC <- mice(irisNA, m=1, maxit = 50, method = 'pmm', seed = 500)
 print(MCerror <- mlim.error(MC, irisNA, iris))
 
 # Random Forest Imputation with missForest
-# ===========================================================
+# ===============================================================================
 set.seed(2022)
 RF <- missForest(irisNA)
 print(RFerror <- mlim.error(RF$ximp, irisNA, iris))
