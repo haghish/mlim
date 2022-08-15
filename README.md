@@ -100,39 +100,31 @@ library(VIM)
 
 # Add artifitial missing data
 # ===========================================================
-irisNA <- missRanger::generateNA(iris, p = 0.5, seed = 2022)
+irisNA <- mlim.na(iris, p = 0.5, stratified = TRUE, seed = 2022)
 
-# ELNET Imputation with mlim
+# Single imputation with mlim
 # ===========================================================
-mlimELNET <- mlim(irisNA, init = TRUE, maxiter = 10,
-                  include_algos = "ELNET", preimpute = "knn",
-                  report = "mlimELNET.log", verbosity = "debug",
-                  max_models = 1, min_mem_size = "6G", nthreads = 1,
-                  max_mem_size = "8G", iteration_stopping_tolerance = .01,
-                  shutdown = TRUE, flush=FALSE, seed = 2022)
-(mlimELNETerror <- mixError(mlimELNET, irisNA, iris))
+MLIM <- mlim(irisNA, m=1, seed = 2022, tuning_time = 180)
+print(MLIMerror <- mlim.error(MLIM, irisNA, iris))
 
 # kNN Imputation with VIM
 # ===========================================================
 kNN <- kNN(irisNA, imp_var=FALSE)
-(kNNerror <- mixError(kNN, irisNA, iris))
+print(kNNerror <- mlim.error(kNN, irisNA, iris))
 
-# MICE Imputation with mice (10 datasets)
+# Single imputation with MICE (for the sake of demonstration)
 # ===========================================================
-m <- 10
-mc <- mice(irisNA, m=m, maxit = 50, method = 'pmm', seed = 500)
-MCerror <- NULL
-for (i in 1:m) MCerror <- c(MCerror, mixError(complete(mc,i), irisNA, iris)[1])
-(MCerror <- mean(MCerror))
+MC <- mice(irisNA, m=1, maxit = 50, method = 'pmm', seed = 500)
+print(MCerror <- mlim.error(MC, irisNA, iris))
 
 # Random Forest Imputation with missForest
 # ===========================================================
 set.seed(2022)
 RF <- missForest(irisNA)
-(RFerror <- mixError(RF$ximp, irisNA, iris))
+print(RFerror <- mlim.error(RF$ximp, irisNA, iris))
 
 rngr <- missRanger(irisNA, num.trees=100, seed = 2022)
-(missRanger <- mixError(rngr, irisNA, iris))
+print(missRanger <- mlim.error(rngr, irisNA, iris))
 ```
 <img src="https://github.com/haghish/mlim/blob/main/web/data_iris_50.png" width="600" height="400">
 
