@@ -7,8 +7,10 @@
 # `mlim` : Multiple Imputation with Automated Machine Learning
 
 <!--<a href="https://github.com/haghish/mlim"><img src="./web/mlim.png" align="left" width="140" hspace="10" vspace="6"></a> -->
-[![CRAN version](http://www.r-pkg.org/badges/version/mlim?color=2eb8b3)](https://cran.r-project.org/package=mlim) [![](https://cranlogs.r-pkg.org/badges/mlim?color=a958d1)](https://cran.r-project.org/package=mlim) [![](https://cranlogs.r-pkg.org/badges/grand-total/mlim?color=772eb8)](https://cran.r-project.org/package=mlim)
-<!-- https://shields.io/ -->
+[![CRAN version](http://www.r-pkg.org/badges/version/mlim?color=2eb8b3)](https://cran.r-project.org/package=mlim)  [![](https://cranlogs.r-pkg.org/badges/grand-total/mlim?color=a958d1)](https://cran.r-project.org/package=mlim) [![](man/figures/manual.svg)](https://cran.r-project.org/web/packages/mlim/mlim.pdf)
+
+<!-- [![](https://cranlogs.r-pkg.org/badges/mlim?color=a958d1)](https://cran.r-project.org/package=mlim) https://shields.io/ -->
+
 
 In reccent years, there have been several attempts for using machine learning for missing data imputation. Yet, `mlim` R package is unique because it is the first R package to implement automated machine learning for multiple imputation and brings the state-of-the-arts of machine learning to provide a versatile solution for missing data. Not only `mlim` supports various data types (continuous, categorical, ordinal) as well as data formats (cross-sectional or longitudinal datasets), but also, it is expected to result in lower imputation error compared to other standard procedures of missing data imputation. Simply put, for each variable in the dataset, `mlim` automatically fine-tunes a fast machine learning model, which results in significantly lower imputation error. 
 
