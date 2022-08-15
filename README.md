@@ -102,7 +102,7 @@ library(VIM)
 # ===============================================================================
 irisNA <- mlim.na(iris, p = 0.5, stratified = TRUE, seed = 2022)
 
-# Single imputation with mlim, giving it 180 seconds to fine-tune each variable
+# Single imputation with mlim, giving it 180 seconds to fine-tune each imputation
 # ===============================================================================
 MLIM <- mlim(irisNA, m=1, seed = 2022, tuning_time = 180) 
 print(MLIMerror <- mlim.error(MLIM, irisNA, iris))
