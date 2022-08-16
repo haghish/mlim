@@ -5,7 +5,7 @@
 #' @keywords Internal
 #' @noRd
 iteration_loop <- function(MIit, dataNA, data, boot, metrics, tolerance, doublecheck,
-                    k, X, Y, z,
+                    m, k, X, Y, z,
 
                     # loop data
                     vars2impute, vars2postimpute, storeVars2impute,
@@ -38,18 +38,22 @@ iteration_loop <- function(MIit, dataNA, data, boot, metrics, tolerance, doublec
     hex <- h2o::as.h2o(data)
     bhex<- h2o::as.h2o(bdata)
   }
+  Sys.sleep(sleep)
 
   # update the fresh data
   # ------------------------------------------------------------
-  running <- TRUE
+  running       <- TRUE
   runpostimpute <- FALSE
 
-
-  Sys.sleep(sleep)
   if (debug) md.log("data was sent to h2o cloud", date=debug, time=debug, trace=FALSE)
 
-  while (running) {
+  # define iteration var. this is a vector of varnames that should be imputed
+  # if 'doublecheck' argument is FALSE, everytime a variable stops improving,
+  # remove it from ITERATIONVARS. When you get to postimputation, reset the
+  # ITERATIONVARS.
+  ITERATIONVARS <- vars2impute
 
+  while (running) {
     # update the loop
     k <- k + 1L
 
@@ -67,15 +71,19 @@ iteration_loop <- function(MIit, dataNA, data, boot, metrics, tolerance, doublec
     #>>if (debug) LASTDATA <<- dataLast
 
     # .........................................................
-    # IMPUTATION LOOP
+    # IMPUTATION & POSTIMPUTATION LOOP
     # .........................................................
+    if (runpostimpute) procedure <- "postimpute"
+    else procedure <- "impute"
     z <- 0
-    for (Y in vars2impute) {
+    for (Y in ITERATIONVARS) {
+
       z <- z + 1
-      it <- iterate(dataNA, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
-                    k, X, Y, z,
+      it <- iterate(procedure = procedure,
+                    dataNA, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
+                    m, k, X, Y, z,
                     # loop data
-                    vars2impute, vars2postimpute, storeVars2impute,
+                    ITERATIONVARS, vars2impute,
                     allPredictors, preimpute, impute, postimpute,
                     # settings
                     error_metric, FAMILY=FAMILY, cv, tuning_time,
@@ -89,7 +97,7 @@ iteration_loop <- function(MIit, dataNA, data, boot, metrics, tolerance, doublec
                     verbosity, error, cpu, max_ram, min_ram)
 
       X <- it$X
-      vars2impute <- it$vars2impute
+      ITERATIONVARS <- it$ITERATIONVARS
       metrics <- it$metrics
       data <- it$data
       hex <- it$hex
@@ -99,32 +107,33 @@ iteration_loop <- function(MIit, dataNA, data, boot, metrics, tolerance, doublec
     # .........................................................
     # POSTIMPUTATION LOOP
     # .........................................................
-    if (runpostimpute) {
-      z <- 0
-      for (Y in vars2postimpute) {
-        z <- z + 1
-        it <- iterate(dataNA, data, bdata, boot, hex, bhex=NULL, metrics, tolerance, doublecheck,
-                      k, X, Y, z,
-                      # loop data BUT ADD POSTIMPUTE TWICE??? fix it by seperating saving
-                      vars2postimpute, vars2postimpute, storeVars2impute,
-                      allPredictors, preimpute, impute, postimpute,
-                      # settings
-                      error_metric, FAMILY=FAMILY, cv, tuning_time,
-                      max_models, weights_column,
-                      keep_cross_validation_predictions,
-                      balance, seed, save, flush,
-                      verbose, debug, report, sleep,
-                      # saving settings
-                      dataLast, mem, orderedCols, ignore, maxiter,
-                      miniter, matching, ignore.rank,
-                      verbosity, error, cpu, max_ram, min_ram)
-
-        X <- it$X
-        vars2postimpute <- it$vars2impute
-        metrics <- it$metrics
-        hex <- it$hex
-      }
-    }
+    # if (runpostimpute) {
+    #   z <- 0
+    #   for (Y in vars2postimpute) {
+    #     z <- z + 1
+    #     it <- iterate(procedure = "postimpute",
+    #                   dataNA, data, bdata, boot, hex, bhex=NULL, metrics, tolerance, doublecheck,
+    #                   k, X, Y, z,
+    #                   # loop data BUT ADD POSTIMPUTE TWICE??? fix it by seperating saving
+    #                   ITERATIONVARS, vars2impute,
+    #                   allPredictors, preimpute, impute, postimpute,
+    #                   # settings
+    #                   error_metric, FAMILY=FAMILY, cv, tuning_time,
+    #                   max_models, weights_column,
+    #                   keep_cross_validation_predictions,
+    #                   balance, seed, save, flush,
+    #                   verbose, debug, report, sleep,
+    #                   # saving settings
+    #                   dataLast, mem, orderedCols, ignore, maxiter,
+    #                   miniter, matching, ignore.rank,
+    #                   verbosity, error, cpu, max_ram, min_ram)
+    #
+    #     X <- it$X
+    #     vars2postimpute <- it$vars2impute
+    #     metrics <- it$metrics
+    #     hex <- it$hex
+    #   }
+    # }
 
     # CHECK CRITERIA FOR RUNNING THE NEXT ITERATION
     # --------------------------------------------------------------
@@ -133,7 +142,8 @@ iteration_loop <- function(MIit, dataNA, data, boot, metrics, tolerance, doublec
                            metrics, k, vars2impute,
                            error_metric,
                            tolerance,
-                           postimpute, runpostimpute,
+                           postimpute,
+                           runpostimpute,
                            md.log = report)
     if (debug) {
       md.log(paste("running: ", SC$running), trace=FALSE)
@@ -144,13 +154,13 @@ iteration_loop <- function(MIit, dataNA, data, boot, metrics, tolerance, doublec
     running <- SC$running
     error <- SC$error
     runpostimpute <- SC$runpostimpute
-    vars2impute <- SC$vars2impute #only sets it to NULL
+    ITERATIONVARS <- SC$vars2impute #only sets it to NULL
   }
 
   # reset vars2impute because it was altered to exit the loops and
   # setup postimputation
   # --------------------------------------------------------------
-  vars2impute <- storeVars2impute
+  #vars2impute <- storeVars2impute
 
   # ............................................................
   # END OF THE ITERATIONS

@@ -181,9 +181,9 @@
 #'                  the value can be "warn" (default), "info", "debug", or NULL.
 #' @param shutdown logical. if TRUE, h2o server is closed after the imputation.
 #'                 the default is TRUE
-#' @param sleep integer. number of seconds to wait after each interaction with h2o
-#'              server. the default is 1 second. larger values might be needed
-#'              depending on your computation power or dataset size.
+# @param sleep integer. number of seconds to wait after each interaction with h2o
+#              server. the default is 1 second. larger values might be needed
+#              depending on your computation power or dataset size.
 #' @param save (NOT YET IMPLEMENTED FOR R). filename. if a filename is specified, an \code{mlim} object is
 #'             saved after the end of each variable imputation. this object not only
 #'             includes the imputed dataframe and estimated cross-validation error, but also
@@ -267,7 +267,6 @@ mlim <- function(data = NULL,
                  flush = FALSE,
                  init = TRUE,
                  shutdown = TRUE,
-                 sleep = .5,
 
                  # NOT YET IMPLEMENTED
                  save = NULL,
@@ -306,6 +305,7 @@ mlim <- function(data = NULL,
   verbose <- 0
   error_metric  <- "RMSE"
   ignore.rank <- FALSE #EXPERIMENTAL
+  sleep = .5
   set.seed(seed)
 
   alg <- algoSelector(algos)
@@ -477,7 +477,15 @@ mlim <- function(data = NULL,
   X <- VARS$X
 
   # if there is only one variable to impute, there is no need to iterate!
-  if (length(vars2impute) == 1) maxiter <- 1
+  if (length(vars2impute) < 1) stop("\nthere is nothing to impute!\n")
+  else if (length(vars2impute) == 1) {
+    maxiter <- 1
+    if (is.valid(postimpute)) {
+      impute <- c(impute, postimpute)
+      tuning_time <- tuning_time * 2
+      cat("only one variable to impute. the imputation and post imputation procedures will be combined and the 'tune_time' will be doubled accordingly...\n")
+    }
+  }
 
   Features <- checkNconvert(data, vars2impute, ignore,
                             ignore.rank=ignore.rank, report)
@@ -511,9 +519,9 @@ mlim <- function(data = NULL,
   }
 
   for (MIit in 1:m) {
-    dataLast <- iteration_loop(MIit, dataNA, data, boot=MIit>1, #bootstrap if MIit is mroe than 1
+    dataLast <- iteration_loop(MIit, dataNA, data, boot=m>1,
                                metrics, tolerance, doublecheck,
-                               k, X, Y, z,
+                               m, k, X, Y, z,
                                # loop data
                                vars2impute, vars2postimpute, storeVars2impute,
                                allPredictors, preimpute, impute, postimpute,

@@ -28,7 +28,6 @@ mlim(
   flush = FALSE,
   init = TRUE,
   shutdown = TRUE,
-  sleep = 0.5,
   save = NULL,
   load = NULL,
   force.load = TRUE,
@@ -163,10 +162,6 @@ to FALSE.}
 
 \item{shutdown}{logical. if TRUE, h2o server is closed after the imputation.
 the default is TRUE}
-
-\item{sleep}{integer. number of seconds to wait after each interaction with h2o
-server. the default is 1 second. larger values might be needed
-depending on your computation power or dataset size.}
 
 \item{save}{(NOT YET IMPLEMENTED FOR R). filename. if a filename is specified, an \code{mlim} object is
 saved after the end of each variable imputation. this object not only
