@@ -222,7 +222,7 @@ iterate <- function(procedure, dataNA, data, bdata, boot, hex, bhex=NULL, metric
 
       # IF ERROR DECREASED
       if (percentImprove < -tolerance) {
-        if (debug) print(paste(round(errImprovement,8), round(percentImprove,8), -tolerance))
+        if (debug) print(paste(round(percentImprove, 6), -tolerance))
         ## do not convert pred to a vector. let it be "H2OFrame"
         pred <- h2o::h2o.predict(fit@leader, newdata = hex[which(v.na), X])[,1]
         Sys.sleep(sleep)
