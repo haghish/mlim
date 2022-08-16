@@ -139,8 +139,8 @@
 #'                  if the \code{maxiter} is not yet reached. any improvement of imputation
 #'                  is desirable.  however, specifying values above 0 can reduce the number
 #'                  of required iterations at a marginal increase of imputation error.
-#'                  for larger datasets, value of "1e-3" is recommended. note that the
-#'                  best accuracy is reached when this value is equal to zero.
+#'                  for larger datasets, value of "1e-3" is recommended t reduce number
+#'                  of iterations. the default value is 1e-4.
 #' @param doublecheck logical. default is TRUE (which is conservative). if FALSE, if the estimated
 #'                    imputation error of a variable does not improve, the variable
 #'                    will be not reimputed in the following iterations. in general,
@@ -249,7 +249,7 @@ mlim <- function(data = NULL,
                  report = NULL,
 
                  # stopping criteria
-                 tolerance = 0, #1e-3
+                 tolerance = 1e-4, #1e-3
                  doublecheck = TRUE,
 
                  ## simplify the settings by taking these arguments out
