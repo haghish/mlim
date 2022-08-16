@@ -50,7 +50,9 @@ mlim.error <- function(imputed, incomplete, complete,
                        varwise = FALSE, transform = NULL,
                        ignore.rank=FALSE) {
 
-  rankerror <- NA
+  rankerror  <- NA
+  classerror <- NA
+  nrmse      <- NA
   err <- NULL
 
   if ("mlim" %in% class(imputed) | "data.frame" %in% class(imputed) ) {
