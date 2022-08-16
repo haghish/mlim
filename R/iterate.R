@@ -10,11 +10,11 @@
 #' @keywords Internal
 #' @noRd
 
-iterate <- function(dataNA, data, bdata, boot, hex, bhex=NULL, metrics, tolerance, doublecheck,
-                    k, X, Y, z,
+iterate <- function(procedure, dataNA, data, bdata, boot, hex, bhex=NULL, metrics, tolerance, doublecheck,
+                    m, k, X, Y, z,
 
                     # loop data
-                    vars2impute, vars2postimpute, storeVars2impute,
+                    ITERATIONVARS, vars2impute,
                     allPredictors, preimpute, impute, postimpute,
 
                     # settings
@@ -33,11 +33,14 @@ iterate <- function(dataNA, data, bdata, boot, hex, bhex=NULL, metrics, toleranc
 
   # for the first dataframe imputation
   if (is.null(bhex)) bhex <- hex
-  ZZ <- z
-  if (z >= length(vars2impute)) ZZ <- length(vars2impute) - 1
 
-  if (verbose==0) pb <- txtProgressBar(ZZ, length(vars2impute), style = 3)
-  if (debug) print(paste0(Y," (RAM = ", memuse::Sys.meminfo()$freeram,")"))
+  #ZZ <- z
+  #print(paste("z:",z, "ZZ", ZZ, "length",  length(vars2impute)))
+  #if (z >= length(vars2impute)) ZZ <- length(vars2impute) - 1
+
+
+  if (verbose==0) pb <- txtProgressBar(z, length(vars2impute), style = 3)
+  if (debug) cat(paste0(Y," (RAM = ", memuse::Sys.meminfo()$freeram,")\n"))
 
   if (!boot) {
     v.na <- dataNA[, Y]
@@ -78,6 +81,13 @@ iterate <- function(dataNA, data, bdata, boot, hex, bhex=NULL, metrics, toleranc
     #  sort_metric <- "AUTO"
     #}
 
+    # specify "imputation" or "postimputation" procedure
+    # ============================================================
+    usedalgorithms <- NULL
+    if (procedure == "impute") usedalgorithms <- impute
+    else usedalgorithms <- postimpute
+    if (debug) print(paste("usedalgorithms", usedalgorithms))
+
     # ------------------------------------------------------------
     # fine-tune a gaussian model
     # ============================================================
@@ -87,7 +97,7 @@ iterate <- function(dataNA, data, bdata, boot, hex, bhex=NULL, metrics, toleranc
                              training_frame = bhex[which(!y.na), ],
                              sort_metric = sort_metric,
                              project_name = "mlim",
-                             include_algos = impute,
+                             include_algos = usedalgorithms,
                              nfolds = cv,
                              exploitation_ratio = 0.1,
                              max_runtime_secs = tuning_time,
@@ -129,7 +139,7 @@ iterate <- function(dataNA, data, bdata, boot, hex, bhex=NULL, metrics, toleranc
                              training_frame = bhex[which(!y.na), ],
                              #validation_frame = bhex[vdFrame, ],
                              project_name = "mlim",
-                             include_algos = impute,
+                             include_algos = usedalgorithms,
                              nfolds = cv,
                              exploitation_ratio = 0.1,
                              max_runtime_secs = tuning_time,
@@ -179,6 +189,16 @@ iterate <- function(dataNA, data, bdata, boot, hex, bhex=NULL, metrics, toleranc
       if (debug) md.log("prediction was cleaned", trace=FALSE)
       Sys.sleep(sleep)
 
+      # also update the bootstraped data, otherwise, update the pointer
+      if (boot) {
+        pred <- h2o::h2o.predict(fit@leader, newdata = bhex[which(y.na), X])[,1]
+        bhex[which(y.na), Y] <- pred
+        Sys.sleep(sleep)
+      }
+      else {
+        bhex <- hex
+      }
+
       # update the metrics
       metrics <- rbind(metrics, iterationMetric)
     }
@@ -189,12 +209,12 @@ iterate <- function(dataNA, data, bdata, boot, hex, bhex=NULL, metrics, toleranc
       checkMetric <- round(checkMetric, digits = 5)
 
       # >>> this bit looks like I'm paranoid again... improvement needed
-      if (!is.null(errPrevious)) {
-        if (is.na(errPrevious)) {
-          errPrevious <- 1
-        }
-      }
-      else errPrevious <- 1
+      # if (!is.null(errPrevious)) {
+      #   if (is.na(errPrevious)) {
+      #     errPrevious <- 1
+      #   }
+      # }
+      # else errPrevious <- 1
       # <<<
 
       errImprovement <- checkMetric - errPrevious
@@ -202,7 +222,7 @@ iterate <- function(dataNA, data, bdata, boot, hex, bhex=NULL, metrics, toleranc
 
       # IF ERROR DECREASED
       if (percentImprove < -tolerance) {
-        if (debug) print(paste(errImprovement, percentImprove, -tolerance))
+        if (debug) print(paste(round(errImprovement,8), round(percentImprove,8), -tolerance))
         ## do not convert pred to a vector. let it be "H2OFrame"
         pred <- h2o::h2o.predict(fit@leader, newdata = hex[which(v.na), X])[,1]
         Sys.sleep(sleep)
@@ -211,12 +231,13 @@ iterate <- function(dataNA, data, bdata, boot, hex, bhex=NULL, metrics, toleranc
         Sys.sleep(sleep)
         if (debug) md.log("data was updated in h2o cloud", trace=FALSE)
 
-        # also update the bootstraped data
+        # also update the bootstraped data, otherwise update the pointer
         if (boot) {
           pred <- h2o::h2o.predict(fit@leader, newdata = bhex[which(y.na), X])[,1]
           bhex[which(y.na), Y] <- pred
           Sys.sleep(sleep)
         }
+        else bhex <- hex
 
         # RAM cleaning-ish, help needed
         h2o::h2o.rm(pred)
@@ -231,7 +252,7 @@ iterate <- function(dataNA, data, bdata, boot, hex, bhex=NULL, metrics, toleranc
         iterationMetric[, error_metric] <- NA
         metrics <- rbind(metrics, iterationMetric)
         if (!doublecheck) {
-          vars2impute <- setdiff(vars2impute, Y)
+          ITERATIONVARS <- setdiff(ITERATIONVARS, Y)
         }
       }
     }
@@ -276,10 +297,11 @@ iterate <- function(dataNA, data, bdata, boot, hex, bhex=NULL, metrics, toleranc
 
       # loop data
       # ---------
-      k = k, z=z, X=X, Y=Y, vars2impute=vars2impute, FAMILY=FAMILY,
+      m = m , k = k, z=z, X=X, Y=Y, vars2impute=vars2impute, FAMILY=FAMILY,
 
       # settings
       # --------
+      ITERATIONVARS=ITERATIONVARS,
       impute=impute,
       postimpute=postimpute,
       ignore=ignore,
@@ -353,5 +375,5 @@ iterate <- function(dataNA, data, bdata, boot, hex, bhex=NULL, metrics, toleranc
               hex = hex,
               bhex = bhex,
               metrics = metrics,
-              vars2impute=vars2impute))
+              ITERATIONVARS=ITERATIONVARS))
 }
