@@ -21,15 +21,16 @@ The figure below shows the normalized RMSE of the imputation of several algorith
 Installation
 ------------
 
-Latest stable version from CRAN:
-``` r
-install.packages("mlim")
-```
+`mlim` is under fast development. The package receive monthly updates on CRAN. Therefore, it is recommended that you install the GitHub version until version 0.1 is released. To install the latest development version from GitHub:
 
-Latest development version from GitHub (recommended) :
 ``` r
 library(devtools)
 install_github("haghish/mlim")
+```
+
+Or alternatively, install the latest stable version from CRAN:
+``` r
+install.packages("mlim")
 ```
 
 Supported algorithms
