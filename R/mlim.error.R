@@ -53,7 +53,7 @@ mlim.error <- function(imputed, incomplete, complete,
   rankerror  <- NA
   classerror <- NA
   nrmse      <- NA
-  err <- NULL
+  err        <- NULL
 
   if ("mlim" %in% class(imputed) | "data.frame" %in% class(imputed) ) {
     # make sure the complete dataset is complete!
@@ -127,34 +127,43 @@ mlim.error <- function(imputed, incomplete, complete,
     }
 
     if (varwise) {
-      vwa <- err[!is.na(err)]
+      vwa <- NULL
       if (length(nrmse) > 1) vwa <- c(vwa, nrmse)
-      else if (!is.na(nrmse)) vwa <- c(vwa, nrmse)
+      else if (is.valid(nrmse)) vwa <- c(vwa, nrmse)
       if (length(classerror) > 1) vwa <- c(vwa, classerror)
-      else if (!is.na(classerror)) vwa <- c(vwa, classerror)
+      else if (is.valid(classerror)) vwa <- c(vwa, classerror)
       if (length(rankerror) > 1) vwa <- c(vwa, rankerror)
-      else if (!is.na(rankerror)) vwa <- c(vwa, rankerror)
-      return(vwa)
+      else if (is.valid(rankerror)) vwa <- c(vwa, rankerror)
+      return(list(error = err[!is.na(err)],
+                  nrmse = nrmse,
+                  missclass = classerror,
+                  missrank = rankerror,
+                  all = vwa))
     }
     else return(err[!is.na(err)])
   }
 
   else if ("mlim.mi" %in% class(imputed) |
-           "list" %in% class(imputed) |
-           "mids" %in% class(imputed)) {
+           "list"    %in% class(imputed) |
+           "mids"    %in% class(imputed)) {
     mat <- NULL
     for (i in 1:length(imputed)) {
       tmp <- imputed[[i]]
       class(tmp) <- c("mlim", "data.frame")
       mat <- rbind(mat, mlim.error(tmp, incomplete, complete,
-                                   varwise = varwise, ignore.rank=ignore.rank))
+                                   varwise = varwise,
+                                   transform = transform,
+                                   ignore.rank=ignore.rank))
     }
     return(mat)
   }
   else stop("'imputed' must be of class 'data.frame', 'list', 'mlim', 'mlim.mi', or 'mids'")
 }
 
-#mlim.error(ELNET, irisNA, iris)
+# data(charity)
+# dfNA <-  mlim.na(charity, p = 0.1, stratify = TRUE, seed = 2022)
+# imp <- missRanger::missRanger(dfNA)
+# mlim.error(imp, dfNA, charity)
 #print((ELNETerror <- mlim.error(ELNET, dfNA, df)))
 
 # if we standardize numeric vars, RMSE and MAE can be more than 1
