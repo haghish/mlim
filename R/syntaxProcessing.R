@@ -23,8 +23,8 @@ syntaxProcessing <- function(data, preimpute, impute, ram,
   max_ram <- NULL
 
   stopifnot(
-    "'data' is not a data.frame" = is.data.frame(data),
-    "'data' has no observations" = dim(data) >= 1,
+    #"'data' is not a data.frame" = is.data.frame(data) | inherits(data, "mlim"),
+    #"'data' has no observations" = dim(data) >= 1, #not applicable to mlim object
     #"'formula' should be a formula!" = inherits(formula, "formula"),
     #length(formula <- as.character(formula)) == 3L,
     #"'max_models' must be a positive integer equal or more than 1" = max_models >= 1,

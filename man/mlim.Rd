@@ -8,58 +8,51 @@ mlim(
   data = NULL,
   m = 1,
   algos = c("RF", "ELNET", "GBM"),
-  preimputed.data = NULL,
   ignore = NULL,
   tuning_time = 180,
   max_models = NULL,
   maxiter = 10L,
-  miniter = 2L,
-  cv = 10L,
   matching = "AUTO",
   balance = NULL,
   weights_column = NULL,
   seed = NULL,
   verbosity = NULL,
   report = NULL,
-  tolerance = 0,
+  tolerance = 1e-04,
   doublecheck = TRUE,
   cpu = -1,
   ram = NULL,
   flush = FALSE,
-  init = TRUE,
-  shutdown = TRUE,
+  preimputed.data = NULL,
   save = NULL,
-  load = NULL,
-  force.load = TRUE,
-  ...
+  load = NULL
 )
 }
 \arguments{
-\item{data}{a \code{data.frame} or \code{matrix} with missing data to be
-imputed. if \code{load} is provided, this argument will be ignored.}
+\item{data}{a \code{data.frame} (strictly) with missing data to be
+imputed. if \code{'load'} argument is provided, this argument will be ignored.}
 
 \item{m}{integer, specifying number of multiple imputations. the default value is
 1, carrying out a single imputation.}
 
 \item{algos}{character vector, specifying algorithms to be used for missing data
-             imputation. the default is 'c("RF", "ELNET", "GBM")', which uses
+             imputation. supported algorithms are "RF", "ELNET", "GBM", "DL",
+             "XGB", and "Ensemble". if more than one algorithm is specified,
+             mlim changes behavior to save on runtime. for example,
+             the default is 'c("RF", "ELNET", "GBM")', which uses
              Random Forest for a fast initial imputation and then uses ELNET to
              improve the imputation and once ELNET stops improving, attempts using
-             "GBM", as long as the 'maxiter' argument is not reached. in other words,
+             "GBM", as long as the 'maxiter' argument is not reached or GBM stops
+             improving. in other words, by default,
              "mlim" carries out 3 rounds of imputation, which are 1) preimputation with "RF",
-             2) imputation with "ELNET", and 3) postimputation with "GBM". the reason for
-             this setup is that in general, "RF" is faster than a fine-tuned "ELNET" and
-             "ELNET" fine-tunes much faster than "GBM".
+             2) main imputation with "ELNET", and 3) postimputation with "GBM" or
+             other algorithms. the reason for
+             this setup is that in general, "ELNET" fine-tunes much faster than "GBM",
+             "XGB", and "DL".
 
-             in addition to these algorithms, \code{"DL"} (Deep Learning) and \code{"XGB"}
-             (Extreme Gradient Boosting, only available in Mac OS and Linux) are also
-             supported.  "GBM", "DL", "XGB", and "Ensemble" take the full given "tuning_time" (see below) to
-       tune the best model for imputing he given variable.}
-
-\item{preimputed.data}{data.frame. if you have used another software for missing
-data imputation, you can still optimize the imputation
-by handing the data.frame to this argument, which will
-bypass the "preimpute" procedure.}
+             Note that code{"XGB"} is only available in Mac OS and Linux. moreover,
+             "GBM", "DL", "XGB", and "Ensemble" take the full given "tuning_time" (see below) to
+             tune the best model for imputing he given variable.}
 
 \item{ignore}{character vector of column names or index of columns that should
 should be ignored in the process of imputation.}
@@ -83,12 +76,6 @@ the imputed values are expected to be}
 
 \item{maxiter}{integer. maximum number of iterations. the default value is \code{15},
 but it can be reduced to \code{3} (not recommended, see below).}
-
-\item{miniter}{integer. minimum number of iterations. the default value is
-2.}
-
-\item{cv}{logical. specify number of k-fold Cross-Validation (CV). values of
-10 or higher are recommended. default is 10.}
 
 \item{matching}{logical. if \code{TRUE}, imputed values are coerced to the
 closest value to the non-missing values of the variable.
@@ -114,7 +101,8 @@ becomes in the modeling process. the default is NULL.}
 \item{seed}{integer. specify the random generator seed}
 
 \item{verbosity}{character. controls how much information is printed to console.
-the value can be "warn" (default), "info", "debug", or NULL.}
+     the value can be "warn" (default), "info", "debug", or NULL.
+to FALSE.}
 
 \item{report}{filename. if a filename is specified (e.g. report = "mlim.md"), the \code{"md.log"} R
 package is used to generate a Markdown progress report for the
@@ -130,8 +118,8 @@ of a variable to qualify the imputation for another round of iteration,
 if the \code{maxiter} is not yet reached. any improvement of imputation
 is desirable.  however, specifying values above 0 can reduce the number
 of required iterations at a marginal increase of imputation error.
-for larger datasets, value of "1e-3" is recommended. note that the
-best accuracy is reached when this value is equal to zero.}
+for larger datasets, value of "1e-3" is recommended t reduce number
+of iterations. the default value is 1e-4.}
 
 \item{doublecheck}{logical. default is TRUE (which is conservative). if FALSE, if the estimated
 imputation error of a variable does not improve, the variable
@@ -156,12 +144,10 @@ for multicore processes. the more you give the more you get!}
 \item{flush}{logical (experimental). if TRUE, after each model, the server is
 cleaned to retrieve RAM. this feature is in testing mode.}
 
-\item{init}{logical. should h2o Java server be initiated? the default is TRUE.
-however, if the Java server is already running, set this argument
-to FALSE.}
-
-\item{shutdown}{logical. if TRUE, h2o server is closed after the imputation.
-the default is TRUE}
+\item{preimputed.data}{data.frame. if you have used another software for missing
+data imputation, you can still optimize the imputation
+by handing the data.frame to this argument, which will
+bypass the "preimpute" procedure.}
 
 \item{save}{(NOT YET IMPLEMENTED FOR R). filename. if a filename is specified, an \code{mlim} object is
 saved after the end of each variable imputation. this object not only
@@ -177,15 +163,6 @@ previously stopped. the "mlim" object saves the current state of
 the imputation and is particularly recommended for large datasets
 or when the user specifies a computationally extensive settings
 (e.g. specifying several algorithms, increasing tuning time, etc.).}
-
-\item{force.load}{(NOT YET IMPLEMENTED FOR R).logical (default is TRUE). if TRUE, when loading the mlim class
-object, its preserved settings are used for restoring and saving the
-following itterations. otherwise, if FALSE, the current arguments of
-mlim are used to overpower the settings of the mlim object. the settings
-include the full list of the mlim arguments.}
-
-\item{...}{Arguments passed to \code{h2o.automl()}.
-The following arguments are e.g. incompatible with \code{ranger}: \code{write.forest}, \code{probability}, \code{split.select.weights}, \code{dependent.variable.name}, and \code{classification}.}
 }
 \value{
 a \code{data.frame}, showing the
@@ -204,11 +181,26 @@ irisNA <- mlim.na(iris, p = 0.1, stratify = TRUE, seed = 2022)
 
 # run the default imputation (fastest imputation via 'mlim')
 MLIM <- mlim(irisNA)
+
+# or if you want to carry out multiple imputation with 5 datasets
+MLIM <- mlim(irisNA, m = 5)
+
+# you can check the accuracy of the imputation, if you have the original dataset
 mlim.error(MLIM, irisNA, iris)
 
 # run GBM model and allow 15 minutes of tuning for each variable
 MLIM <- mlim(irisNA, impute = "GBM", tuning_time=60*15)
 mlim.error(MLIM, irisNA, iris)
+
+# if you have a larger data, there is a few things you can set to make the
+# algorithm faster, yet, having only a marginal accuracy reduction as a trade-off
+MLIM <- mlim(irisNA, tolerance = 1e-3, doublecheck = FALSE)
+
+# if you still want faster imputation, try reducing he tuning time
+MLIM <- mlim(irisNA, tolerance = 1e-3, doublecheck = FALSE, tuning_time=60*3)
+
+# if you still want faster imputation, only specify 'ELNET' algorithm
+MLIM <- mlim(irisNA, algos = 'ELNET', tolerance = 1e-3, doublecheck = FALSE)
 }
 }
 \author{

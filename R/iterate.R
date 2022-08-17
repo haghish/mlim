@@ -5,13 +5,20 @@
 #'              a powerful algorithm - that requires a lot of time for fine-tuning -
 #'              is specified for the imputation. such algorithms are used last in the imputation
 #'              to save time.
+#' @importFrom utils setTxtProgressBar txtProgressBar capture.output packageVersion
+#' @importFrom h2o h2o.init as.h2o h2o.automl h2o.predict h2o.ls
+#'             h2o.removeAll h2o.rm h2o.shutdown
+#' @importFrom md.log md.log
+#' @importFrom memuse Sys.meminfo
+#' @importFrom stats var setNames na.omit
 #' @return list
 #' @author E. F. Haghish
 #' @keywords Internal
 #' @noRd
 
-iterate <- function(procedure, dataNA, data, bdata, boot, hex, bhex=NULL, metrics, tolerance, doublecheck,
-                    m, k, X, Y, z,
+iterate <- function(procedure,
+                    MI, dataNA, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
+                    m, k, X, Y, z, m.it,
 
                     # loop data
                     ITERATIONVARS, vars2impute,
@@ -20,7 +27,7 @@ iterate <- function(procedure, dataNA, data, bdata, boot, hex, bhex=NULL, metric
                     # settings
                     error_metric, FAMILY, cv, tuning_time,
                     max_models, weights_column,
-                    keep_cross_validation_predictions,
+                    keep_cv,
                     balance, seed, save, flush,
 
                     verbose, debug, report, sleep,
@@ -32,14 +39,13 @@ iterate <- function(procedure, dataNA, data, bdata, boot, hex, bhex=NULL, metric
                     ) {
 
   # for the first dataframe imputation
-  if (is.null(bhex)) bhex <- hex
+  #if (is.null(bhex)) bhex <- hex
 
   #ZZ <- z
-  #print(paste("z:",z, "ZZ", ZZ, "length",  length(vars2impute)))
+  #print(paste("z:",z, "length:",  length(vars2impute)))
   #if (z >= length(vars2impute)) ZZ <- length(vars2impute) - 1
 
-
-  if (verbose==0) pb <- txtProgressBar(z, length(vars2impute), style = 3)
+  if (verbose==0) pb <- txtProgressBar(z-1, length(vars2impute), style = 3)
   if (debug) cat(paste0(Y," (RAM = ", memuse::Sys.meminfo()$freeram,")\n"))
 
   if (!boot) {
@@ -86,8 +92,20 @@ iterate <- function(procedure, dataNA, data, bdata, boot, hex, bhex=NULL, metric
     usedalgorithms <- NULL
     if (procedure == "impute") usedalgorithms <- impute
     else usedalgorithms <- postimpute
-    if (debug) print(paste("usedalgorithms", usedalgorithms))
-
+    # if (debug) print(paste("usedalgorithms", usedalgorithms))
+    # cat("X:", X, "\n")
+    # cat("Y:", Y, "\n")
+    # cat("sort_metric:", sort_metric, "\n")
+    # cat("usedalgorithms:", usedalgorithms, "\n")
+    # cat("cv:", cv, "\n")
+    # cat("tuning_time:", tuning_time, "\n")
+    # cat("max_models:", max_models, "\n")
+    # cat("weights_column:", weights_column, "\n")
+    # cat("keep_cv:", keep_cv, "\n")
+    # cat("seed:", seed, "\n")
+    # print(which(!y.na))
+    # print(dim(as.data.frame(bhex)))
+    # print(dim(bhex[which(!y.na), ]))
     # ------------------------------------------------------------
     # fine-tune a gaussian model
     # ============================================================
@@ -103,12 +121,11 @@ iterate <- function(procedure, dataNA, data, bdata, boot, hex, bhex=NULL, metric
                              max_runtime_secs = tuning_time,
                              max_models = max_models,
                              weights_column = weights_column[which(!y.na)],
-                             keep_cross_validation_predictions =
-                               keep_cross_validation_predictions,
+                             keep_cross_validation_predictions = keep_cv,
                              seed = seed
-                             #stopping_metric = stopping_metric,
-                             #stopping_rounds = stopping_rounds
-                             #stopping_tolerance=stopping_tolerance
+                             # #stopping_metric = stopping_metric,
+                             # #stopping_rounds = stopping_rounds
+                             # #stopping_tolerance=stopping_tolerance
       )
     }
 
@@ -146,7 +163,7 @@ iterate <- function(procedure, dataNA, data, bdata, boot, hex, bhex=NULL, metric
                              max_models = max_models,
                              weights_column = weights_column[which(!y.na)],
                              keep_cross_validation_predictions =
-                               keep_cross_validation_predictions,
+                               keep_cv,
                              seed = seed
                              #stopping_metric = stopping_metric,
                              #stopping_rounds = stopping_rounds
@@ -288,23 +305,28 @@ iterate <- function(procedure, dataNA, data, bdata, boot, hex, bhex=NULL, metric
     savestate <- list(
 
       # Data
-      # ====
+      # ----------------------------------
+      MI = MI,
+      dataNA = dataNA,
       data=as.data.frame(hex),
+      bdata=as.data.frame(bhex),
       dataLast=dataLast,
       metrics = metrics,
       mem=mem,
       orderedCols=orderedCols,
 
-      # loop data
-      # ---------
-      m = m , k = k, z=z, X=X, Y=Y, vars2impute=vars2impute, FAMILY=FAMILY,
+      # Loop data
+      # ----------------------------------
+      m = m , k = k, z=z, X=X, Y=Y, m.it = m.it,
+      vars2impute=vars2impute, FAMILY=FAMILY,
 
       # settings
-      # --------
+      # ----------------------------------
       ITERATIONVARS=ITERATIONVARS,
       impute=impute,
       postimpute=postimpute,
       ignore=ignore,
+      balance = balance,
       save = save,
       maxiter = maxiter,
       miniter = miniter,
@@ -329,6 +351,7 @@ iterate <- function(procedure, dataNA, data, bdata, boot, hex, bhex=NULL, metric
       cpu = cpu,
       max_ram=max_ram,
       min_ram = min_ram,
+      keep_cv = keep_cv,
 
       # save the package version used for the imputation
       pkg=packageVersion("mlim")
@@ -353,7 +376,8 @@ iterate <- function(procedure, dataNA, data, bdata, boot, hex, bhex=NULL, metric
   # considered a bad practice and should be improved in future releases
   # ------------------------------------------------------------
   if (flush) {
-    currentData <- as.data.frame(hex)
+    HEX <- as.data.frame(hex)
+    BHEX<- as.data.frame(bhex)
     h2o::h2o.removeAll(timeout_secs = 30)
     Sys.sleep(sleep)
     gc()
@@ -362,7 +386,8 @@ iterate <- function(procedure, dataNA, data, bdata, boot, hex, bhex=NULL, metric
     #h2o:::.h2o.garbageCollect()
     #h2o:::.h2o.garbageCollect()
     Sys.sleep(sleep)
-    hex <- h2o::as.h2o(currentData) #ID: data_
+    hex <- h2o::as.h2o(HEX) #ID: data_
+    bhex<- h2o::as.h2o(BHEX) #ID: data_
     Sys.sleep(sleep)
     hexID <- h2o::h2o.getId(hex)
     if (debug) md.log("flushed", trace=FALSE)

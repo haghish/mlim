@@ -1,11 +1,17 @@
 #' @title iteration_loop
 #' @description runs imputation iteration loop to fully impute a dataframe
+#' @importFrom utils setTxtProgressBar txtProgressBar capture.output packageVersion
+#' @importFrom h2o h2o.init as.h2o h2o.automl h2o.predict h2o.ls
+#'             h2o.removeAll h2o.rm h2o.shutdown
+#' @importFrom md.log md.log
+#' @importFrom memuse Sys.meminfo
+#' @importFrom stats var setNames na.omit
 #' @return list
 #' @author E. F. Haghish
 #' @keywords Internal
 #' @noRd
-iteration_loop <- function(MIit, dataNA, data, boot, metrics, tolerance, doublecheck,
-                    m, k, X, Y, z,
+iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, doublecheck,
+                    m, k, X, Y, z, m.it,
 
                     # loop data
                     vars2impute, vars2postimpute, storeVars2impute,
@@ -14,7 +20,7 @@ iteration_loop <- function(MIit, dataNA, data, boot, metrics, tolerance, doublec
                     # settings
                     error_metric, FAMILY, cv, tuning_time,
                     max_models, weights_column,
-                    keep_cross_validation_predictions,
+                    keep_cv,
                     balance, seed, save, flush,
                     verbose, debug, report, sleep,
 
@@ -34,7 +40,7 @@ iteration_loop <- function(MIit, dataNA, data, boot, metrics, tolerance, doublec
   }
   else {
     rownames(data) <- 1:nrow(data) #remember the rows that are missing
-    bdata <- data[sample.int(nrow(data), nrow(data), replace=TRUE), ]
+    if (is.null(bdata)) bdata <- data[sample.int(nrow(data), nrow(data), replace=TRUE), ]
     hex <- h2o::as.h2o(data)
     bhex<- h2o::as.h2o(bdata)
   }
@@ -54,11 +60,9 @@ iteration_loop <- function(MIit, dataNA, data, boot, metrics, tolerance, doublec
   ITERATIONVARS <- vars2impute
 
   while (running) {
-    # update the loop
-    k <- k + 1L
 
     # always print the iteration
-    cat("\ndata ", MIit, ", iteration ", k, ":\n", sep = "") #":\t"
+    cat(paste0("\ndata ", m.it, ", iteration ", k, " (RAM = ", memuse::Sys.meminfo()$freeram,")", ":\n"), sep = "") #":\t"
     md.log(paste("Iteration", k), section="section")
 
     if (debug) md.log("store last data", trace=FALSE)
@@ -67,28 +71,23 @@ iteration_loop <- function(MIit, dataNA, data, boot, metrics, tolerance, doublec
     attr(dataLast, "metrics") <- metrics
     attr(dataLast, "rmse") <- error
 
-
-    #>>if (debug) LASTDATA <<- dataLast
-
     # .........................................................
     # IMPUTATION & POSTIMPUTATION LOOP
     # .........................................................
     if (runpostimpute) procedure <- "postimpute"
     else procedure <- "impute"
-    z <- 0
-    for (Y in ITERATIONVARS) {
 
-      z <- z + 1
+    for (Y in ITERATIONVARS[z:length(ITERATIONVARS)]) {
       it <- iterate(procedure = procedure,
-                    dataNA, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
-                    m, k, X, Y, z,
+                    MI, dataNA, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
+                    m, k, X, Y, z=which(ITERATIONVARS == Y), m.it,
                     # loop data
                     ITERATIONVARS, vars2impute,
                     allPredictors, preimpute, impute, postimpute,
                     # settings
                     error_metric, FAMILY=FAMILY, cv, tuning_time,
                     max_models, weights_column,
-                    keep_cross_validation_predictions,
+                    keep_cv,
                     balance, seed, save, flush,
                     verbose, debug, report, sleep,
                     # saving settings
@@ -103,37 +102,6 @@ iteration_loop <- function(MIit, dataNA, data, boot, metrics, tolerance, doublec
       hex <- it$hex
       bhex <- it$bhex
     }
-
-    # .........................................................
-    # POSTIMPUTATION LOOP
-    # .........................................................
-    # if (runpostimpute) {
-    #   z <- 0
-    #   for (Y in vars2postimpute) {
-    #     z <- z + 1
-    #     it <- iterate(procedure = "postimpute",
-    #                   dataNA, data, bdata, boot, hex, bhex=NULL, metrics, tolerance, doublecheck,
-    #                   k, X, Y, z,
-    #                   # loop data BUT ADD POSTIMPUTE TWICE??? fix it by seperating saving
-    #                   ITERATIONVARS, vars2impute,
-    #                   allPredictors, preimpute, impute, postimpute,
-    #                   # settings
-    #                   error_metric, FAMILY=FAMILY, cv, tuning_time,
-    #                   max_models, weights_column,
-    #                   keep_cross_validation_predictions,
-    #                   balance, seed, save, flush,
-    #                   verbose, debug, report, sleep,
-    #                   # saving settings
-    #                   dataLast, mem, orderedCols, ignore, maxiter,
-    #                   miniter, matching, ignore.rank,
-    #                   verbosity, error, cpu, max_ram, min_ram)
-    #
-    #     X <- it$X
-    #     vars2postimpute <- it$vars2impute
-    #     metrics <- it$metrics
-    #     hex <- it$hex
-    #   }
-    # }
 
     # CHECK CRITERIA FOR RUNNING THE NEXT ITERATION
     # --------------------------------------------------------------
@@ -155,12 +123,16 @@ iteration_loop <- function(MIit, dataNA, data, boot, metrics, tolerance, doublec
     error <- SC$error
     runpostimpute <- SC$runpostimpute
     ITERATIONVARS <- SC$vars2impute #only sets it to NULL
-  }
 
-  # reset vars2impute because it was altered to exit the loops and
-  # setup postimputation
-  # --------------------------------------------------------------
-  #vars2impute <- storeVars2impute
+    # indication of postimpute
+    if (length(ITERATIONVARS) == 0) {
+      ITERATIONVARS <- vars2impute
+      procedure <- "postimpute"
+    }
+
+    # update the loop
+    k <- k + 1L
+  }
 
   # ............................................................
   # END OF THE ITERATIONS
