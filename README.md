@@ -146,7 +146,5 @@ print(missRanger <- mlim.error(rngr, irisNA, iris))
 ```
 <img src="https://github.com/haghish/mlim/blob/main/web/data_iris_50.png" width="600" height="400">
 
-But that is not all! `mlim` also outperforms other R packages for imputing categorical and ordinal variables. Here is an example from the `trait` dataset, which is included in the package. 
 
-<img src="https://github.com/haghish/mlim/blob/main/web/trait_categorical.png" width="600" height="400">
 
