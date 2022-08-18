@@ -338,8 +338,8 @@ mlim <- function(data = NULL,
   # LOAD SETTINGS FROM mlim class object
   # ============================================================
   # ============================================================
-  # ??? add arguments in syntaxProcessing to make sure load is well-prepared
   if (!is.null(load)) {
+    if (inherits(load, "character")) load <- readRDS(load)
     if (!inherits(load, "mlim")) stop("loaded object must be of class 'mlim'")
 
     # Data
