@@ -17,6 +17,20 @@ In reccent years, there have been several attempts for using machine learning fo
 
 <!-- The figure below shows the normalized RMSE of the imputation of several algorithms, including `MICE`, `missForest`, `missRanger`, and `mlim`. Here, two of `mlim`'s algorithms, Elastic Net (ELNET) and Gradient Boosting Machine (GBM) are used for the imputation and the result are compared with Random Forest imputations as well as Multiple Imputation with Chained Equations (MICE), which uses Predictive Mean Matching (PMM). This imputation was carried out on __iris__ dataset in R, by adding 10% artifitial missing data and comparing the imputed values with the original. -->
 
+**`mlim`** outperforms other R packages for all variable types, continuous, binary (factor), multinomial (factor), and ordinal (ordered factor). The reason for this improved performance is that **`mlim`**:
+
+- Automatically fine-tunes the parameters of the Machile Learning models
+- Delivers a very high prediction accuracy
+- Does not make any assumption about the destribution of the data 
+- Takes the interactions between the variables into account 
+- Can to some extend take the hierarchical structure of the data into account 
+  + Imputes missing data in nested observations with higher accuracy compared to the HLM imputation methods
+- Does not force a particular linear model 
+- Uses a blend of different machine learning models 
+
+
+Below are some comparisons between different R packages for carrying out multiple imputations (bars with error) and single imputation. 
+
 <img src="man/figures/charity.png" width="600" height="400">
 
 
