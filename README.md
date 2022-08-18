@@ -41,8 +41,9 @@ Supported algorithms
 - `ELNET` (Elastic Net) 
 - `RF`    (Random Forest and Extremely Randomized Trees) 
 - `GBM` (Gradient Boosting Machine) 
-- `XGB` (Extreme Gradient Boosting) 
-- `Ensemble` (Stacked Ensemble) 
+- `XGB` (Extreme Gradient Boosting, available in Mac OS and Linux) 
+- `DL` (Deep Learning, _THIS FEATURE IS EXPERIMENTAL_) 
+- `Ensemble` (Stacked Ensemble, _THIS FEATURE IS EXPERIMENTAL_) 
 
 > `ELNET` is the default imputation algorithm. Among all of the above, ELNET is the easist and fastest to fine-tune, 
 because it has fewer parameters. By default, `mlim` uses a secondary algorithm for improving the imputation results (TO BE CONTINUED...)
