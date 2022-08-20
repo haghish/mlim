@@ -147,7 +147,7 @@ print(RFerror <- mlim.error(RF$ximp, irisNA, iris))
 rngr <- missRanger(irisNA, num.trees=100, seed = 2022)
 print(missRanger <- mlim.error(rngr, irisNA, iris))
 ```
-<img src="https://github.com/haghish/mlim/blob/main/web/data_iris_50.png" width="600" height="400">
+
 
 
 
