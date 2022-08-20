@@ -34,7 +34,7 @@ In reccent years, there have been several attempts for using machine learning fo
 
 Below are some comparisons between different R packages for carrying out multiple imputations (bars with error) and single imputation. 
 
-<img src="man/figures/charity.png" width="600" height="400">
+<img src="man/figures/charity.png" width="450" height="300"> <img src="man/figures/iris_continuous_p15.png" width="450" height="300">
 
 
 Installation
