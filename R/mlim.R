@@ -265,7 +265,7 @@ mlim <- function(data = NULL,
                  report = NULL,
 
                  # stopping criteria
-                 tolerance = 1e-4, #1e-3
+                 tolerance = 1e-3,
                  doublecheck = TRUE,
 
                  ## simplify the settings by taking these arguments out
@@ -471,6 +471,7 @@ mlim <- function(data = NULL,
     vars2postimpute <- VARS$vars2impute
     storeVars2impute <- vars2impute
     X <- VARS$X
+    bdata <- NULL
 
     # if there is only one variable to impute, there is no need to iterate!
     if (length(vars2impute) < 1) stop("\nthere is nothing to impute!\n")
