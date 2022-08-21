@@ -6,7 +6,7 @@
 #' @author E. F. Haghish
 #' @keywords Internal
 #' @noRd
-missclass <- function(imputed, incomplete, complete){
+missclass <- function(imputed, incomplete, complete, rename = TRUE){
   classerror <- NULL
   mis <- as.data.frame(is.na(incomplete))
   index <- which(colSums(mis) > 0)
@@ -15,6 +15,6 @@ missclass <- function(imputed, incomplete, complete){
     NAs <- sum(is.na(incomplete[, i]))
     classerror <- c(classerror, (missclass / NAs))
   }
-  names(classerror) <- colnames(incomplete)[index]
+  if (rename) names(classerror) <- colnames(incomplete)[index]
   return(classerror)
 }
