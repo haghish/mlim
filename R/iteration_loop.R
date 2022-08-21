@@ -21,7 +21,7 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
                     error_metric, FAMILY, cv, tuning_time,
                     max_models, weights_column,
                     keep_cv,
-                    balance, seed, save, flush,
+                    autobalance, balance, seed, save, flush,
                     verbose, debug, report, sleep,
 
                     # saving settings
@@ -100,7 +100,7 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
                     error_metric, FAMILY=FAMILY, cv, tuning_time,
                     max_models, weights_column,
                     keep_cv,
-                    balance, seed, save, flush,
+                    autobalance, balance, seed, save, flush,
                     verbose, debug, report, sleep,
                     # saving settings
                     dataLast, mem, orderedCols, ignore, maxiter,

@@ -88,6 +88,16 @@
 #'                   more time in the process of individualized fine-tuning.
 #'                   as a result, the better tuned the model, the more accurate
 #'                   the imputed values are expected to be
+#' @param autobalance logical. if TRUE, binary and multinomial factor variables
+#'                    will be balanced before the imputation to increase the
+#'                    Mean Per Class Error (MPCE) in the process of optimization.
+#'                    if FALSE, MMPCE will be sacrificed for overall accuracy, which
+#'                    is not recommended. in fact, higher overall accuracy does
+#'                    not mean a better imputation as long as minority classes
+#'                    are neglected, which increases the bias in favor of the
+#'                    majority class. if you do not wish to autobalance all the
+#'                    factor variables, you can manually specify the variables
+#'                    that should be balanced using the 'balance' argument (see below)
 #' @param balance character vector, specifying variable names that should be
 #'                balanced before imputation. balancing the prevalence might
 #'                decrease the overall accuracy of the imputation, because it
@@ -255,8 +265,9 @@ mlim <- function(data = NULL,
                  #validation = 0,
 
                  matching = "AUTO",    #EXPERIMENTAL
+                 autobalance = TRUE,
                  balance = NULL,       #EXPERIMENTAL
-                 #ignore.rank = FALSE, #EXPERIMENTAL
+                 #ignore.rank = FALSE, #to ignore it, they should make it unordered!
                  weights_column = NULL,
 
                  # report and reproducibility
@@ -369,6 +380,7 @@ mlim <- function(data = NULL,
     ITERATIONVARS  <- load$ITERATIONVARS
     impute         <- load$impute
     postimpute     <- load$postimpute
+    autobalance    <- load$autobalance
     balance        <- load$balance
     ignore         <- load$ignore
     save           <- load$save
@@ -484,6 +496,22 @@ mlim <- function(data = NULL,
       }
     }
 
+    # .........................................................
+    # check the variables for compatibility
+    # .........................................................
+    # if preimputed data is provided, take it into consideration!
+    if (!is.null(preimputed.data)) {
+
+      # if a multiple imputation object is given, take the first dataset
+      # ??? in the future, consider that each of the given datasets can
+      # be fed independently as a separate "m". for now, this is NOT AN
+      # announced feature and thus, just take the first dataset as preimputation
+      if (inherits(preimputed.data, "mlim.mi")) preimputed.data <- preimputed.data[[1]]
+      data <- preimputed.data
+
+      # reset the relevant predictors
+      X <- allPredictors
+    }
     Features <- checkNconvert(data, vars2impute, ignore,
                               ignore.rank=ignore.rank, report)
 
@@ -503,7 +531,6 @@ mlim <- function(data = NULL,
       # reset the relevant predictors
       X <- allPredictors
     }
-    else if (!is.null(preimputed.data)) data <- preimputed.data
   }
 
   # ............................................................
@@ -530,7 +557,7 @@ mlim <- function(data = NULL,
                                error_metric, FAMILY=FAMILY, cv, tuning_time,
                                max_models, weights_column,
                                keep_cv,
-                               balance, seed, save, flush,
+                               autobalance, balance, seed, save, flush,
                                verbose, debug, report, sleep,
                                # saving settings
                                mem, orderedCols, ignore, maxiter,

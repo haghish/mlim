@@ -28,7 +28,7 @@ iterate <- function(procedure,
                     error_metric, FAMILY, cv, tuning_time,
                     max_models, weights_column,
                     keep_cv,
-                    balance, seed, save, flush,
+                    autobalance, balance, seed, save, flush,
 
                     verbose, debug, report, sleep,
 
@@ -136,17 +136,17 @@ iterate <- function(procedure,
 
       # check balance argument (default is FALSE)
       balance_classes <- FALSE
-      sort_metric <- "RMSE" #this is the default metric, not mean_per_class
+      #sort_metric <- "mean_per_class_error" #"RMSE" #this is the default metric, not mean_per_class
 
-      if (Y %in% balance) {
+      if (Y %in% balance | autobalance) {
         balance_classes <- TRUE
       }
 
       if (FAMILY[z] == 'binomial' & !balance_classes) {
-        sort_metric <- "AUC"
+        #sort_metric <- "AUC"
       }
       if (FAMILY[z] == 'binomial' & balance_classes) {
-        sort_metric <- "AUCPR"
+        #sort_metric <- "AUCPR"
       }
 
       #???
@@ -169,8 +169,7 @@ iterate <- function(procedure,
                              max_runtime_secs = tuning_time,
                              max_models = max_models,
                              weights_column = weights_column[which(!y.na)],
-                             keep_cross_validation_predictions =
-                               keep_cv,
+                             keep_cross_validation_predictions = keep_cv,
                              seed = seed
                              #stopping_metric = stopping_metric,
                              #stopping_rounds = stopping_rounds
@@ -333,6 +332,7 @@ iterate <- function(procedure,
       impute=impute,
       postimpute=postimpute,
       ignore=ignore,
+      autobalance = autobalance,
       balance = balance,
       save = save,
       maxiter = maxiter,
