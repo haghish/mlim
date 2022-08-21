@@ -17,7 +17,8 @@ init <- function(nthreads, min_mem_size, max_mem_size, ignore_config = TRUE,
                               name = "mlim_connection",
                               min_mem_size = min_mem_size,
                               max_mem_size = max_mem_size,
-                              ignore_config = ignore_config)
+                              ignore_config = ignore_config,
+                              insecure = TRUE)
 
   #if (!is.null(md.log)) {
   #  if (!is.null(connection)) {
