@@ -18,7 +18,7 @@ mlim(
   seed = NULL,
   verbosity = NULL,
   report = NULL,
-  tolerance = 1e-04,
+  tolerance = 0.001,
   doublecheck = TRUE,
   cpu = -1,
   ram = NULL,
