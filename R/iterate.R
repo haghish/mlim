@@ -136,9 +136,16 @@ iterate <- function(procedure,
 
       # check balance argument (default is FALSE)
       balance_classes <- FALSE
-      sort_metric <- "AUC"
+      sort_metric <- "RMSE" #this is the default metric, not mean_per_class
+
       if (Y %in% balance) {
         balance_classes <- TRUE
+      }
+
+      if (FAMILY[z] == 'binomial' & !balance_classes) {
+        sort_metric <- "AUC"
+      }
+      if (FAMILY[z] == 'binomial' & balance_classes) {
         sort_metric <- "AUCPR"
       }
 
