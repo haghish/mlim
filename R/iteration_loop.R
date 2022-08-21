@@ -40,7 +40,19 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
   }
   else {
     rownames(data) <- 1:nrow(data) #remember the rows that are missing
-    if (is.null(bdata)) bdata <- data[sample.int(nrow(data), nrow(data), replace=TRUE), ]
+    if (is.null(bdata)) {
+      sampling_index <- sample.int(nrow(data), nrow(data), replace=TRUE)
+
+      # drop the duplicates because they screw up the k-fold cross-validation.
+      # multiple identical observations might go to train and test datasets.
+
+      #??? you might still consider that in the bootstrap one row was selected multiple
+      #times by adding weight_column. discuss that with the team later, if it makes
+      #any sense to do that. adding weight is analogous to including multiple
+      #rows, with the difference that it will not screw up the cross-validation...
+      sampling_index <- sampling_index[!duplicated(sampling_index)]
+      bdata <- data[sampling_index, ]
+    }
     hex <- h2o::as.h2o(data)
     bhex<- h2o::as.h2o(bdata)
   }
