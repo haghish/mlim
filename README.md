@@ -34,7 +34,9 @@ In reccent years, there have been several attempts for using machine learning fo
 
 Below are some comparisons between different R packages for carrying out multiple imputations (bars with error) and single imputation. 
 
-<img src="man/figures/charity.png" width="200" height="150"><img src="man/figures/iris_continuous_p15.png" width="200" height="150"><img src="man/figures/iris_mpce_p15.png" width="200" height="150">
+<img src="man/figures/charity.png" width="200" height="150"><img src="man/figures/iris_continuous_p15.png" width="200" height="150"><img src="man/figures/iris_mpce_p15.png" width="200" height="150"><img src="man/figures/bfi_binary_p15.png" width="200" height="150"><img src="man/figures/bfi_missrank_p15.png" width="200" height="150">
+
+
 
 
 Installation
