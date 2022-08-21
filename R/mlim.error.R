@@ -6,11 +6,25 @@
 #' @param imputed the imputed dataframe
 #' @param incomplete the dataframe with missing values
 #' @param complete the original dataframe with no missing values
+#' @param transform character. it can be either "standardize", which standardizes the
+#'                numeric variables before evaluating the imputation error, or
+#'                "normalize", which change the scale of continuous variables to
+#'                range from 0 to 1. the default is NULL.
 #' @param varwise logical, default is FALSE. if TRUE, in addition to
 #'                mean accuracy for each variable type, the algorithm's
 #'                performance for each variable (column) of the datast is
 #'                also returned. if TRUE, instead of a numeric vector, a
 #'                list is retuned.
+#' @param ignore.missclass logical. the default is TRUE. if FALSE, the overall
+#'                missclassification rate for imputed unordered factors will be
+#'                returned. in general, missclassification is not recommended,
+#'                particularly for multinomial factors because it is not robust
+#'                to imbalanced data. in other words, an imputation might show
+#'                a very high accuracy, because it is biased towards the majority
+#'                class, ignoring the minority levels. to avoid this error,
+#'                Mean Per Class Error (MPCE) is returned, which is the average
+#'                missclassification of each class and thus, it is a fairer
+#'                criteria for evaluating multinomial classes.
 #' @param ignore.rank logical (default is FALSE, which is recommended). if TRUE,
 #'                the accuracy of imputation of ordered factors (ordinal variables)
 #'                will be evaluated based on 'missclassification rate' instead of
@@ -24,10 +38,7 @@
 #'                "5" as "4" is equally inaccurate as other algorithm that imputes level "5"
 #'                as "1". therefore, if you have ordinal variables in your dataset, make sure
 #'                you declare them as "ordered" factors to get the best imputation accuracy.
-#' @param transform character. it can be either "standardize", which standardizes the
-#'                numeric variables before evaluating the imputation error, or
-#'                "normalize", which change the scale of continuous variables to
-#'                range from 0 to 1. the default is NULL.
+
 #' @author E. F. Haghish
 #' @examples
 #'
@@ -46,14 +57,15 @@
 #' }
 #' @return numeric vector
 #' @export
-mlim.error <- function(imputed, incomplete, complete,
-                       varwise = FALSE, transform = NULL,
+mlim.error <- function(imputed, incomplete, complete, transform = NULL,
+                       varwise = FALSE, ignore.missclass = TRUE,
                        ignore.rank=FALSE) {
 
-  rankerror  <- NA
-  classerror <- NA
-  nrmse      <- NA
-  err        <- NULL
+  rankerror    <- NA
+  classerror   <- NA
+  meanclasserr <- NA
+  nrmse        <- NA
+  err          <- NULL
 
   if ("mlim" %in% class(imputed) | "data.frame" %in% class(imputed) ) {
     # make sure the complete dataset is complete!
@@ -74,12 +86,12 @@ mlim.error <- function(imputed, incomplete, complete,
     n <- nrow(imputed)
 
     if (!ignore.rank) {
-      err <- rep(NA, 3)
-      names(err) <- c('nrmse', 'missclass', 'missrank')
+      err <- rep(NA, 4)
+      names(err) <- c('nrmse', 'mpce', 'missclass', 'missrank')
     }
     else {
-      err <- rep(NA, 2)
-      names(err) <- c('nrmse', 'missclass')
+      err <- rep(NA, 3)
+      names(err) <- c('nrmse', 'mpce', 'missclass')
       if ("ordered" %in% types) types[which(types == "ordered")] <- "factor"
     }
 
@@ -116,13 +128,22 @@ mlim.error <- function(imputed, incomplete, complete,
         rankerror <- missrank(imputed[,ind, drop = FALSE],
                               incomplete[,ind, drop = FALSE],
                               complete[,ind, drop = FALSE])
-        if (!is.null(rankerror))  err[3] <- mean(rankerror, na.rm = TRUE)
+        if (!is.null(rankerror))  err[4] <- mean(rankerror, na.rm = TRUE)
       }
+
+      # ??? this does not mean that it is necessarily a factor variable. IMPROVE IT
       else {
-        classerror <- missclass(imputed[,ind, drop = FALSE],
-                                incomplete[,ind, drop = FALSE],
-                                complete[,ind, drop = FALSE])
-        if (!is.null(classerror)) err[2] <- mean(classerror, na.rm = TRUE)
+        meanclasserr <- mean_per_class_error(imputed[,ind, drop = FALSE],
+                                  incomplete[,ind, drop = FALSE],
+                                  complete[,ind, drop = FALSE])
+        if (!is.null(meanclasserr)) err[2] <- mean(meanclasserr, na.rm = TRUE)
+
+        if (!ignore.missclass) {
+          classerror <- missclass(imputed[,ind, drop = FALSE],
+                                  incomplete[,ind, drop = FALSE],
+                                  complete[,ind, drop = FALSE])
+          if (!is.null(classerror)) err[3] <- mean(classerror, na.rm = TRUE)
+        }
       }
     }
 
@@ -161,6 +182,8 @@ mlim.error <- function(imputed, incomplete, complete,
 }
 
 # data(charity)
+# charity$ta1 <- factor(charity$ta1, ordered = FALSE)
+# for (i in colnames(charity))
 # dfNA <-  mlim.na(charity, p = 0.1, stratify = TRUE, seed = 2022)
 # imp <- missRanger::missRanger(dfNA)
 # mlim.error(imp, dfNA, charity)
