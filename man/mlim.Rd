@@ -13,6 +13,7 @@ mlim(
   max_models = NULL,
   maxiter = 10L,
   matching = "AUTO",
+  autobalance = TRUE,
   balance = NULL,
   weights_column = NULL,
   seed = NULL,
@@ -81,6 +82,17 @@ but it can be reduced to \code{3} (not recommended, see below).}
 closest value to the non-missing values of the variable.
 if set to "AUTO", 'mlim' decides whether to match
 or not, based on the variable classes. the default is "AUTO".}
+
+\item{autobalance}{logical. if TRUE, binary and multinomial factor variables
+will be balanced before the imputation to increase the
+Mean Per Class Error (MPCE) in the process of optimization.
+if FALSE, MMPCE will be sacrificed for overall accuracy, which
+is not recommended. in fact, higher overall accuracy does
+not mean a better imputation as long as minority classes
+are neglected, which increases the bias in favor of the
+majority class. if you do not wish to autobalance all the
+factor variables, you can manually specify the variables
+that should be balanced using the 'balance' argument (see below)}
 
 \item{balance}{character vector, specifying variable names that should be
 balanced before imputation. balancing the prevalence might

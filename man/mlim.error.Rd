@@ -8,8 +8,9 @@ mlim.error(
   imputed,
   incomplete,
   complete,
-  varwise = FALSE,
   transform = NULL,
+  varwise = FALSE,
+  ignore.missclass = TRUE,
   ignore.rank = FALSE
 )
 }
@@ -20,16 +21,27 @@ mlim.error(
 
 \item{complete}{the original dataframe with no missing values}
 
+\item{transform}{character. it can be either "standardize", which standardizes the
+numeric variables before evaluating the imputation error, or
+"normalize", which change the scale of continuous variables to
+range from 0 to 1. the default is NULL.}
+
 \item{varwise}{logical, default is FALSE. if TRUE, in addition to
 mean accuracy for each variable type, the algorithm's
 performance for each variable (column) of the datast is
 also returned. if TRUE, instead of a numeric vector, a
 list is retuned.}
 
-\item{transform}{character. it can be either "standardize", which standardizes the
-numeric variables before evaluating the imputation error, or
-"normalize", which change the scale of continuous variables to
-range from 0 to 1. the default is NULL.}
+\item{ignore.missclass}{logical. the default is TRUE. if FALSE, the overall
+missclassification rate for imputed unordered factors will be
+returned. in general, missclassification is not recommended,
+particularly for multinomial factors because it is not robust
+to imbalanced data. in other words, an imputation might show
+a very high accuracy, because it is biased towards the majority
+class, ignoring the minority levels. to avoid this error,
+Mean Per Class Error (MPCE) is returned, which is the average
+missclassification of each class and thus, it is a fairer
+criteria for evaluating multinomial classes.}
 
 \item{ignore.rank}{logical (default is FALSE, which is recommended). if TRUE,
 the accuracy of imputation of ordered factors (ordinal variables)
