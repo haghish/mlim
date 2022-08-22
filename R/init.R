@@ -1,4 +1,3 @@
-
 #' @title extractMetrics
 #' @description extracts performance metrics from cross-validation
 #' @author E. F. Haghish
@@ -7,7 +6,7 @@
 #' @noRd
 
 init <- function(nthreads, min_mem_size, max_mem_size, ignore_config = TRUE,
-                 md.log) {
+                 report) {
 
 
   # Run H2O on the statistics server
@@ -20,7 +19,7 @@ init <- function(nthreads, min_mem_size, max_mem_size, ignore_config = TRUE,
                               ignore_config = ignore_config,
                               insecure = TRUE)
 
-  #if (!is.null(md.log)) {
+  #if (!is.null(report)) {
   #  if (!is.null(connection)) {
   #    if (attributes(connection)$ip == "localhost") {
   #      md.log("h2o.cluster was initialized", section="subsection")
