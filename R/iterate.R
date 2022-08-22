@@ -445,9 +445,9 @@ iterate <- function(procedure,
     Sys.sleep(sleep)
     gc()
     gc()
-    #h2o:::.h2o.garbageCollect()
-    #h2o:::.h2o.garbageCollect()
-    #h2o:::.h2o.garbageCollect()
+    h2o:::.h2o.garbageCollect()
+    h2o:::.h2o.garbageCollect()
+    h2o:::.h2o.garbageCollect()
     Sys.sleep(sleep)
     tryCatch(hex <- h2o::as.h2o(HEX) ,
              error = function(cond) {
