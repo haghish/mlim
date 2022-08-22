@@ -53,17 +53,18 @@
 #' @param m integer, specifying number of multiple imputations. the default value is
 #'          1, carrying out a single imputation.
 #' @param algos character vector, specifying algorithms to be used for missing data
-#'              imputation. supported algorithms are "RF", "ELNET", "GBM", "DL",
+#'              imputation. supported algorithms are "ELNET", "RF", "GBM", "DL",
 #'              "XGB", and "Ensemble". if more than one algorithm is specified,
 #'              mlim changes behavior to save on runtime. for example,
-#'              the default is 'c("RF", "ELNET", "GBM")', which uses
-#'              Random Forest for a fast initial imputation and then uses ELNET to
-#'              improve the imputation and once ELNET stops improving, attempts using
-#'              "GBM", as long as the 'maxiter' argument is not reached or GBM stops
-#'              improving. in other words, by default,
-#'              "mlim" carries out 3 rounds of imputation, which are 1) preimputation with "RF",
-#'              2) main imputation with "ELNET", and 3) postimputation with "GBM" or
-#'              other algorithms. the reason for
+#'              the default is "ELNET", which only uses Elastic Net for the imputation.
+#'              However, 'algos = c("ELNET", "GBM")' will not only use
+#'              ELNET for the initial imputation, but also, uses 'GBM'
+#'              as long as the 'maxiter' argument is not reached or GBM stops
+#'              improving. However, note that by specifying more than one algorithm,
+#'              "mlim" does not fine-tune them all together. Instead, it carries
+#'              out imputation with the first one and when the algorithm stops
+#'              improving, it follows with postimputation, (in this example "GBM")
+#'              to further optimize the imputations. the reason for having
 #'              this setup is that in general, "ELNET" fine-tunes much faster than "GBM",
 #'              "XGB", and "DL".
 #'
@@ -123,7 +124,8 @@
 # @param miniter integer. minimum number of iterations. the default value is
 #                2.
 #' @param flush logical (experimental). if TRUE, after each model, the server is
-#'              cleaned to retrieve RAM. this feature is in testing mode.
+#'              cleaned to retrieve RAM. this feature is in testing mode and is
+#'              currently set to TRUE.
 # @param cv logical. specify number of k-fold Cross-Validation (CV). values of
 #               10 or higher are recommended. default is 10.
 # @param error_metric character. specify the minimum improvement
@@ -253,7 +255,7 @@
 
 mlim <- function(data = NULL,
                  m = 1,
-                 algos = c("RF", "ELNET", "GBM"), #preimpute, impute, postimpute
+                 algos = c("ELNET", "RF"), #preimpute, impute, postimpute
                  ignore = NULL,
 
                  # computational resources
@@ -291,7 +293,7 @@ mlim <- function(data = NULL,
                  # setup the h2o cluster
                  cpu = -1,
                  ram = NULL,
-                 flush = FALSE,
+                 flush = TRUE,
                  #init = TRUE,
                  #shutdown = TRUE,
 
@@ -451,11 +453,11 @@ mlim <- function(data = NULL,
   if (init) {
     #sink(file = report, append = TRUE)
     #cat("\n") # for Markdown styling
-    capture.output(init(nthreads = cpu,
-                       min_mem_size = min_ram,
-                       max_mem_size = max_ram,
-                       ignore_config = TRUE,
-                       report),
+    capture.output(connection <- init(nthreads = cpu,
+                                      min_mem_size = min_ram,
+                                      max_mem_size = max_ram,
+                                      ignore_config = TRUE,
+                                      report),
                    file = report,
                    append = TRUE)
     #sink()
@@ -488,11 +490,8 @@ mlim <- function(data = NULL,
     # if there is only one variable to impute, there is no need to iterate!
     if (length(vars2impute) < 1) stop("\nthere is nothing to impute!\n")
     else if (length(vars2impute) == 1) {
-      maxiter <- 1
-      if (is.valid(postimpute)) {
-        impute <- c(impute, postimpute)
-        tuning_time <- tuning_time * 2
-        cat("only one variable to impute. the imputation and post imputation procedures will be combined and the 'tune_time' will be doubled accordingly...\n")
+      if (!is.valid(postimpute)) {
+        maxiter <- 1
       }
     }
 
@@ -512,6 +511,7 @@ mlim <- function(data = NULL,
       # reset the relevant predictors
       X <- allPredictors
     }
+
     Features <- checkNconvert(data, vars2impute, ignore,
                               ignore.rank=ignore.rank, report)
 

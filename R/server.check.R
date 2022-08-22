@@ -1,6 +1,6 @@
 #' @title server.check
 #' @description safely examines the connection status with h2o server
-#' @importFrom h2o h2o.clusterIsUp
+#' @importFrom h2o h2o.clusterIsUp h2o.clusterStatus
 #' @author E. F. Haghish
 #' @return logical. if TRUE, proceed with the analysis
 #' @keywords Internal

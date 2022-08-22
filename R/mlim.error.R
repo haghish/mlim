@@ -151,8 +151,14 @@ mlim.error <- function(imputed, incomplete, complete, transform = NULL,
       vwa <- NULL
       if (length(nrmse) > 1) vwa <- c(vwa, nrmse)
       else if (is.valid(nrmse)) vwa <- c(vwa, nrmse)
-      if (length(classerror) > 1) vwa <- c(vwa, classerror)
-      else if (is.valid(classerror)) vwa <- c(vwa, classerror)
+      if (ignore.missclass) {
+        if (length(meanclasserr) > 1) vwa <- c(vwa, meanclasserr)
+        else if (is.valid(meanclasserr)) vwa <- c(vwa, meanclasserr)
+      }
+      else {
+        if (length(classerror) > 1) vwa <- c(vwa, classerror)
+        else if (is.valid(classerror)) vwa <- c(vwa, classerror)
+      }
       if (length(rankerror) > 1) vwa <- c(vwa, rankerror)
       else if (is.valid(rankerror)) vwa <- c(vwa, rankerror)
       return(list(error = err[!is.na(err)],

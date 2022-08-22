@@ -7,7 +7,7 @@
 mlim(
   data = NULL,
   m = 1,
-  algos = c("RF", "ELNET", "GBM"),
+  algos = c("ELNET"),
   ignore = NULL,
   tuning_time = 180,
   max_models = NULL,
@@ -23,7 +23,7 @@ mlim(
   doublecheck = TRUE,
   cpu = -1,
   ram = NULL,
-  flush = FALSE,
+  flush = TRUE,
   preimputed.data = NULL,
   save = NULL,
   load = NULL
@@ -37,17 +37,18 @@ imputed. if \code{'load'} argument is provided, this argument will be ignored.}
 1, carrying out a single imputation.}
 
 \item{algos}{character vector, specifying algorithms to be used for missing data
-             imputation. supported algorithms are "RF", "ELNET", "GBM", "DL",
+             imputation. supported algorithms are "ELNET", "RF", "GBM", "DL",
              "XGB", and "Ensemble". if more than one algorithm is specified,
              mlim changes behavior to save on runtime. for example,
-             the default is 'c("RF", "ELNET", "GBM")', which uses
-             Random Forest for a fast initial imputation and then uses ELNET to
-             improve the imputation and once ELNET stops improving, attempts using
-             "GBM", as long as the 'maxiter' argument is not reached or GBM stops
-             improving. in other words, by default,
-             "mlim" carries out 3 rounds of imputation, which are 1) preimputation with "RF",
-             2) main imputation with "ELNET", and 3) postimputation with "GBM" or
-             other algorithms. the reason for
+             the default is "ELNET", which only uses Elastic Net for the imputation.
+             However, 'algos = c("ELNET", "GBM")' will not only use
+             ELNET for the initial imputation, but also, uses 'GBM'
+             as long as the 'maxiter' argument is not reached or GBM stops
+             improving. However, note that by specifying more than one algorithm,
+             "mlim" does not fine-tune them all together. Instead, it carries
+             out imputation with the first one and when the algorithm stops
+             improving, it follows with postimputation, (in this example "GBM")
+             to further optimize the imputations. the reason for having
              this setup is that in general, "ELNET" fine-tunes much faster than "GBM",
              "XGB", and "DL".
 
