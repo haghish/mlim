@@ -236,18 +236,13 @@
 #' # you can check the accuracy of the imputation, if you have the original dataset
 #' mlim.error(MLIM, irisNA, iris)
 #'
-#' # run GBM model and allow 15 minutes of tuning for each variable
-#' MLIM <- mlim(irisNA, impute = "GBM", tuning_time=60*15)
-#' mlim.error(MLIM, irisNA, iris)
+#' ## run GBM model and allow 15 minutes of tuning for each variable
+#' ## this requires a lot of RAM on your machine
+#' # MLIM <- mlim(irisNA, impute = "GBM", tuning_time=60*15)
+#' # mlim.error(MLIM, irisNA, iris)
 #'
 #' # if you have a larger data, there is a few things you can set to make the
 #' # algorithm faster, yet, having only a marginal accuracy reduction as a trade-off
-#' MLIM <- mlim(irisNA, tolerance = 1e-3, doublecheck = FALSE)
-#'
-#' # if you still want faster imputation, try reducing he tuning time
-#' MLIM <- mlim(irisNA, tolerance = 1e-3, doublecheck = FALSE, tuning_time=60*3)
-#'
-#' # if you still want faster imputation, only specify 'ELNET' algorithm
 #' MLIM <- mlim(irisNA, algos = 'ELNET', tolerance = 1e-3, doublecheck = FALSE)
 #' }
 #' @export
