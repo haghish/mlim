@@ -123,9 +123,9 @@
 #'        but it can be reduced to \code{3} (not recommended, see below).
 # @param miniter integer. minimum number of iterations. the default value is
 #                2.
-#' @param flush logical (experimental). if TRUE, after each model, the server is
-#'              cleaned to retrieve RAM. this feature is in testing mode and is
-#'              currently set to TRUE.
+# @param flush logical (experimental). if TRUE, after each model, the server is
+#              cleaned to retrieve RAM. this feature is in testing mode and is
+#              currently set to TRUE.
 # @param cv logical. specify number of k-fold Cross-Validation (CV). values of
 #               10 or higher are recommended. default is 10.
 # @param error_metric character. specify the minimum improvement
@@ -288,7 +288,7 @@ mlim <- function(data = NULL,
                  # setup the h2o cluster
                  cpu = -1,
                  ram = NULL,
-                 flush = TRUE,
+                 #flush = TRUE,
                  #init = TRUE,
                  #shutdown = TRUE,
 
@@ -332,6 +332,7 @@ mlim <- function(data = NULL,
   miniter     <- 2L
   init        <- TRUE
   shutdown    <- TRUE
+  flush       <- TRUE
   verbose     <- 0
   error_metric<- "RMSE"
   preimpute   <- "RF"
