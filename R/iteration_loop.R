@@ -32,11 +32,13 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
   # bootrtap
   # ------------------------------------------------------------
   if (!boot) {
-    hex <- h2o::as.h2o(data) #ID: data_
+     #ID: data_
+    tryCatch(hex <- h2o::as.h2o(data),
+             error = function(cond) {
+               cat("trying to connect to JAVA server...\n");
+               return(stop("Java server has crashed (low RAM?)"))})
     bhex <- hex
     Sys.sleep(sleep)
-    hexID <- h2o::h2o.getId(hex)
-    md.log(paste("dataset ID:", hexID), trace=FALSE) #, print = TRUE
   }
   else {
     rownames(data) <- 1:nrow(data) #remember the rows that are missing
@@ -53,8 +55,16 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
       sampling_index <- sampling_index[!duplicated(sampling_index)]
       bdata <- data[sampling_index, ]
     }
-    hex <- h2o::as.h2o(data)
-    bhex<- h2o::as.h2o(bdata)
+
+    tryCatch(hex <- h2o::as.h2o(data),
+             error = function(cond) {
+               cat("trying to connect to JAVA server...\n");
+               return(stop("Java server has crashed (low RAM?)"))})
+
+    tryCatch(bhex<- h2o::as.h2o(bdata),
+             error = function(cond) {
+               cat("trying to connect to JAVA server...\n");
+               return(stop("Java server has crashed (low RAM?)"))})
   }
   Sys.sleep(sleep)
 
@@ -90,6 +100,8 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
     else procedure <- "impute"
 
     for (Y in ITERATIONVARS[z:length(ITERATIONVARS)]) {
+      start = as.integer(Sys.time())
+
       it <- iterate(procedure = procedure,
                     MI, dataNA, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
                     m, k, X, Y, z=which(ITERATIONVARS == Y), m.it,
@@ -113,6 +125,9 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
       data <- it$data
       hex <- it$hex
       bhex <- it$bhex
+
+      time = as.integer(Sys.time()) - start
+      if (debug) md.log(paste("done! after: ", time, " seconds"), time = TRUE, print = TRUE)
     }
 
     # CHECK CRITERIA FOR RUNNING THE NEXT ITERATION
@@ -165,11 +180,17 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
     md.log("return previous iteration's data", trace=FALSE)
   }
 
-  if (clean) h2o::h2o.removeAll()
+  if (clean) tryCatch(h2o::h2o.removeAll(),
+                      error = function(cond) {
+                        cat("trying to connect to JAVA server...\n");
+                        return(stop("Java server has crashed (low RAM?)"))})
 
   if (shutdown) {
     md.log("shutting down the server", trace=FALSE)
-    h2o::h2o.shutdown(prompt = FALSE)
+    tryCatch(h2o::h2o.shutdown(prompt = FALSE),
+             error = function(cond) {
+               cat("trying to connect to JAVA server...\n");
+               return(warning("Java server has crashed (low RAM?)"))})
     Sys.sleep(sleep)
   }
 
