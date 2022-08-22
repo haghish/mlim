@@ -250,7 +250,7 @@
 
 mlim <- function(data = NULL,
                  m = 1,
-                 algos = c("ELNET", "RF"), #preimpute, impute, postimpute
+                 algos = c("ELNET"), #impute, postimpute
                  ignore = NULL,
 
                  # computational resources
