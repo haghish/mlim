@@ -23,7 +23,6 @@ mlim(
   doublecheck = TRUE,
   cpu = -1,
   ram = NULL,
-  flush = TRUE,
   preimputed.data = NULL,
   save = NULL,
   load = NULL
@@ -153,10 +152,6 @@ memory allocation. by default, all the available memory is
 used for the imputation.
 large memory size is particularly advised, especially
 for multicore processes. the more you give the more you get!}
-
-\item{flush}{logical (experimental). if TRUE, after each model, the server is
-cleaned to retrieve RAM. this feature is in testing mode and is
-currently set to TRUE.}
 
 \item{preimputed.data}{data.frame. if you have used another software for missing
 data imputation, you can still optimize the imputation
