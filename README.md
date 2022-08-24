@@ -78,7 +78,7 @@ Supported algorithms
 - `Ensemble` (Stacked Ensemble, _THIS FEATURE IS EXPERIMENTAL_) 
 
 > `ELNET` is the default imputation algorithm. Among all of the above, ELNET is the easist and fastest to fine-tune, 
-because it has fewer parameters. By default, **`mlim`** uses a secondary algorithm for improving the imputation results (TO BE CONTINUED...)
+because it has fewer parameters. By default, **`mlim`** uses only `ELNET`, however, you can add another algorithm to activate the post-imputation procedure.
 
 <!-- However, officially, only __`ELNET`__ is _recommended for personal computers with limited RAM_. **`mlim`** is computation hungry and is more suitable for servers with a lot of RAM. However, __`ELNET`__ converges rather fast and hence, provides a fast, scalable, yet highly flexible solution for missing data imputation. Compared to a fine-tuned __`GBM`__, __`ELNET`__ generally performs poorer, but their computational demands are vastly different. In order to fine-tune a __`GBM`__ model that out-performs __`ELNET`__, you need to include a large number of models to allow **`mlim`** to search for the ideal parameters for each variable, within each iteration. 
 -->
