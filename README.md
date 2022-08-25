@@ -134,7 +134,7 @@ library(VIM)
 
 # Add artifitial missing data
 # ===============================================================================
-irisNA <- mlim.na(iris, p = 0.5, stratified = TRUE, seed = 2022)
+irisNA <- mlim.na(iris, p = 0.5, stratify = TRUE, seed = 2022)
 
 # Single imputation with mlim, giving it 180 seconds to fine-tune each imputation
 # ===============================================================================
