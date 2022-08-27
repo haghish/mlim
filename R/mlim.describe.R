@@ -1,11 +1,7 @@
 
-#' @title carries out preimputation
-#' @description instead of replacing missing data with mean and mode, a smarter
-#'              start-point would be to use fast imputation algorithms and then
-#'              optimize the imputed dataset with mlim. this procedure usually
-#'              requires less iterations and will savea lot of computation
-#'              resources.
-# @importFrom VIM kNN
+#' @title mlim imputation summary
+#' @description provides information about estimated accuracy of the imputation as well
+#'              as the overall procedure of the imputation.
 #' @importFrom missRanger missRanger imputeUnivariate
 # @importFrom missForest missForest
 #' @param data data.frame with missing values
@@ -28,25 +24,9 @@
 #' @author E. F. Haghish
 #' @export
 
-mlim.preimpute <- function(data, preimpute, seed = NULL,
-                           report = NULL, debug=FALSE) {
+mlim.summarize <- function(data) {
 
-  #if (tolower(preimpute) == "knn") {
-  #  set.seed(seed)
-  #  data <- VIM::kNN(data, imp_var=FALSE)
-  #  if (!is.null(report)) md.log("kNN preimputation is done", date=debug, time=debug, trace=FALSE)
-  #}
-  if (tolower(preimpute) == "rf") {
-    cat("\nRandom Forest preimputation in progress...\n")
-    data <- missRanger::missRanger(data, num.trees=500, mtry=1,
-                                   verbose = 0, returnOOB=TRUE, seed = seed)
-    if (!is.null(report)) md.log("RF preimputation is done", date=debug, time=debug, trace=FALSE)
-  }
-  else if (tolower(preimpute) == "mm") {
-    data <- meanmode(data)
-    if (!is.null(report)) md.log("Mean/Mode preimputation is done", date=debug, time=debug, trace=FALSE)
-  }
-  else stop(paste(preimpute, "is not recognized preimputation argument"))
+  att <- attributes(data)
 
   return(data)
 }
