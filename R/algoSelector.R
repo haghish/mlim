@@ -42,13 +42,14 @@ algoSelector <- function(algos) {
     if (is.null(impute)) impute <- "DeepLearning"
     else postimpute <- c(postimpute, "DeepLearning")
   }
+
+  # if Ensemble is specified, include the 'impute' algorithms
   if ("Ensemble" %in% algos) {
-    if (is.null(impute)) stop("Ensemble is a meta learner and requires other algorithms...")
-    else postimpute <- c(postimpute, "StackedEnsemble")
+    if (is.null(impute)) stop("Ensemble is a meta learner and requires other algorithms. ")
+    else postimpute <- c(impute, postimpute, "StackedEnsemble")
   }
 
-  return(list(impute=impute,
-              postimpute=postimpute))
+  return(list(impute=impute, postimpute=postimpute))
 }
 
 
