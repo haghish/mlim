@@ -28,19 +28,6 @@
 #        tune the best model for imputing he given variable. it is advised to use these extensive
 #        algorithms in the process of "postimputation" and let "ELNET" do most of the legwork to save
 #        computational resources.
-# @param postimpute character. specify a vector of algorithms - that are computationally extensive -
-#        to be used to optimize the imputed results. default imputation. possible algorithms are
-#        \code{"GBM"}, \code{"DL"}, \code{"XGB"} (available for Mac and Linux), and \code{"Ensemble"}.
-#        the default value is "GBM". postimputation will only run if maximum iteration limit is not
-#        reached. if you specify more than 1 postimputation algorithm, the "tuning_time" will be
-#        devided between different algorithms, but not necessarily equally. generally, "GBM" and "XGB"
-#        tune faster than "DL", and thus are advised to non-expert users, for general purposes.
-#
-#        postimputation fullz consumes the given "tuning_time" to tune a computationally extensive
-#        algorithm and see whether it outperform "ELNET". this procedure extensively consumes RAM,
-#        so make sure you know the limits of your machine before administering it. otherwise,
-#        set this argument to NULL to deactivate postimputation.
-#'
 #' @importFrom utils setTxtProgressBar txtProgressBar capture.output packageVersion
 #' @importFrom h2o h2o.init as.h2o h2o.automl h2o.predict h2o.ls
 #'             h2o.removeAll h2o.rm h2o.shutdown
@@ -71,6 +58,9 @@
 #'              Note that code{"XGB"} is only available in Mac OS and Linux. moreover,
 #'              "GBM", "DL", "XGB", and "Ensemble" take the full given "tuning_time" (see below) to
 #'              tune the best model for imputing he given variable.
+#' @param postimpute logical. if TRUE, mlim uses algorithms rather than 'ELNET' for carrying out
+#'                   postimputation optimization. however, if FALSE, all specified algorihms will
+#'                   be used in the process of 'reimputation' instead.
 # @param min_ram character. specifies the minimum size.
 #' @param ignore character vector of column names or index of columns that should
 #'               should be ignored in the process of imputation.
@@ -251,6 +241,7 @@
 mlim <- function(data = NULL,
                  m = 1,
                  algos = c("ELNET"), #impute, postimpute
+                 postimpute = FALSE,
                  ignore = NULL,
 
                  # computational resources
@@ -315,7 +306,7 @@ mlim <- function(data = NULL,
   # h2o DRF does not give OOB error, so initial comparison preimputation is not possible
   #    HOWEVER, I can estimate the CV for the preimputation procedure
   #
-  # instead of adding postimpute, extract it from specified algorithms
+  # instead of adding postimpute_algos, extract it from specified algorithms
 
   # Simplify the syntax by taking arguments that are less relevant to the majority
   # of the users out
@@ -353,31 +344,31 @@ mlim <- function(data = NULL,
 
     # Data
     # ----------------------------------
-    MI          <- load$MI
-    dataNA      <- load$dataNA
-    data        <- load$data
-    bdata       <- load$bdata
-    dataLast    <- load$dataLast
-    metrics     <- load$metrics
-    mem         <- load$mem
-    orderedCols <- load$orderedCols
+    MI             <- load$MI
+    dataNA         <- load$dataNA
+    data           <- load$data
+    bdata          <- load$bdata
+    dataLast       <- load$dataLast
+    metrics        <- load$metrics
+    mem            <- load$mem
+    orderedCols    <- load$orderedCols
 
     # Loop data
     # ----------------------------------
-    m           <- load$m
-    m.it        <- load$m.it
-    k           <- load$k
-    z           <- load$z
-    X           <- load$X
-    Y           <- load$Y
-    vars2impute <- load$vars2impute
-    FAMILY      <- load$FAMILY
+    m              <- load$m
+    m.it           <- load$m.it
+    k              <- load$k
+    z              <- load$z
+    X              <- load$X
+    Y              <- load$Y
+    vars2impute    <- load$vars2impute
+    FAMILY         <- load$FAMILY
 
     # settings
     # ----------------------------------
     ITERATIONVARS  <- load$ITERATIONVARS
     impute         <- load$impute
-    postimpute     <- load$postimpute
+    postimputealgos<- load$postimputealgos
     autobalance    <- load$autobalance
     balance        <- load$balance
     ignore         <- load$ignore
@@ -402,7 +393,7 @@ mlim <- function(data = NULL,
     cpu            <- load$cpu
     max_ram        <- load$max_ram
     min_ram        <- load$min_ram #KEEP IT HIDDEN
-    keep_cv <- load$keep_cv
+    keep_cv        <- load$keep_cv
     pkg            <- load$pkg #KEEP IT HIDDEN
   }
 
@@ -412,10 +403,10 @@ mlim <- function(data = NULL,
   # ============================================================
   # ============================================================
   else {
-    alg <- algoSelector(algos)
+    alg <- algoSelector(algos, postimpute)
     # preimpute <- "RF" #alg$preimpute ## for now, make this global
     impute <- alg$impute
-    postimpute <- alg$postimpute
+    postimputealgos <- alg$postimpute
 
     synt <- syntaxProcessing(data, preimpute, impute, ram,
                              matching=matching, miniter, maxiter, max_models,
@@ -486,7 +477,7 @@ mlim <- function(data = NULL,
     # if there is only one variable to impute, there is no need to iterate!
     if (length(vars2impute) < 1) stop("\nthere is nothing to impute!\n")
     else if (length(vars2impute) == 1) {
-      if (!is.valid(postimpute)) {
+      if (!is.valid(postimputealgos)) {
         maxiter <- 1
       }
     }
@@ -501,7 +492,20 @@ mlim <- function(data = NULL,
       # ??? in the future, consider that each of the given datasets can
       # be fed independently as a separate "m". for now, this is NOT AN
       # announced feature and thus, just take the first dataset as preimputation
-      if (inherits(preimputed.data, "mlim.mi")) preimputed.data <- preimputed.data[[1]]
+      if (inherits(preimputed.data, "mlim.mi")) {
+        #preimputed.data <- preimputed.data[[1]]
+        stop("use 'mlim.postimpute' function for postimputing multiple imputation datasets\n")
+      }
+
+      # if the preimputation was done with mlim, extract the metrics
+      else if (inherits(preimputed.data, "mlim")) {
+
+
+        # remove the NAs of the last imputation and replace them with
+        # the minimum
+        metrics <- getMetrics(preimputed.data)
+      }
+
       data <- preimputed.data
 
       # reset the relevant predictors
@@ -548,7 +552,7 @@ mlim <- function(data = NULL,
                                m, k, X, Y, z, m.it,
                                # loop data
                                vars2impute, vars2postimpute, storeVars2impute,
-                               allPredictors, preimpute, impute, postimpute,
+                               allPredictors, preimpute, impute, postimputealgos,
                                # settings
                                error_metric, FAMILY=FAMILY, cv, tuning_time,
                                max_models, weights_column,

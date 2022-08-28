@@ -15,7 +15,7 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
 
                     # loop data
                     vars2impute, vars2postimpute, storeVars2impute,
-                    allPredictors, preimpute, impute, postimpute,
+                    allPredictors, preimpute, impute, postimputealgos,
 
                     # settings
                     error_metric, FAMILY, cv, tuning_time,
@@ -107,7 +107,7 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
                     m, k, X, Y, z=which(ITERATIONVARS == Y), m.it,
                     # loop data
                     ITERATIONVARS, vars2impute,
-                    allPredictors, preimpute, impute, postimpute,
+                    allPredictors, preimpute, impute, postimputealgos,
                     # settings
                     error_metric, FAMILY=FAMILY, cv, tuning_time,
                     max_models, weights_column,
@@ -137,7 +137,7 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
                            metrics, k, vars2impute,
                            error_metric,
                            tolerance,
-                           postimpute,
+                           postimputealgos,
                            runpostimpute,
                            md.log = report)
     if (debug) {

@@ -7,7 +7,8 @@
 mlim(
   data = NULL,
   m = 1,
-  algos = c("ELNET", "RF"),
+  algos = c("ELNET"),
+  postimpute = FALSE,
   ignore = NULL,
   tuning_time = 180,
   max_models = NULL,
@@ -54,6 +55,10 @@ imputed. if \code{'load'} argument is provided, this argument will be ignored.}
              Note that code{"XGB"} is only available in Mac OS and Linux. moreover,
              "GBM", "DL", "XGB", and "Ensemble" take the full given "tuning_time" (see below) to
              tune the best model for imputing he given variable.}
+
+\item{postimpute}{logical. if TRUE, mlim uses algorithms rather than 'ELNET' for carrying out
+postimputation optimization. however, if FALSE, all specified algorihms will
+be used in the process of 'reimputation' instead.}
 
 \item{ignore}{character vector of column names or index of columns that should
 should be ignored in the process of imputation.}
@@ -130,8 +135,8 @@ of a variable to qualify the imputation for another round of iteration,
 if the \code{maxiter} is not yet reached. any improvement of imputation
 is desirable.  however, specifying values above 0 can reduce the number
 of required iterations at a marginal increase of imputation error.
-for larger datasets, value of "1e-3" is recommended t reduce number
-of iterations. the default value is 1e-4.}
+for larger datasets, value of "1e-3" is recommended to reduce number
+of iterations. the default value is '1e-3'.}
 
 \item{doublecheck}{logical. default is TRUE (which is conservative). if FALSE, if the estimated
 imputation error of a variable does not improve, the variable

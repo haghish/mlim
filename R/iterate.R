@@ -22,7 +22,7 @@ iterate <- function(procedure,
 
                     # loop data
                     ITERATIONVARS, vars2impute,
-                    allPredictors, preimpute, impute, postimpute,
+                    allPredictors, preimpute, impute, postimputealgos,
 
                     # settings
                     error_metric, FAMILY, cv, tuning_time,
@@ -94,7 +94,7 @@ iterate <- function(procedure,
     # ============================================================
     usedalgorithms <- NULL
     if (procedure == "impute") usedalgorithms <- impute
-    else usedalgorithms <- postimpute
+    else usedalgorithms <- postimputealgos
     # if (debug) print(paste("usedalgorithms", usedalgorithms))
     # cat("X:", X, "\n")
     # cat("Y:", Y, "\n")
@@ -132,7 +132,7 @@ iterate <- function(procedure,
       ),
       error = function(cond) {
         #cat("connection to JAVA server failed...\n");
-        return(NULL)})
+        return(stop("model training failed. perhaps low RAM problem?"))})
 
     }
 
@@ -184,7 +184,7 @@ iterate <- function(procedure,
       ),
       error = function(cond) {
         #cat("connection to JAVA server failed...\n");
-        return(NULL)})
+        return(stop("model training failed. perhaps low RAM problem?"))})
     }
     else {
       stop(paste(FAMILY[z], "is not recognized"))
@@ -378,7 +378,7 @@ iterate <- function(procedure,
       # ----------------------------------
       ITERATIONVARS=ITERATIONVARS,
       impute=impute,
-      postimpute=postimpute,
+      postimputealgos=postimputealgos,
       ignore=ignore,
       autobalance = autobalance,
       balance = balance,
