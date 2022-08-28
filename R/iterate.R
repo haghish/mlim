@@ -114,21 +114,21 @@ iterate <- function(procedure,
     # ============================================================
     if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer'
         || FAMILY[z] == 'quasibinomial' ) {
-      tryCatch(hex[[Y]] <- fit <- h2o::h2o.automl(x = setdiff(X, Y), y = Y,
-                                                  training_frame = bhex[which(!y.na), ],
-                                                  sort_metric = sort_metric,
-                                                  project_name = "mlim",
-                                                  include_algos = usedalgorithms,
-                                                  nfolds = cv,
-                                                  exploitation_ratio = 0.1,
-                                                  max_runtime_secs = tuning_time,
-                                                  max_models = max_models,
-                                                  weights_column = weights_column[which(!y.na)],
-                                                  keep_cross_validation_predictions = keep_cv,
-                                                  seed = seed
-                                                  # #stopping_metric = stopping_metric,
-                                                  # #stopping_rounds = stopping_rounds
-                                                  # #stopping_tolerance=stopping_tolerance
+      fit <- tryCatch(h2o::h2o.automl(x = setdiff(X, Y), y = Y,
+                                      training_frame = bhex[which(!y.na), ],
+                                      sort_metric = sort_metric,
+                                      project_name = "mlim",
+                                      include_algos = usedalgorithms,
+                                      nfolds = cv,
+                                      exploitation_ratio = 0.1,
+                                      max_runtime_secs = tuning_time,
+                                      max_models = max_models,
+                                      weights_column = weights_column[which(!y.na)],
+                                      keep_cross_validation_predictions = keep_cv,
+                                      seed = seed
+                                      # #stopping_metric = stopping_metric,
+                                      # #stopping_rounds = stopping_rounds
+                                      # #stopping_tolerance=stopping_tolerance
       ),
       error = function(cond) {
         #cat("connection to JAVA server failed...\n");
