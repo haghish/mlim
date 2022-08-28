@@ -36,7 +36,7 @@ Procedure: From preimputation to imputation and postimputation
 
 **`mlim`** follows three steps to optimize the missing data imputation. This procedure is _optional_, depending on the amount of computing resources available to you. In general, **`ELNET`** imputation already outperforms other available single and multiple imputation methods available in **R**. However, the imputation error can be significantly reduced by training stronger algorithms such as **`GBM`**, **`XGB`**, **`DL`**, or even **`Ensemble`**. For the majority of the users, the **`GBM`** or **`XGB`** (available only in Mac OSX and Linux) will significantly imprive the **`ELNET`** imputation, if long-enough time is provided to generate a lot of models to fine-tune them. 
 
-<img src='man/figures/procedure3.png' align="center" height="400" /> 
+<img src='man/figures/procedure4.png' align="center" height="400" /> 
 
 
 
