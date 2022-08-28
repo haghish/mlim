@@ -38,7 +38,9 @@ Procedure: From preimputation to imputation and postimputation
 
 <img src='man/figures/procedure4.png' align="center" height="400" /> 
 
+You do not necessarily need the post-imputation. Once you have _reimputed_ the data with `ELNET`, you can stop there. `ELNET` is relatively a fast algorithm and it is easy to fine-tune it compared to `GBM`, `XGB`, `DL`, or `Ensemble`. In addition, `ELNET` generalizes nicely and is less prone to overfiting. In the flowchart below the procedure of **mlim** algorithm is drawn. When using **mlim**, you can use `ELNET` to impute a dataset with NA or optimize the imputed values of a dataset that is already imputed. If you wish to go the extra mile, you can use heavier algorithms as well to activate the postimputation procedure, but it is strictly optional and by default, **mlim** does not use postimputation. 
 
+<img src='man/figures/flowchart.png' align="center" height="500" /> 
 
 Fast imputation with **`ELNET`** (without postimputation)
 ---------------------------------------------------------
