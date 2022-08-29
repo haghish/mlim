@@ -18,15 +18,11 @@ mlim.postimpute <- function(data, preimputed.data,
                             algos = c("ELNET", "GBM", "RF", "DL", "Ensemble"),
                             ... ) {
 
-
-
-
-
     if (inherits(preimputed.data, "mlim.mi")) {
       results <- list
       for (i in 1:length(preimputed.data)) {
         results[[i]] <- mlim(data = data,
-                             preimputed.data = preimputed.data,
+                             preimputed.data = preimputed.data[[i]],
                              algos = algos,
                              postimpute = FALSE,
                              ...)
