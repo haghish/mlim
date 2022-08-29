@@ -50,7 +50,7 @@ syntaxProcessing <- function(data, preimpute, impute, ram,
 
     # if more than 2/3 of the RAM is dedicated to Java server, give a warning
     if (ram > 0.666*round(as.numeric(memuse::Sys.meminfo()$totalram)*9.31*1e-10)) {
-      cat("NOTE: you have dedicated more than 2/3 of your total RAM to mlim.\n      This is fine as long as you do not use 'XGB' algorithm.\n      You are also advised to keep a close eye on your RAM during the imputation...\n")
+      cat("NOTE: you have dedicated more than 2/3 of your total RAM to mlim.\n      This is fine as long as you do not use 'XGB' algorithm.\n      You are advised to monitor your RAM during the imputation...\n\n")
     }
   }
   else {
