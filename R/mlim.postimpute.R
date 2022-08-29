@@ -11,6 +11,23 @@
 #'              is 'c("ELNET", "GBM", "RF", "DL", "Ensemble")'.
 #' @param ... arguments to be passed to mlim
 #' @return imputed data.frame
+#' \donttest{
+#' data(iris)
+#'
+#' # add 10% stratified missing values to one factor variable
+#' irisNA <- iris
+#' irisNA$Species <- mlim.na(irisNA$Species, p = 0.1, stratify = TRUE, seed = 2022)
+#'
+#' # run the default imputation
+#' MLIM <- mlim(irisNA)
+#' mlim.error(MLIM, irisNA, iris)
+#'
+#' # carry out postimputation. for real-life applications, you should increase
+#' # the 'tuning_time' to more than one 3600 seconds, even for small datasets
+#' post <- mlim.postimpute(data=irisNA, preimputed.data=MLIM, tuning_time=120,
+#'         algos = c("GBM", "RF", "ELNET", "Ensemble"),
+#'         seed = 2022)
+#' }
 #' @author E. F. Haghish
 #' @export
 

@@ -47,11 +47,26 @@ syntaxProcessing <- function(data, preimpute, impute, ram,
     if (!is.numeric(ram)) stop("'ram' must be an integer, specifying amount of RAM in Gigabytes")
     min_ram <- paste0(ram - 1, "G")
     max_ram <- paste0(ram, "G")
+
+    # if more than 2/3 of the RAM is dedicated to Java server, give a warning
+    if (ram > 0.666*round(as.numeric(memuse::Sys.meminfo()$totalram)*9.31*1e-10)) {
+      cat("NOTE: you have dedicated more than 2/3 of your total RAM to mlim.\n      This is fine as long as you do not use 'XGB' algorithm.\n      You are also advised to keep a close eye on your RAM during the imputation...\n")
+    }
   }
   else {
-    ram <- floor(as.numeric(memuse::Sys.meminfo()$freeram)*9.31*1e-10)
-    min_ram <- paste0(ram - 1, "G")
-    max_ram <- paste0(ram, "G")
+    ## NOTE: memuse::Sys.meminfo() can return RAM near zero, which fails
+    ##       initiating the Java server
+    # ram <- floor(as.numeric(memuse::Sys.meminfo()$freeram)*9.31*1e-10)
+    # if (ram > 4) {
+    #   min_ram <- paste0(ram - 1, "G")
+    #   max_ram <- paste0(ram, "G")
+    # }
+    # else {
+    #   min_ram <- NULL
+    #   max_ram <- NULL
+    # }
+    min_ram <- NULL
+    max_ram <- NULL
   }
 
   if ("StackEnsemble" %in% impute) {
