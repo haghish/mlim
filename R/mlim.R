@@ -204,8 +204,9 @@
 #                 following itterations. otherwise, if FALSE, the current arguments of
 #                 mlim are used to overpower the settings of the mlim object. the settings
 #                 include the full list of the mlim arguments.
-# @param ... Arguments passed to \code{h2o.automl()}.
-#            The following arguments are e.g. incompatible with \code{h2o}
+#' @param ... arguments that are used internally between 'mlim' and 'mlim.postimpute'.
+#'            these arguments are not documented in the help file and are not
+#'            intended to be used by end user.
 #' @return a \code{data.frame}, showing the
 #'         estimated imputation error from the cross validation within the data.frame's
 #'         attribution
@@ -286,9 +287,9 @@ mlim <- function(data = NULL,
                  # NOT YET IMPLEMENTED
                  preimputed.data = NULL,
                  save = NULL,
-                 load = NULL
+                 load = NULL,
                  #force.load = TRUE,
-                 #...
+                 ...
                  ) {
 
 
