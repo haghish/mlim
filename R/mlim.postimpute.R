@@ -23,7 +23,7 @@
 #' mlim.error(MLIM, irisNA, iris)
 #'
 #' # carry out postimputation. for real-life applications, you should increase
-#' # the 'tuning_time' to more than one 3600 seconds, even for small datasets
+#' # the 'tuning_time' to at least 3600 seconds, even for small datasets
 #' post <- mlim.postimpute(data=irisNA, preimputed.data=MLIM, tuning_time=120,
 #'         algos = c("GBM", "RF", "ELNET", "Ensemble"),
 #'         seed = 2022)
