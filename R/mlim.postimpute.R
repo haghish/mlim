@@ -45,6 +45,7 @@ mlim.postimpute <- function(data, preimputed.data,
                              postimpute = FALSE,
                              ...)
       }
+      class(results) <- "mlim.mi"
     }
 
     # if the preimputation was done with mlim, extract the metrics
