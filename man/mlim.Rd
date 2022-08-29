@@ -26,7 +26,8 @@ mlim(
   ram = NULL,
   preimputed.data = NULL,
   save = NULL,
-  load = NULL
+  load = NULL,
+  ...
 )
 }
 \arguments{
@@ -177,6 +178,10 @@ previously stopped. the "mlim" object saves the current state of
 the imputation and is particularly recommended for large datasets
 or when the user specifies a computationally extensive settings
 (e.g. specifying several algorithms, increasing tuning time, etc.).}
+
+\item{...}{arguments that are used internally between 'mlim' and 'mlim.postimpute'.
+these arguments are not documented in the help file and are not
+intended to be used by end user.}
 }
 \value{
 a \code{data.frame}, showing the

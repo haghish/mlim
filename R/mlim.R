@@ -320,7 +320,7 @@ mlim <- function(data = NULL,
   metrics     <- NULL
   error       <- NULL
   debug       <- FALSE
-  cv          <- 10L
+  cv          <- 20L
   miniter     <- 2L
   init        <- TRUE
   shutdown    <- TRUE
