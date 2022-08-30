@@ -11,6 +11,8 @@
 #'              is 'c("ELNET", "GBM", "RF", "DL", "Ensemble")'.
 #' @param ... arguments to be passed to mlim
 #' @return imputed data.frame
+#'
+#' @examples
 #' \donttest{
 #' data(iris)
 #'
@@ -28,6 +30,7 @@
 #'         algos = c("GBM", "RF", "ELNET", "Ensemble"),
 #'         seed = 2022)
 #' }
+#'
 #' @author E. F. Haghish
 #' @export
 
@@ -36,26 +39,28 @@ mlim.postimpute <- function(data, preimputed.data,
                             ... ) {
   results <- NULL
 
-    if (inherits(preimputed.data, "mlim.mi")) {
-      results <- list()
-      for (i in 1:length(preimputed.data)) {
-        results[[i]] <- mlim(data = data,
-                             preimputed.data = preimputed.data[[i]],
-                             algos = algos,
-                             postimpute = FALSE,
-                             ...)
-      }
-      class(results) <- "mlim.mi"
-    }
+  if (inherits(preimputed.data, "mlim.mi")) {
+    results <- list()
+    for (i in 1:length(preimputed.data)) {
+      results[[i]] <- mlim(data = data,
+                           preimputed.data = preimputed.data[[i]],
+                           algos = algos,
+                           postimpute = FALSE,
+                           shutdown = FALSE,
+                           ...)
 
-    # if the preimputation was done with mlim, extract the metrics
-    else if (inherits(preimputed.data, "mlim")) {
-      results <- mlim(data = data,
-                      preimputed.data = preimputed.data,
-                      algos = algos,
-                      postimpute = FALSE,
-                      ...)
     }
+    class(results) <- "mlim.mi"
+  }
+
+  # if the preimputation was done with mlim, extract the metrics
+  else if (inherits(preimputed.data, "mlim")) {
+    results <- mlim(data = data,
+                    preimputed.data = preimputed.data,
+                    algos = algos,
+                    postimpute = FALSE,
+                    ...)
+  }
 
   return(results)
 }

@@ -218,23 +218,29 @@
 #' data(iris)
 #' irisNA <- mlim.na(iris, p = 0.1, stratify = TRUE, seed = 2022)
 #'
-#' # run the default imputation (fastest imputation via 'mlim')
+#' # run the ELNET imputation (fastest imputation via 'mlim')
 #' MLIM <- mlim(irisNA)
 #'
-#' # or if you want to carry out multiple imputation with 5 datasets
+#' # or if you want to carry out ELNET multiple imputation with 5 datasets
+#' # to carry out analysis on the multiple imputation, use the 'mlim.mids' function
 #' MLIM <- mlim(irisNA, m = 5)
+#' mids <- mlim.mids(MLIM, irisNA)
+#' fit <- with(data=mids, exp=glm(Species ~ Sepal.Length, family = "binomial"))
+#'
+#'
 #'
 #' # you can check the accuracy of the imputation, if you have the original dataset
 #' mlim.error(MLIM, irisNA, iris)
 #'
-#' ## run GBM model and allow 15 minutes of tuning for each variable
-#' ## this requires a lot of RAM on your machine
-#' # MLIM <- mlim(irisNA, impute = "GBM", tuning_time=60*15)
+#' ### run GBM, RF, ELNET, and Ensemble algos and allow 60 minutes of tuning for each variable
+#' ### this requires a lot of RAM on your machine and a lot of time!
+#' ### ALTERNATIVELY, check out 'mlim.postimpute' function for optimizing multiple imputations
+#' # MLIM <- mlim(irisNA, algos = c("GBM", "RF","ELNET","Ensemble"), tuning_time=60*60)
 #' # mlim.error(MLIM, irisNA, iris)
 #'
-#' # if you have a larger data, there is a few things you can set to make the
-#' # algorithm faster, yet, having only a marginal accuracy reduction as a trade-off
-#' MLIM <- mlim(irisNA, algos = 'ELNET', tolerance = 1e-3, doublecheck = FALSE)
+#' ### if you have a larger data, there is a few things you can set to make the
+#' ### algorithm faster, yet, having only a marginal accuracy reduction as a trade-off
+#' # MLIM <- mlim(irisNA, algos = 'ELNET', tolerance = 1e-3, doublecheck = FALSE)
 #' }
 #' @export
 
@@ -309,6 +315,13 @@ mlim <- function(data = NULL,
   #
   # instead of adding postimpute_algos, extract it from specified algorithms
 
+  # check the ... arguments
+  # ============================================================
+  hidden_args <- c("cv", "init", "shutdown", "ignore.rank", "sleep")
+  stopifnot(
+    "incompatible '...' arguments" = (names(list(...)) %in% hidden_args)
+  )
+
   # Simplify the syntax by taking arguments that are less relevant to the majority
   # of the users out
   # ============================================================
@@ -320,16 +333,16 @@ mlim <- function(data = NULL,
   metrics     <- NULL
   error       <- NULL
   debug       <- FALSE
-  cv          <- 20L
+  cv          <- threeDots(name = "cv", ..., default = 20L)
   miniter     <- 2L
-  init        <- TRUE
-  shutdown    <- TRUE
-  flush       <- TRUE
+  init        <- threeDots(name = "init", ..., default = TRUE)
+  shutdown    <- threeDots(name = "shutdown", ..., default = TRUE)
+  flush       <- threeDots(name = "flush", ..., default = TRUE)
   verbose     <- 0
   error_metric<- "RMSE"
   preimpute   <- "RF"
-  ignore.rank <- FALSE #EXPERIMENTAL
-  sleep       <- .25
+  ignore.rank <- threeDots(name = "ignore.rank", ..., default = FALSE)  #EXPERIMENTAL
+  sleep       <- threeDots(name = "sleep", ..., default = .25)
   set.seed(seed)
 
 

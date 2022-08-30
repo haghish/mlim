@@ -198,23 +198,29 @@ imputes data.frame with mixed variable types using automated
 data(iris)
 irisNA <- mlim.na(iris, p = 0.1, stratify = TRUE, seed = 2022)
 
-# run the default imputation (fastest imputation via 'mlim')
+# run the ELNET imputation (fastest imputation via 'mlim')
 MLIM <- mlim(irisNA)
 
-# or if you want to carry out multiple imputation with 5 datasets
+# or if you want to carry out ELNET multiple imputation with 5 datasets
+# to carry out analysis on the multiple imputation, use the 'mlim.mids' function
 MLIM <- mlim(irisNA, m = 5)
+mids <- mlim.mids(MLIM, irisNA)
+fit <- with(data=mids, exp=glm(Species ~ Sepal.Length, family = "binomial"))
+
+
 
 # you can check the accuracy of the imputation, if you have the original dataset
 mlim.error(MLIM, irisNA, iris)
 
-## run GBM model and allow 15 minutes of tuning for each variable
-## this requires a lot of RAM on your machine
-# MLIM <- mlim(irisNA, impute = "GBM", tuning_time=60*15)
+### run GBM, RF, ELNET, and Ensemble algos and allow 60 minutes of tuning for each variable
+### this requires a lot of RAM on your machine and a lot of time!
+### ALTERNATIVELY, check out 'mlim.postimpute' function for optimizing multiple imputations
+# MLIM <- mlim(irisNA, algos = c("GBM", "RF","ELNET","Ensemble"), tuning_time=60*60)
 # mlim.error(MLIM, irisNA, iris)
 
-# if you have a larger data, there is a few things you can set to make the
-# algorithm faster, yet, having only a marginal accuracy reduction as a trade-off
-MLIM <- mlim(irisNA, algos = 'ELNET', tolerance = 1e-3, doublecheck = FALSE)
+### if you have a larger data, there is a few things you can set to make the
+### algorithm faster, yet, having only a marginal accuracy reduction as a trade-off
+# MLIM <- mlim(irisNA, algos = 'ELNET', tolerance = 1e-3, doublecheck = FALSE)
 }
 }
 \author{

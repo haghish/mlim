@@ -26,10 +26,16 @@ is 'c("ELNET", "GBM", "RF", "DL", "Ensemble")'.}
 }
 \value{
 imputed data.frame
+}
+\description{
+this is a function for carrying out postimputation on datasets
+             that are already imputed, either by mlim or other software.
+}
+\examples{
 \donttest{
 data(iris)
 
-# add 10% stratified missing values to one factor variable
+# add 10\% stratified missing values to one factor variable
 irisNA <- iris
 irisNA$Species <- mlim.na(irisNA$Species, p = 0.1, stratify = TRUE, seed = 2022)
 
@@ -38,15 +44,12 @@ MLIM <- mlim(irisNA)
 mlim.error(MLIM, irisNA, iris)
 
 # carry out postimputation. for real-life applications, you should increase
-# the 'tuning_time' to more than one 3600 seconds, even for small datasets
+# the 'tuning_time' to at least 3600 seconds, even for small datasets
 post <- mlim.postimpute(data=irisNA, preimputed.data=MLIM, tuning_time=120,
         algos = c("GBM", "RF", "ELNET", "Ensemble"),
         seed = 2022)
 }
-}
-\description{
-this is a function for carrying out postimputation on datasets
-             that are already imputed, either by mlim or other software.
+
 }
 \author{
 E. F. Haghish
