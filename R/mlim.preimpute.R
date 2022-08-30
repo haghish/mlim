@@ -13,6 +13,8 @@
 #'                  supported options are "RF" (Random Forest) and "mm"
 #'                  (mean-mode replacement). the default is "RF", which carries
 #'                  a parallel random forest imputation, using all the CPUs available.
+#'                  the other alternative is "mm" which performs mean/mode
+#'                  imputation.
 #' @param report filename. if a filename is specified, the \code{"md.log"} R
 #'               package is used to generate a Markdown progress report for the
 #'               imputation. the format of the report is adopted based on the
@@ -27,10 +29,21 @@
 #' @return imputed data.frame
 #' @author E. F. Haghish
 #' @examples
+#' \donttest{
+#' data(iris)
 #'
+#' # add 10% stratified missing values to one factor variable
+#' irisNA <- iris
+#' irisNA$Species <- mlim.na(irisNA$Species, p = 0.1, stratify = TRUE, seed = 2022)
+#'
+#' # run the default random forest preimputation
+#' MLIM <- mlim.preimpute(irisNA)
+#' mlim.error(MLIM, irisNA, iris)
+
+#' }
 #' @export
 
-mlim.preimpute <- function(data, preimpute, seed = NULL,
+mlim.preimpute <- function(data, preimpute = "RF", seed = NULL,
                            report = NULL, debug=FALSE) {
 
   #if (tolower(preimpute) == "knn") {
@@ -38,7 +51,7 @@ mlim.preimpute <- function(data, preimpute, seed = NULL,
   #  data <- VIM::kNN(data, imp_var=FALSE)
   #  if (!is.null(report)) md.log("kNN preimputation is done", date=debug, time=debug, trace=FALSE)
   #}
-  if (tolower(preimpute) == "rf") {
+  if (tolower(preimpute) == "RF") {
     cat("\nRandom Forest preimputation in progress...\n")
     data <- missRanger::missRanger(data, num.trees=500, mtry=1,
                                    verbose = 0, returnOOB=TRUE, seed = seed)

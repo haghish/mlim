@@ -275,7 +275,7 @@ mlim <- function(data = NULL,
                  doublecheck = TRUE,
 
                  ## simplify the settings by taking these arguments out
-                 #preimpute = "rf",
+                 #preimpute = "RF",
                  #impute = "AUTO",
                  #postimpute = "AUTO",
                  #error_metric  = "RMSE", #??? mormalize it
