@@ -26,6 +26,8 @@
 #'               this feature is used internally by 'mlim' function.
 #' @return imputed data.frame
 #' @author E. F. Haghish
+#' @examples
+#'
 #' @export
 
 mlim.preimpute <- function(data, preimpute, seed = NULL,
