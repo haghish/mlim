@@ -60,7 +60,8 @@
 #'              tune the best model for imputing he given variable.
 #' @param postimpute logical. if TRUE, mlim uses algorithms rather than 'ELNET' for carrying out
 #'                   postimputation optimization. however, if FALSE, all specified algorihms will
-#'                   be used in the process of 'reimputation' instead.
+#'                   be used in the process of 'reimputation' together. the 'Ensemble' algorithm
+#'                   is encouraged when other algorithms are used.
 # @param min_ram character. specifies the minimum size.
 #' @param ignore character vector of column names or index of columns that should
 #'               should be ignored in the process of imputation.
@@ -216,10 +217,15 @@
 #'
 #' \donttest{
 #' data(iris)
+#'
+#' # add stratified missing observations to the data
 #' irisNA <- mlim.na(iris, p = 0.1, stratify = TRUE, seed = 2022)
 #'
-#' # run the ELNET imputation (fastest imputation via 'mlim')
+#' # run the ELNET single imputation (fastest imputation via 'mlim')
 #' MLIM <- mlim(irisNA)
+#'
+#' # in single imputation, you can estimate the imputation accuracy with cross validation
+#' # the mlim.summarize shows the estimated imputation accuracy
 #'
 #' # or if you want to carry out ELNET multiple imputation with 5 datasets
 #' # to carry out analysis on the multiple imputation, use the 'mlim.mids' function
@@ -317,7 +323,7 @@ mlim <- function(data = NULL,
 
   # check the ... arguments
   # ============================================================
-  hidden_args <- c("cv", "init", "shutdown", "ignore.rank", "sleep")
+  hidden_args <- c("cv", "init", "shutdown", "flush", "ignore.rank", "sleep")
   stopifnot(
     "incompatible '...' arguments" = (names(list(...)) %in% hidden_args)
   )
@@ -333,7 +339,7 @@ mlim <- function(data = NULL,
   metrics     <- NULL
   error       <- NULL
   debug       <- FALSE
-  cv          <- threeDots(name = "cv", ..., default = 20L)
+  cv          <- threeDots(name = "cv", ..., default = 10L)
   miniter     <- 2L
   init        <- threeDots(name = "init", ..., default = TRUE)
   shutdown    <- threeDots(name = "shutdown", ..., default = TRUE)

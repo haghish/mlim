@@ -70,7 +70,7 @@ iterate <- function(procedure,
     tryCatch(hex[[Y]] <- h2o::as.h2o(missRanger::imputeUnivariate(data[[Y]])),
              error = function(cond) {
                #cat("connection to JAVA server failed...\n");
-               return(NULL)})
+               return(stop("preimputation failed! \nuse 'mlim.preimpute' function and pass it via 'preimputed.data' to mlim"))})
     Sys.sleep(sleep)
   }
   else {
@@ -434,15 +434,15 @@ iterate <- function(procedure,
     tryCatch(HEX <- as.data.frame(hex),
              error = function(cond) {
                #cat("connection to JAVA server failed...\n");
-               return(NULL)})
+               return(stop("Java server crashed. perhaps a RAM problem?"))})
     tryCatch(BHEX<- as.data.frame(bhex),
              error = function(cond) {
                #cat("connection to JAVA server failed...\n");
-               return(NULL)})
+               return(stop("Java server crashed. perhaps a RAM problem?"))})
     tryCatch(h2o::h2o.removeAll(timeout_secs = 30),
              error = function(cond) {
                #cat("connection to JAVA server failed...\n");
-               return(NULL)})
+               return(stop("Java server crashed. perhaps a RAM problem?"))})
     Sys.sleep(sleep)
     gc()
     gc()

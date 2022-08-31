@@ -1,3 +1,5 @@
+# THIS FUNCTION IS STILL UNDER DEVELOPMENT AND WILL BE RELEASED IN VERSION 0.2
+
 
 #' @title carries out postimputation to minimize imputation error
 #' @description this is a function for carrying out postimputation on datasets
@@ -32,8 +34,15 @@
 #' }
 #'
 #' @author E. F. Haghish
-#' @export
+# @export
+#' @keywords Internal
+#' @noRd
 
+
+# mlim prints the data number. when postimpute is used, the data number
+#      must be passed to mlim
+# mlim.postimpute should also allow saving and loading. this requires adding
+#      other elements in the saving object
 mlim.postimpute <- function(data, preimputed.data,
                             algos = c("ELNET", "GBM", "RF", "DL", "Ensemble"),
                             ... ) {
