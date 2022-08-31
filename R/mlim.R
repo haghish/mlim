@@ -224,16 +224,14 @@
 #' # run the ELNET single imputation (fastest imputation via 'mlim')
 #' MLIM <- mlim(irisNA)
 #'
-#' # in single imputation, you can estimate the imputation accuracy with cross validation
-#' # the mlim.summarize shows the estimated imputation accuracy
+#' # in single imputation, you can estimate the imputation accuracy via cross validation
+#' mlim.summarize(MLIM)
 #'
 #' # or if you want to carry out ELNET multiple imputation with 5 datasets
 #' # to carry out analysis on the multiple imputation, use the 'mlim.mids' function
 #' MLIM <- mlim(irisNA, m = 5)
 #' mids <- mlim.mids(MLIM, irisNA)
 #' fit <- with(data=mids, exp=glm(Species ~ Sepal.Length, family = "binomial"))
-#'
-#'
 #'
 #' # you can check the accuracy of the imputation, if you have the original dataset
 #' mlim.error(MLIM, irisNA, iris)

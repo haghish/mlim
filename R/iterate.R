@@ -114,7 +114,7 @@ iterate <- function(procedure,
     # ============================================================
     if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer'
         || FAMILY[z] == 'quasibinomial' ) {
-      fit <- tryCatch(h2o::h2o.automl(x = setdiff(X, Y), y = Y,
+      tryCatch(fit <- h2o::h2o.automl(x = setdiff(X, Y), y = Y,
                                       training_frame = bhex[which(!y.na), ],
                                       sort_metric = sort_metric,
                                       project_name = "mlim",
@@ -164,7 +164,7 @@ iterate <- function(procedure,
       #  trainingsample <- sort(setdiff(which(!y.na), vdFrame))
       #}
 
-      fit <- tryCatch(h2o::h2o.automl(x = setdiff(X, Y), y = Y,
+      tryCatch(fit <- h2o::h2o.automl(x = setdiff(X, Y), y = Y,
                                       balance_classes = balance_classes,
                                       sort_metric = sort_metric,
                                       training_frame = bhex[which(!y.na), ],
