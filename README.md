@@ -1,16 +1,10 @@
-<!-- > CITE: Haghish, E. F. (2022). mlim: Multiple Imputation with Automated Machine Learning [Computer software]. https://CRAN.R-project.org/package=mlim. 
-
-
-- - -
-
--->
 
 <a href="https://github.com/haghish/mlim"><img src='man/figures/mlim.png' align="right" height="200" /></a>
 
 # **`mlim`** : Multiple Imputation with Automated Machine Learning
 
 <!--<a href="https://github.com/haghish/mlim"><img src="./web/mlim.png" align="left" width="140" hspace="10" vspace="6"></a> -->
-[![CRAN version](http://www.r-pkg.org/badges/version/mlim?color=2eb8b3)](https://cran.r-project.org/package=mlim)  [![](https://cranlogs.r-pkg.org/badges/grand-total/mlim?color=a958d1)](https://cran.r-project.org/package=mlim) [![](man/figures/manual.svg)](https://cran.r-project.org/web/packages/mlim/mlim.pdf) [![](man/figures/wiki.svg)](https://github.com/haghish/mlim_handbook/blob/main/mlim_handbook.pdf)
+[![CRAN version](http://www.r-pkg.org/badges/version/mlim?color=2eb8b3)](https://cran.r-project.org/package=mlim)  [![](https://cranlogs.r-pkg.org/badges/grand-total/mlim?color=a958d1)](https://cran.r-project.org/package=mlim) [![](man/figures/manual.svg)](https://cran.r-project.org/web/packages/mlim/mlim.pdf) [![](man/figures/handbook_stupid.svg)](https://github.com/haghish/mlim_handbook/blob/main/mlim_handbook.pdf)
 
 <!-- [![](https://cranlogs.r-pkg.org/badges/mlim?color=a958d1)](https://cran.r-project.org/package=mlim) https://shields.io/ -->
 
@@ -112,6 +106,12 @@ Advantages and limitations
 
 **`mlim`** fine-tunes models for imputation, a procedure that has never been implemented in other R packages. This procedure often yields much higher accuracy compared to other machine learning imputation methods or missing data imputation procedures because of using more accurate models that are fine-tuned for each feature in the dataset. The cost, however, is computational resources. If you have access to a very powerful machine, with a huge amount of RAM per CPU, then try __`GBM`__. If you specify a high enough number of models in each fine-tuning process, you are likely to get a more accurate imputation that __`ELNET`__. However, for personal machines and laptops, __`ELNET`__ is generally recommended (see below). __If your machine is not powerful enough, it is likely that the imputation crashes due to memory problems...__. So, perhaps begin with __`ELNET`__, unless you are working with a powerful server. This is my general advice as long as **`mlim`** is in Beta version and under development.
 
+
+Citation 
+--------
+
+- Haghish, E. F. (2022). mlim: Multiple Imputation with Automated Machine Learning [Computer software]. https://CRAN.R-project.org/package=mlim. 
+- Haghish, E. F. (2022). mlim Multiple Imputation Handbook. Software Manual. https://github.com/haghish/mlim_handbook.
 
 <!--
 Preimputation
