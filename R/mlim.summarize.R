@@ -3,6 +3,8 @@
 #' @description provides information about estimated accuracy of the imputation as well
 #'              as the overall procedure of the imputation.
 #' @param data dataset imputed with mlim
+# @param method character. the default is NULL, returning RMSE. the supported
+#               arguments are "scaled" nad "normalize".
 #' @return estimated imputation accuracy via cross-valdiation procedure
 #' @author E. F. Haghish
 #' \donttest{
@@ -22,7 +24,8 @@
 #' @export
 #' @export
 
-mlim.summarize <- function(data) {
+mlim.summarize <- function(data #, method = NULL
+                           ) {
 
   results <- data.frame(variable = character(),
                         nrmse = numeric(),
@@ -33,23 +36,30 @@ mlim.summarize <- function(data) {
     metrics <- att$metrics
     VARS <- colnames(data)[colnames(data) %in% metrics$variable]
     for (i in VARS) {
+      err <- NULL
       index <- metrics$variable == i
       if (inherits(data[,i], "factor")) {
         #err <- min(metrics[index, "mean_per_class_error"], na.rm = TRUE)
         minimum <- min(metrics[index, "RMSE"], na.rm = TRUE)
-        err <- minimum / (length(levels(data[,i])) - 1)
-        err <- round(err, 6)
+        # if (is.valid(method)) {
+        #   if (method == "scale") err <- minimum / (length(levels(data[,i])) - 1)
+        # }
+        err <- round(minimum, 6)
         results <- rbind(results, c(i, err))
       }
       else {
         minimum <- min(metrics[index, "RMSE"], na.rm = TRUE)
-        err <- minimum / diff(range(data[,i])) #sd(data[,i], na.rm = TRUE)
-        err <- round(err, 6)
+        # if (is.valid(method)) {
+        #   if (method == "scale") err <- minimum / diff(range(data[,i])) #sd(data[,i], na.rm = TRUE)
+        #   else if (method == "scale") err <- minimum / sd(data[,i], na.rm = TRUE)
+        # }
+
+        err <- round(minimum, 6)
         results <- rbind(results, c(i, err))
       }
     }
 
-    colnames(results) <- c("variable", "nrmse")
+    colnames(results) <- c("variable", "rmse")
     return(results)
   }
   else if (inherits(data, "mlim.mi")) {
@@ -57,7 +67,7 @@ mlim.summarize <- function(data) {
     for (i in 2:length(data)) {
       results <- cbind(results, mlim.summarize(data[[i]])[,2])
     }
-    colnames(results) <- c("varable", paste0("nrmse_", 1:length(data)))
+    colnames(results) <- c("varable", paste0("rmse_", 1:length(data)))
     return(results)
   }
 

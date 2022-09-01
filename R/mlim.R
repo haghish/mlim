@@ -229,7 +229,7 @@
 #'
 #' # or if you want to carry out ELNET multiple imputation with 5 datasets
 #' # to carry out analysis on the multiple imputation, use the 'mlim.mids' function
-#' MLIM2 <- mlim(irisNA, m = 5)
+#' MLIM2 <- mlim(irisNA, m = 2)
 #' mids <- mlim.mids(MLIM2, irisNA)
 #' fit <- with(data=mids, exp=glm(Species ~ Sepal.Length, family = "binomial"))
 #' res <- mice::pool(fit)
@@ -237,7 +237,6 @@
 #'
 #' # you can check the accuracy of the imputation, if you have the original dataset
 #' mlim.error(MLIM2, irisNA, iris)
-#' mlim.summarize(MLIM2)
 #'
 #' ### run GBM, RF, ELNET, and Ensemble algos and allow 60 minutes of tuning for each variable
 #' ### this requires a lot of RAM on your machine and a lot of time!
