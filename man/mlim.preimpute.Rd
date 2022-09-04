@@ -4,7 +4,13 @@
 \alias{mlim.preimpute}
 \title{carries out preimputation}
 \usage{
-mlim.preimpute(data, preimpute, seed = NULL, report = NULL, debug = FALSE)
+mlim.preimpute(
+  data,
+  preimpute = "RF",
+  seed = NULL,
+  report = NULL,
+  debug = FALSE
+)
 }
 \arguments{
 \item{data}{data.frame with missing values}
@@ -12,7 +18,9 @@ mlim.preimpute(data, preimpute, seed = NULL, report = NULL, debug = FALSE)
 \item{preimpute}{character. specify the algorithm for preimputation. the
 supported options are "RF" (Random Forest) and "mm"
 (mean-mode replacement). the default is "RF", which carries
-a parallel random forest imputation, using all the CPUs available.}
+a parallel random forest imputation, using all the CPUs available.
+the other alternative is "mm" which performs mean/mode
+imputation.}
 
 \item{report}{filename. if a filename is specified, the \code{"md.log"} R
 package is used to generate a Markdown progress report for the
@@ -36,6 +44,19 @@ instead of replacing missing data with mean and mode, a smarter
              optimize the imputed dataset with mlim. this procedure usually
              requires less iterations and will savea lot of computation
              resources.
+}
+\examples{
+\donttest{
+data(iris)
+
+# add 10\% stratified missing values to one factor variable
+irisNA <- iris
+irisNA$Species <- mlim.na(irisNA$Species, p = 0.1, stratify = TRUE, seed = 2022)
+
+# run the default random forest preimputation
+MLIM <- mlim.preimpute(irisNA)
+mlim.error(MLIM, irisNA, iris)
+}
 }
 \author{
 E. F. Haghish

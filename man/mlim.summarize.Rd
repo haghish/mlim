@@ -7,28 +7,23 @@
 mlim.summarize(data)
 }
 \arguments{
-\item{data}{data.frame with missing values}
-
-\item{preimpute}{character. specify the algorithm for preimputation. the
-supported options are "RF" (Random Forest) and "mm"
-(mean-mode replacement). the default is "RF", which carries
-a parallel random forest imputation, using all the CPUs available.}
-
-\item{report}{filename. if a filename is specified, the \code{"md.log"} R
-package is used to generate a Markdown progress report for the
-imputation. the format of the report is adopted based on the
-\code{'verbosity'} argument. the higher the verbosity, the more
-technical the report becomes. if verbosity equals "debug", then
-a log file is generated, which includes time stamp and shows
-the function that has generated the message. otherwise, a
-reduced markdown-like report is generated.
-this feature is used internally by 'mlim' function.}
-
-\item{debug.}{logical. if TRUE, the debugging feature of the report is activated.
-this feature is used internally by 'mlim' function.}
+\item{data}{dataset imputed with mlim}
 }
 \value{
-imputed data.frame
+estimated imputation accuracy via cross-valdiation procedure
+\donttest{
+data(iris)
+
+# add 10% stratified missing values to one factor variable
+irisNA <- iris
+irisNA$Species <- mlim.na(irisNA$Species, p = 0.1, stratify = TRUE, seed = 2022)
+
+# run the ELNET single imputation (fastest imputation via 'mlim')
+MLIM <- mlim(irisNA)
+
+# in single imputation, you can estimate the imputation accuracy via cross validation RMSE
+mlim.summarize(MLIM)
+}
 }
 \description{
 provides information about estimated accuracy of the imputation as well

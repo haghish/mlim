@@ -27,6 +27,7 @@ mlim(
   preimputed.data = NULL,
   save = NULL,
   load = NULL,
+  java = NULL,
   ...
 )
 }
@@ -59,7 +60,8 @@ imputed. if \code{'load'} argument is provided, this argument will be ignored.}
 
 \item{postimpute}{logical. if TRUE, mlim uses algorithms rather than 'ELNET' for carrying out
 postimputation optimization. however, if FALSE, all specified algorihms will
-be used in the process of 'reimputation' instead.}
+be used in the process of 'reimputation' together. the 'Ensemble' algorithm
+is encouraged when other algorithms are used.}
 
 \item{ignore}{character vector of column names or index of columns that should
 should be ignored in the process of imputation.}
@@ -179,6 +181,10 @@ the imputation and is particularly recommended for large datasets
 or when the user specifies a computationally extensive settings
 (e.g. specifying several algorithms, increasing tuning time, etc.).}
 
+\item{java}{character, specifying path to the executable 64bit Java JDK on the
+Microsoft Windows machines, if JDK is installed but the path environment
+variable is not set.}
+
 \item{...}{arguments that are used internally between 'mlim' and 'mlim.postimpute'.
 these arguments are not documented in the help file and are not
 intended to be used by end user.}
@@ -196,31 +202,26 @@ imputes data.frame with mixed variable types using automated
 
 \donttest{
 data(iris)
+
+# add stratified missing observations to the data
 irisNA <- mlim.na(iris, p = 0.1, stratify = TRUE, seed = 2022)
 
-# run the ELNET imputation (fastest imputation via 'mlim')
+# run the ELNET single imputation (fastest imputation via 'mlim')
 MLIM <- mlim(irisNA)
+
+# in single imputation, you can estimate the imputation accuracy via cross validation RMSE
+mlim.summarize(MLIM)
 
 # or if you want to carry out ELNET multiple imputation with 5 datasets
 # to carry out analysis on the multiple imputation, use the 'mlim.mids' function
-MLIM <- mlim(irisNA, m = 5)
-mids <- mlim.mids(MLIM, irisNA)
+MLIM2 <- mlim(irisNA, m = 2)
+mids <- mlim.mids(MLIM2, irisNA)
 fit <- with(data=mids, exp=glm(Species ~ Sepal.Length, family = "binomial"))
-
-
+res <- mice::pool(fit)
+summary(res)
 
 # you can check the accuracy of the imputation, if you have the original dataset
-mlim.error(MLIM, irisNA, iris)
-
-### run GBM, RF, ELNET, and Ensemble algos and allow 60 minutes of tuning for each variable
-### this requires a lot of RAM on your machine and a lot of time!
-### ALTERNATIVELY, check out 'mlim.postimpute' function for optimizing multiple imputations
-# MLIM <- mlim(irisNA, algos = c("GBM", "RF","ELNET","Ensemble"), tuning_time=60*60)
-# mlim.error(MLIM, irisNA, iris)
-
-### if you have a larger data, there is a few things you can set to make the
-### algorithm faster, yet, having only a marginal accuracy reduction as a trade-off
-# MLIM <- mlim(irisNA, algos = 'ELNET', tolerance = 1e-3, doublecheck = FALSE)
+mlim.error(MLIM2, irisNA, iris)
 }
 }
 \author{

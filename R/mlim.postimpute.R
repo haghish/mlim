@@ -13,7 +13,6 @@
 #'              is 'c("ELNET", "GBM", "RF", "DL", "Ensemble")'.
 #' @param ... arguments to be passed to mlim
 #' @return imputed data.frame
-#'
 #' @examples
 #' \donttest{
 #' data(iris)
@@ -34,7 +33,6 @@
 #' }
 #'
 #' @author E. F. Haghish
-# @export
 #' @keywords Internal
 #' @noRd
 

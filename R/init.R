@@ -6,9 +6,11 @@
 #' @noRd
 
 init <- function(nthreads, min_mem_size, max_mem_size, ignore_config = TRUE,
-                 report) {
+                 java = NULL, report) {
 
-
+  if (!is.null(java)) {
+    Sys.setenv(JAVA_HOME = java)
+  }
   # Run H2O on the statistics server
   # ============================================================
   #try(h2o.shutdown(FALSE), silent = TRUE)

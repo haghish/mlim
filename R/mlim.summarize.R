@@ -6,7 +6,6 @@
 # @param method character. the default is NULL, returning RMSE. the supported
 #               arguments are "scaled" nad "normalize".
 #' @return estimated imputation accuracy via cross-valdiation procedure
-#' @author E. F. Haghish
 #' \donttest{
 #' data(iris)
 #'
@@ -14,14 +13,13 @@
 #' irisNA <- iris
 #' irisNA$Species <- mlim.na(irisNA$Species, p = 0.1, stratify = TRUE, seed = 2022)
 #'
-#' # run the default random forest preimputation
-#' MLIM <- mlim.preimpute(irisNA)
-#' mlim.error(MLIM, irisNA, iris)
+#' # run the ELNET single imputation (fastest imputation via 'mlim')
+#' MLIM <- mlim(irisNA)
 #'
-#' # compare the error with the estimated error from cross validation
+#' # in single imputation, you can estimate the imputation accuracy via cross validation RMSE
 #' mlim.summarize(MLIM)
 #' }
-#' @export
+#' @author E. F. Haghish
 #' @export
 
 mlim.summarize <- function(data #, method = NULL

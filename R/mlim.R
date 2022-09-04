@@ -205,6 +205,9 @@
 #                 following itterations. otherwise, if FALSE, the current arguments of
 #                 mlim are used to overpower the settings of the mlim object. the settings
 #                 include the full list of the mlim arguments.
+#' @param java character, specifying path to the executable 64bit Java JDK on the
+#'             Microsoft Windows machines, if JDK is installed but the path environment
+#'             variable is not set.
 #' @param ... arguments that are used internally between 'mlim' and 'mlim.postimpute'.
 #'            these arguments are not documented in the help file and are not
 #'            intended to be used by end user.
@@ -224,7 +227,7 @@
 #' # run the ELNET single imputation (fastest imputation via 'mlim')
 #' MLIM <- mlim(irisNA)
 #'
-#' # in single imputation, you can estimate the imputation accuracy via cross validation
+#' # in single imputation, you can estimate the imputation accuracy via cross validation RMSE
 #' mlim.summarize(MLIM)
 #'
 #' # or if you want to carry out ELNET multiple imputation with 5 datasets
@@ -237,16 +240,16 @@
 #'
 #' # you can check the accuracy of the imputation, if you have the original dataset
 #' mlim.error(MLIM2, irisNA, iris)
-#'
-#' ### run GBM, RF, ELNET, and Ensemble algos and allow 60 minutes of tuning for each variable
-#' ### this requires a lot of RAM on your machine and a lot of time!
-#' ### ALTERNATIVELY, check out 'mlim.postimpute' function for optimizing multiple imputations
-#' # MLIM <- mlim(irisNA, algos = c("GBM", "RF","ELNET","Ensemble"), tuning_time=60*60)
-#' # mlim.error(MLIM, irisNA, iris)
-#'
-#' ### if you have a larger data, there is a few things you can set to make the
-#' ### algorithm faster, yet, having only a marginal accuracy reduction as a trade-off
-#' # MLIM <- mlim(irisNA, algos = 'ELNET', tolerance = 1e-3, doublecheck = FALSE)
+#
+# ### run GBM, RF, ELNET, and Ensemble algos and allow 60 minutes of tuning for each variable
+# ### this requires a lot of RAM on your machine and a lot of time!
+# ### ALTERNATIVELY, check out 'mlim.postimpute' function for optimizing multiple imputations
+# # MLIM <- mlim(irisNA, algos = c("GBM", "RF","ELNET","Ensemble"), tuning_time=60*60)
+# # mlim.error(MLIM, irisNA, iris)
+#
+# ### if you have a larger data, there is a few things you can set to make the
+# ### algorithm faster, yet, having only a marginal accuracy reduction as a trade-off
+# # MLIM <- mlim(irisNA, algos = 'ELNET', tolerance = 1e-3, doublecheck = FALSE)
 #' }
 #' @export
 
@@ -300,6 +303,7 @@ mlim <- function(data = NULL,
                  preimputed.data = NULL,
                  save = NULL,
                  load = NULL,
+                 java = NULL,
                  #force.load = TRUE,
                  ...
                  ) {
@@ -464,6 +468,7 @@ mlim <- function(data = NULL,
                                       min_mem_size = min_ram,
                                       max_mem_size = max_ram,
                                       ignore_config = TRUE,
+                                      java = java,
                                       report),
                    file = report,
                    append = TRUE)
