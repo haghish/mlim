@@ -28,9 +28,12 @@ In reccent years, there have been several attempts for using machine learning fo
 Download mlim multiple imputation handbook
 ------------------------------------------
 
-<a href="https://github.com/haghish/mlim_handbook/blob/main/mlim_handbook.pdf"><img src='https://github.com/haghish/mlim_handbook/blob/main/figures/handbook.png' align="left" height="150" /></a> `mlim` comes with a free and open-source handbook to help you get started with either single or multiple imputation. The handbook is written in _LaTeX_ and its source is publically hosten on GitHub, visit [github.com/haghish/mlim_handbook](https://github.com/haghish/mlim_handbook) for more information. 
+<a href="https://github.com/haghish/mlim_handbook/blob/main/mlim_handbook.pdf"><img src='https://github.com/haghish/mlim_handbook/blob/main/figures/handbook.png' align="left" height="150" /></a> `mlim` comes with a free and open-source handbook to help you get started with either single or multiple imputation. The handbook is written in _LaTeX_ and its source is publically hosted on GitHub, visit [github.com/haghish/mlim_handbook](https://github.com/haghish/mlim_handbook) for more information. 
 
-On the one hand, the nice thing about a free and open-source book is that the author is not intended to make any profit from his work to reach out to those who cannot afford it (as I could not do so, when I was a student). On the other hand, I have (very) limited time and resources to dedicate to maintaining this repository and updating the handbook. So if you are an advanced user, help me improving the handbook (and the software). Even a grammar check would be highly appreciated, not just by me, but also everyone else who reads the handbook. There is a page at the outset of the handbook for guest contributors. Make sure to add your name there 😉.
+<br>
+<br>
+<br>
+<br>
 
 
 Procedure: From preimputation to imputation and postimputation
@@ -81,8 +84,7 @@ Supported algorithms
 - `DL` (Deep Learning) 
 - `Ensemble` (Stacked Ensemble) 
 
-> `ELNET` is the default imputation algorithm. Among all of the above, ELNET is the easist and fastest to fine-tune, 
-because it has fewer parameters. By default, **`mlim`** uses only `ELNET`, however, you can add another algorithm to activate the post-imputation procedure.
+> `ELNET` is the default imputation algorithm. Among all of the above, ELNET is the simplest model, fastest to fine-tune, requires the least amount of RAM and CPU, and yet, it is the most stable one, which also makes it one of the most generalizable algorithms. By default, **`mlim`** uses only `ELNET`, however, you can add another algorithm to activate the post-imputation procedure.
 
 <!-- However, officially, only __`ELNET`__ is _recommended for personal computers with limited RAM_. **`mlim`** is computation hungry and is more suitable for servers with a lot of RAM. However, __`ELNET`__ converges rather fast and hence, provides a fast, scalable, yet highly flexible solution for missing data imputation. Compared to a fine-tuned __`GBM`__, __`ELNET`__ generally performs poorer, but their computational demands are vastly different. In order to fine-tune a __`GBM`__ model that out-performs __`ELNET`__, you need to include a large number of models to allow **`mlim`** to search for the ideal parameters for each variable, within each iteration. 
 -->
