@@ -15,7 +15,7 @@ init <- function(nthreads, min_mem_size, max_mem_size, ignore_config = TRUE,
   # ============================================================
   #try(h2o.shutdown(FALSE), silent = TRUE)
   connection <- h2o::h2o.init(nthreads = nthreads,
-                              name = "mlim_connection",
+                              #name = "mlim_connection",
                               min_mem_size = min_mem_size,
                               max_mem_size = max_mem_size,
                               ignore_config = ignore_config,

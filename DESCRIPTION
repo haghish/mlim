@@ -9,10 +9,14 @@ Authors@R:
 Depends: 
     R (>= 3.5.0)
 Description: Using automated machine learning, the package fine-tunes an Elastic 
-    Net or Gradient Boosting Machine model for imputing the missing 
+    Net (default) or Gradient Boosting, Random Forest, Deep Learning, Extreme Gradient Boosting,
+    or Stacked Ensemble Machine model for imputing the missing 
     observations of each variable. This procedure has been implemented for the 
     first time by this package and is expected to outperform other packages for 
-    imputing missing data that do not fine-tune their models. 
+    imputing missing data that do not fine-tune their models. The main idea is 
+    to allow the mdoel to set their own parameters for imputing each variable 
+    instead of setting fixed pre-defined paramets to impute all variables 
+    of the dataset.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Imports:
