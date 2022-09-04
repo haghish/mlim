@@ -4,13 +4,7 @@
 \alias{mlim.preimpute}
 \title{carries out preimputation}
 \usage{
-mlim.preimpute(
-  data,
-  preimpute = "RF",
-  seed = NULL,
-  report = NULL,
-  debug = FALSE
-)
+mlim.preimpute(data, preimpute = "RF", seed = NULL)
 }
 \arguments{
 \item{data}{data.frame with missing values}
@@ -22,18 +16,7 @@ a parallel random forest imputation, using all the CPUs available.
 the other alternative is "mm" which performs mean/mode
 imputation.}
 
-\item{report}{filename. if a filename is specified, the \code{"md.log"} R
-package is used to generate a Markdown progress report for the
-imputation. the format of the report is adopted based on the
-\code{'verbosity'} argument. the higher the verbosity, the more
-technical the report becomes. if verbosity equals "debug", then
-a log file is generated, which includes time stamp and shows
-the function that has generated the message. otherwise, a
-reduced markdown-like report is generated.
-this feature is used internally by 'mlim' function.}
-
-\item{debug.}{logical. if TRUE, the debugging feature of the report is activated.
-this feature is used internally by 'mlim' function.}
+\item{seed}{integer. specify the random generator seed}
 }
 \value{
 imputed data.frame

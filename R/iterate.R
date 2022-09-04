@@ -199,7 +199,7 @@ iterate <- function(procedure,
     }
 
 
-    tryCatch(perf <- h2o::h2o.performance(fit@leader),
+    tryCatch(perf <- h2o::h2o.performance(fit@leader, xval = TRUE),
              error = function(cond) {
                cat("connection to JAVA server failed...\n");
                return(stop("Java server crashed. perhaps a RAM problem?"))})
@@ -439,16 +439,18 @@ iterate <- function(procedure,
              error = function(cond) {
                #cat("connection to JAVA server failed...\n");
                return(stop("Java server crashed. perhaps a RAM problem?"))})
-    tryCatch(h2o::h2o.removeAll(timeout_secs = 30),
+    tryCatch(h2o::h2o.removeAll(timeout_secs = 0),
              error = function(cond) {
                #cat("connection to JAVA server failed...\n");
                return(stop("Java server crashed. perhaps a RAM problem?"))})
     Sys.sleep(sleep)
     gc()
     gc()
-    h2o:::.h2o.garbageCollect()
-    h2o:::.h2o.garbageCollect()
-    h2o:::.h2o.garbageCollect()
+
+    ### NOT ALLOWED ON CRAN :/
+    #h2o:::.h2o.garbageCollect()
+    #h2o:::.h2o.garbageCollect()
+    #h2o:::.h2o.garbageCollect()
     Sys.sleep(sleep)
     tryCatch(hex <- h2o::as.h2o(HEX) ,
              error = function(cond) {

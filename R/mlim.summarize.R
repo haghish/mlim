@@ -6,6 +6,7 @@
 # @param method character. the default is NULL, returning RMSE. the supported
 #               arguments are "scaled" nad "normalize".
 #' @return estimated imputation accuracy via cross-valdiation procedure
+#' @examples
 #' \donttest{
 #' data(iris)
 #'

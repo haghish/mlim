@@ -550,8 +550,7 @@ mlim <- function(data = NULL,
     # PREIMPUTATION
     # .........................................................
     if (preimpute != "iterate" & is.null(preimputed.data)) {
-      data <- mlim.preimpute(data=data, preimpute=preimpute,
-                             seed = seed, report=report, debug=debug)
+      data <- mlim.preimpute(data=data, preimpute=preimpute, seed = seed)
 
       # reset the relevant predictors
       X <- allPredictors

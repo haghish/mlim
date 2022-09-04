@@ -11,10 +11,16 @@ mlim.summarize(data)
 }
 \value{
 estimated imputation accuracy via cross-valdiation procedure
+}
+\description{
+provides information about estimated accuracy of the imputation as well
+             as the overall procedure of the imputation.
+}
+\examples{
 \donttest{
 data(iris)
 
-# add 10% stratified missing values to one factor variable
+# add 10\% stratified missing values to one factor variable
 irisNA <- iris
 irisNA$Species <- mlim.na(irisNA$Species, p = 0.1, stratify = TRUE, seed = 2022)
 
@@ -24,10 +30,6 @@ MLIM <- mlim(irisNA)
 # in single imputation, you can estimate the imputation accuracy via cross validation RMSE
 mlim.summarize(MLIM)
 }
-}
-\description{
-provides information about estimated accuracy of the imputation as well
-             as the overall procedure of the imputation.
 }
 \author{
 E. F. Haghish
