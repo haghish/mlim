@@ -181,8 +181,6 @@
 #'                     used for the imputation.
 #'                     large memory size is particularly advised, especially
 #'                     for multicore processes. the more you give the more you get!
-# @param shutdown logical. if TRUE, h2o server is closed after the imputation.
-#                 the default is TRUE
 #' @param preimputed.data data.frame. if you have used another software for missing
 #'                      data imputation, you can still optimize the imputation
 #'                      by handing the data.frame to this argument, which will
@@ -205,6 +203,8 @@
 #                 following itterations. otherwise, if FALSE, the current arguments of
 #                 mlim are used to overpower the settings of the mlim object. the settings
 #                 include the full list of the mlim arguments.
+#' @param shutdown logical. if TRUE, h2o server is closed after the imputation.
+#'                 the default is TRUE
 #' @param java character, specifying path to the executable 64bit Java JDK on the
 #'             Microsoft Windows machines, if JDK is installed but the path environment
 #'             variable is not set.
@@ -221,35 +221,38 @@
 #' \donttest{
 #' data(iris)
 #'
-#' # add stratified missing observations to the data
-#' irisNA <- mlim.na(iris, p = 0.1, stratify = TRUE, seed = 2022)
+#'
+#' # add stratified missing observations to the data. to make the example run
+#' # faster, I add NAs only to a single variable.
+#' dfNA <- iris
+#' dfNA$Species <- mlim.na(dfNA$Species, p = 0.1, stratify = TRUE, seed = 2022)
 #'
 #' # run the ELNET single imputation (fastest imputation via 'mlim')
-#' MLIM <- mlim(irisNA)
+#' MLIM <- mlim(dfNA, shutdown = FALSE)
 #'
 #' # in single imputation, you can estimate the imputation accuracy via cross validation RMSE
 #' mlim.summarize(MLIM)
 #'
-#' # or if you want to carry out ELNET multiple imputation with 5 datasets
-#' # to carry out analysis on the multiple imputation, use the 'mlim.mids' function
-#' MLIM2 <- mlim(irisNA, m = 2)
-#' mids <- mlim.mids(MLIM2, irisNA)
+#' ### or if you want to carry out ELNET multiple imputation with 5 datasets.
+#' ### next, to carry out analysis on the multiple imputation, use the 'mlim.mids' function
+#' ### minimum of 5 datasets
+#' MLIM2 <- mlim(dfNA, m = 5)
+#' mids <- mlim.mids(MLIM2, dfNA)
 #' fit <- with(data=mids, exp=glm(Species ~ Sepal.Length, family = "binomial"))
 #' res <- mice::pool(fit)
 #' summary(res)
 #'
 #' # you can check the accuracy of the imputation, if you have the original dataset
-#' mlim.error(MLIM2, irisNA, iris)
+#' mlim.error(MLIM2, dfNA, iris)
 #
 # ### run GBM, RF, ELNET, and Ensemble algos and allow 60 minutes of tuning for each variable
 # ### this requires a lot of RAM on your machine and a lot of time!
-# ### ALTERNATIVELY, check out 'mlim.postimpute' function for optimizing multiple imputations
-# # MLIM <- mlim(irisNA, algos = c("GBM", "RF","ELNET","Ensemble"), tuning_time=60*60)
-# # mlim.error(MLIM, irisNA, iris)
+# # MLIM <- mlim(dfNA, algos = c("GBM", "RF","ELNET","Ensemble"), tuning_time=60*60)
+# # mlim.error(MLIM, dfNA, iris)
 #
 # ### if you have a larger data, there is a few things you can set to make the
 # ### algorithm faster, yet, having only a marginal accuracy reduction as a trade-off
-# # MLIM <- mlim(irisNA, algos = 'ELNET', tolerance = 1e-3, doublecheck = FALSE)
+# # MLIM <- mlim(dfNA, algos = 'ELNET', tolerance = 1e-3, doublecheck = FALSE)
 #' }
 #' @export
 
@@ -297,12 +300,12 @@ mlim <- function(data = NULL,
                  ram = NULL,
                  #flush = TRUE,
                  #init = TRUE,
-                 #shutdown = TRUE,
 
                  # NOT YET IMPLEMENTED
                  preimputed.data = NULL,
                  save = NULL,
                  load = NULL,
+                 shutdown = TRUE,
                  java = NULL,
                  #force.load = TRUE,
                  ...
@@ -327,7 +330,7 @@ mlim <- function(data = NULL,
 
   # check the ... arguments
   # ============================================================
-  hidden_args <- c("cv", "init", "shutdown", "flush", "ignore.rank", "sleep")
+  hidden_args <- c("cv", "init", "flush", "ignore.rank", "sleep")
   stopifnot(
     "incompatible '...' arguments" = (names(list(...)) %in% hidden_args)
   )
@@ -346,7 +349,6 @@ mlim <- function(data = NULL,
   cv          <- threeDots(name = "cv", ..., default = 10L)
   miniter     <- 2L
   init        <- threeDots(name = "init", ..., default = TRUE)
-  shutdown    <- threeDots(name = "shutdown", ..., default = TRUE)
   flush       <- threeDots(name = "flush", ..., default = TRUE)
   verbose     <- 0
   error_metric<- "RMSE"
@@ -587,6 +589,7 @@ mlim <- function(data = NULL,
                                mem, orderedCols, ignore, maxiter,
                                miniter, matching, ignore.rank,
                                verbosity, error, cpu, max_ram=max_ram, min_ram=min_ram,
+                               #??? shutdown has to be fixed in future updates
                                shutdown=FALSE, clean = TRUE)
 
     if (m > 1) MI[[m.it]] <- dataLast

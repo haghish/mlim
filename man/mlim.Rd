@@ -27,6 +27,7 @@ mlim(
   preimputed.data = NULL,
   save = NULL,
   load = NULL,
+  shutdown = TRUE,
   java = NULL,
   ...
 )
@@ -181,6 +182,9 @@ the imputation and is particularly recommended for large datasets
 or when the user specifies a computationally extensive settings
 (e.g. specifying several algorithms, increasing tuning time, etc.).}
 
+\item{shutdown}{logical. if TRUE, h2o server is closed after the imputation.
+the default is TRUE}
+
 \item{java}{character, specifying path to the executable 64bit Java JDK on the
 Microsoft Windows machines, if JDK is installed but the path environment
 variable is not set.}
@@ -203,25 +207,29 @@ imputes data.frame with mixed variable types using automated
 \donttest{
 data(iris)
 
-# add stratified missing observations to the data
-irisNA <- mlim.na(iris, p = 0.1, stratify = TRUE, seed = 2022)
+
+# add stratified missing observations to the data. to make the example run
+# faster, I add NAs only to a single variable.
+dfNA <- iris
+dfNA$Species <- mlim.na(dfNA$Species, p = 0.1, stratify = TRUE, seed = 2022)
 
 # run the ELNET single imputation (fastest imputation via 'mlim')
-MLIM <- mlim(irisNA)
+MLIM <- mlim(dfNA, shutdown = FALSE)
 
 # in single imputation, you can estimate the imputation accuracy via cross validation RMSE
 mlim.summarize(MLIM)
 
-# or if you want to carry out ELNET multiple imputation with 5 datasets
-# to carry out analysis on the multiple imputation, use the 'mlim.mids' function
-MLIM2 <- mlim(irisNA, m = 2)
-mids <- mlim.mids(MLIM2, irisNA)
+### or if you want to carry out ELNET multiple imputation with 5 datasets.
+### next, to carry out analysis on the multiple imputation, use the 'mlim.mids' function
+### minimum of 5 datasets
+MLIM2 <- mlim(dfNA, m = 5)
+mids <- mlim.mids(MLIM2, dfNA)
 fit <- with(data=mids, exp=glm(Species ~ Sepal.Length, family = "binomial"))
 res <- mice::pool(fit)
 summary(res)
 
 # you can check the accuracy of the imputation, if you have the original dataset
-mlim.error(MLIM2, irisNA, iris)
+mlim.error(MLIM2, dfNA, iris)
 }
 }
 \author{

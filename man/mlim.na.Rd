@@ -28,6 +28,9 @@ only to numeric and ordered factors.}
 
 \item{seed}{integer. a random seed number for reproducing the result (recommended)}
 }
+\value{
+data.frame
+}
 \description{
 to examine the performance of imputation algorithms, artificial
              missing data are added to datasets and then imputed, to compare

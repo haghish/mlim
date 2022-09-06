@@ -11,6 +11,10 @@ mlim.mids(mlim, incomplete)
 
 \item{incomplete}{the original data.frame with NAs}
 }
+\value{
+object of class 'mids', as required by 'mice' package for analyzing
+        multiple imputation data
+}
 \description{
 takes "mlim" object and prepares a "mids" class for data analysis with
              multiple imputation.

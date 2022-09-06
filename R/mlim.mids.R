@@ -24,6 +24,8 @@
 #' # then, pool the results!
 #' summary(pool(fit))
 #' }
+#' @return object of class 'mids', as required by 'mice' package for analyzing
+#'         multiple imputation data
 #' @export
 
 mlim.mids <- function (mlim, incomplete) {

@@ -40,6 +40,7 @@
 #' # or add NAs to numeric variables
 #' mlim.na(iris, p=0.5, classes = "numeric", seed = 1)
 #' }
+#' @return data.frame
 #' @export
 
 mlim.na <- function(x, p = 0.1, stratify=FALSE, classes=NULL, seed = NULL) {
