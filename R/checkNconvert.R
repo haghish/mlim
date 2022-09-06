@@ -104,9 +104,9 @@ checkNconvert <- function(data, vars2impute, ignore,
       data[,i] <- as.numeric(data[,i])
     }
     else if ("character" %in% classes[[i]])  {
-      msg <- print(paste(i, "variable is of class 'character', which",
-                         "is not supported. either convert it to a 'factor'",
-                         "or give it to the 'ignore' argument."))
+      msg <- paste(i, "variable is of class 'character', which",
+                   "is not supported. either convert it to a 'factor'",
+                   "or give it to the 'ignore' argument.")
       stop(msg)
     }
   }

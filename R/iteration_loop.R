@@ -35,7 +35,7 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
      #ID: data_
     tryCatch(hex <- h2o::as.h2o(data),
              error = function(cond) {
-               cat("trying to connect to JAVA server...\n");
+               message("trying to connect to JAVA server...\n");
                return(stop("Java server has crashed (low RAM?)"))})
     bhex <- hex
     Sys.sleep(sleep)
@@ -58,12 +58,12 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
 
     tryCatch(hex <- h2o::as.h2o(data),
              error = function(cond) {
-               cat("trying to connect to JAVA server...\n");
+               message("trying to connect to JAVA server...\n");
                return(stop("Java server has crashed (low RAM?)"))})
 
     tryCatch(bhex<- h2o::as.h2o(bdata),
              error = function(cond) {
-               cat("trying to connect to JAVA server...\n");
+               message("trying to connect to JAVA server...\n");
                return(stop("Java server has crashed (low RAM?)"))})
   }
   Sys.sleep(sleep)
@@ -84,7 +84,7 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
   while (running) {
 
     # always print the iteration
-    cat(paste0("\ndata ", m.it, ", iteration ", k, " (RAM = ", memuse::Sys.meminfo()$freeram,")", ":\n"), sep = "") #":\t"
+    message(paste0("\ndata ", m.it, ", iteration ", k, " (RAM = ", memuse::Sys.meminfo()$freeram,")", ":\n"), sep = "") #":\t"
     md.log(paste("Iteration", k), section="section")
 
     if (debug) md.log("store last data", trace=FALSE)
@@ -164,7 +164,7 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
   # ............................................................
   # END OF THE ITERATIONS
   # ............................................................
-  if (verbose) cat("\n\n")
+  if (verbose) message("\n\n")
 
   md.log("This is the end, beautiful friend...", trace=FALSE)
 
@@ -182,14 +182,14 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
 
   if (clean) tryCatch(h2o::h2o.removeAll(),
                       error = function(cond) {
-                        cat("trying to connect to JAVA server...\n");
+                        message("trying to connect to JAVA server...\n");
                         return(stop("Java server has crashed (low RAM?)"))})
 
   if (shutdown) {
     md.log("shutting down the server", trace=FALSE)
     tryCatch(h2o::h2o.shutdown(prompt = FALSE),
              error = function(cond) {
-               cat("trying to connect to JAVA server...\n");
+               message("trying to connect to JAVA server...\n");
                return(warning("Java server has crashed (low RAM?)"))})
     Sys.sleep(sleep)
   }
@@ -209,7 +209,7 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
         matchedVal <- matching(imputed=dataLast[v.na, Y],
                                nonMiss=unique(dataLast[!v.na,Y]),
                                md.log)
-        #print(matchedVal)
+        #message(matchedVal)
         if (!is.null(matchedVal)) dataLast[v.na, Y] <- matchedVal
         else {
           md.log("matching failed", trace=FALSE)

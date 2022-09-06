@@ -16,7 +16,7 @@ server.check <- function() {
   for (i in 1:3) {
     if (!up) up <- tryCatch(h2o.clusterIsUp(),
                             error = function(cond){
-                              cat("trying to connect to JAVA server...\n");
+                              message("trying to connect to JAVA server...\n");
                               return(NULL)})
     if (!up) Sys.sleep(1)
   }
@@ -27,7 +27,7 @@ server.check <- function() {
   for (i in 1:3) {
     if (!healthy) healthy <- tryCatch(h2o.clusterStatus()$healthy,
                                       error = function(cond){
-                                        cat("trying to connect to JAVA server...\n");
+                                        message("trying to connect to JAVA server...\n");
                                         return(NULL)})
     if (!healthy) Sys.sleep(1)
   }

@@ -25,14 +25,14 @@ init <- function(nthreads, min_mem_size, max_mem_size, ignore_config = TRUE,
                                          ignore_config = ignore_config,
                                          insecure = TRUE),
              error = function(cond) {
-               #cat("connection to JAVA server failed...\n");
+               #message("connection to JAVA server failed...\n");
                return()})
     if (!is.null(connection)) {
       keepTrying <- FALSE
     }
     else {
       test <- test + 1
-      cat("Java server could not be ignitiated. will try again in 3 secs...\n")
+      message("Java server could not be ignitiated. will try again in 3 secs...\n")
       Sys.sleep(3)
     }
 

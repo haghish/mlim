@@ -311,13 +311,6 @@ mlim <- function(data = NULL,
                  ...
                  ) {
 
-
-  # initial warnings
-  # ============================================================
-  if (m > 1) {
-    cat("multiple imputation feature is in test-mode and its algorithm can change in the future\n")
-  }
-
   # improvements for the next release
   # ============================================================
   # instead of using all the algorithms at each iteration, add the
@@ -465,7 +458,7 @@ mlim <- function(data = NULL,
   # ============================================================
   if (init) {
     #sink(file = report, append = TRUE)
-    #cat("\n") # for Markdown styling
+    #message("\n") # for Markdown styling
     capture.output(connection <- init(nthreads = cpu,
                                       min_mem_size = min_ram,
                                       max_mem_size = max_ram,

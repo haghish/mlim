@@ -42,11 +42,11 @@ iterate <- function(procedure,
   #if (is.null(bhex)) bhex <- hex
 
   #ZZ <- z
-  #print(paste("z:",z, "length:",  length(vars2impute)))
+  #message(paste("z:",z, "length:",  length(vars2impute)))
   #if (z >= length(vars2impute)) ZZ <- length(vars2impute) - 1
 
   if (verbose==0) pb <- txtProgressBar(z-1, length(vars2impute), style = 3)
-  if (debug) cat(paste0(Y," (RAM = ", memuse::Sys.meminfo()$freeram,")\n"))
+  if (debug) message(paste0(Y," (RAM = ", memuse::Sys.meminfo()$freeram,")\n"))
 
   if (!boot) {
     v.na <- dataNA[, Y]
@@ -69,7 +69,7 @@ iterate <- function(procedure,
     #??? change this with a self-written function
     tryCatch(hex[[Y]] <- h2o::as.h2o(missRanger::imputeUnivariate(data[[Y]])),
              error = function(cond) {
-               #cat("connection to JAVA server failed...\n");
+               #message("connection to JAVA server failed...\n");
                return(stop("preimputation failed! \nuse 'mlim.preimpute' function and pass it via 'preimputed.data' to mlim"))})
     Sys.sleep(sleep)
   }
@@ -95,20 +95,20 @@ iterate <- function(procedure,
     usedalgorithms <- NULL
     if (procedure == "impute") usedalgorithms <- impute
     else usedalgorithms <- postimputealgos
-    # if (debug) print(paste("usedalgorithms", usedalgorithms))
-    # cat("X:", X, "\n")
-    # cat("Y:", Y, "\n")
-    # cat("sort_metric:", sort_metric, "\n")
-    # cat("usedalgorithms:", usedalgorithms, "\n")
-    # cat("cv:", cv, "\n")
-    # cat("tuning_time:", tuning_time, "\n")
-    # cat("max_models:", max_models, "\n")
-    # cat("weights_column:", weights_column, "\n")
-    # cat("keep_cv:", keep_cv, "\n")
-    # cat("seed:", seed, "\n")
-    # print(which(!y.na))
-    # print(dim(as.data.frame(bhex)))
-    # print(dim(bhex[which(!y.na), ]))
+    # if (debug) message(paste("usedalgorithms", usedalgorithms))
+    # message("X:", X, "\n")
+    # message("Y:", Y, "\n")
+    # message("sort_metric:", sort_metric, "\n")
+    # message("usedalgorithms:", usedalgorithms, "\n")
+    # message("cv:", cv, "\n")
+    # message("tuning_time:", tuning_time, "\n")
+    # message("max_models:", max_models, "\n")
+    # message("weights_column:", weights_column, "\n")
+    # message("keep_cv:", keep_cv, "\n")
+    # message("seed:", seed, "\n")
+    # message(which(!y.na))
+    # message(dim(as.data.frame(bhex)))
+    # message(dim(bhex[which(!y.na), ]))
     # ------------------------------------------------------------
     # fine-tune a gaussian model
     # ============================================================
@@ -131,7 +131,7 @@ iterate <- function(procedure,
                                       # #stopping_tolerance=stopping_tolerance
       ),
       error = function(cond) {
-        #cat("connection to JAVA server failed...\n");
+        #message("connection to JAVA server failed...\n");
         return(stop("model training failed. perhaps low RAM problem?"))})
 
     }
@@ -183,7 +183,7 @@ iterate <- function(procedure,
                                       #stopping_tolerance=stopping_tolerance
       ),
       error = function(cond) {
-        #cat("connection to JAVA server failed...\n");
+        #message("connection to JAVA server failed...\n");
         return(stop("model training failed. perhaps low RAM problem?"))})
     }
     else {
@@ -191,7 +191,7 @@ iterate <- function(procedure,
     }
 
     Sys.sleep(sleep)
-    #print(fit@leaderboard)
+    #message(fit@leaderboard)
 
     if (debug) {
       md.log("model fitted", trace=FALSE)
@@ -201,7 +201,7 @@ iterate <- function(procedure,
 
     tryCatch(perf <- h2o::h2o.performance(fit@leader, xval = TRUE),
              error = function(cond) {
-               cat("connection to JAVA server failed...\n");
+               message("connection to JAVA server failed...\n");
                return(stop("Java server crashed. perhaps a RAM problem?"))})
 
     Sys.sleep(sleep)
@@ -218,7 +218,7 @@ iterate <- function(procedure,
       ## do not convert pred to a vector. let it be "H2OFrame"
       tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = hex[which(v.na), X])[,1],
                error = function(cond) {
-                 cat("connection to JAVA server failed...\n");
+                 message("connection to JAVA server failed...\n");
                  return(stop("Java server crashed. perhaps a RAM problem?"))})
       Sys.sleep(sleep)
       if (debug) md.log("predictions were generated", trace=FALSE)
@@ -226,13 +226,13 @@ iterate <- function(procedure,
       #h2o requires numeric subsetting
       tryCatch(hex[which(v.na), Y] <- pred,
                error = function(cond) {
-                 cat("connection to JAVA server failed...\n");
+                 message("connection to JAVA server failed...\n");
                  return(stop("Java server crashed. perhaps a RAM problem?"))})
 
       # RAM cleaning-ish, help needed
       tryCatch(h2o::h2o.rm(pred),
                error = function(cond) {
-                 cat("connection to JAVA server failed...\n");
+                 message("connection to JAVA server failed...\n");
                  return(stop("Java server crashed. perhaps a RAM problem?"))})
 
       if (debug) md.log("prediction was cleaned", trace=FALSE)
@@ -242,11 +242,11 @@ iterate <- function(procedure,
       if (boot) {
         tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = bhex[which(y.na), X])[,1],
                  error = function(cond) {
-                   cat("connection to JAVA server failed...\n");
+                   message("connection to JAVA server failed...\n");
                    return(stop("Java server crashed. perhaps a RAM problem?"))})
         tryCatch(bhex[which(y.na), Y] <- pred,
                  error = function(cond) {
-                   cat("connection to JAVA server failed...\n");
+                   message("connection to JAVA server failed...\n");
                    return(stop("Java server crashed. perhaps a RAM problem?"))})
         Sys.sleep(sleep)
       }
@@ -277,12 +277,12 @@ iterate <- function(procedure,
 
       # IF ERROR DECREASED
       if (percentImprove < -tolerance) {
-        if (debug) print(paste(round(percentImprove, 6), -tolerance))
+        if (debug) message(paste(round(percentImprove, 6), -tolerance))
         ## do not convert pred to a vector. let it be "H2OFrame"
 
         tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = hex[which(v.na), X])[,1],
                  error = function(cond) {
-                   cat("connection to JAVA server failed...\n");
+                   message("connection to JAVA server failed...\n");
                    return(stop("Java server crashed. perhaps a RAM problem?"))})
         Sys.sleep(sleep)
         if (debug) md.log("predictions were generated", trace=FALSE)
@@ -294,11 +294,11 @@ iterate <- function(procedure,
         if (boot) {
           tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = bhex[which(y.na), X])[,1],
                    error = function(cond) {
-                     cat("connection to JAVA server failed...\n");
+                     message("connection to JAVA server failed...\n");
                      return(stop("Java server crashed. perhaps a RAM problem?"))})
           tryCatch(bhex[which(y.na), Y] <- pred,
                    error = function(cond) {
-                     cat("connection to JAVA server failed...\n");
+                     message("connection to JAVA server failed...\n");
                      return(stop("Java server crashed. perhaps a RAM problem?"))})
           Sys.sleep(sleep)
         }
@@ -307,7 +307,7 @@ iterate <- function(procedure,
         # RAM cleaning-ish, help needed
         tryCatch(h2o::h2o.rm(pred),
                  error = function(cond) {
-                   cat("connection to JAVA server failed...\n");
+                   message("connection to JAVA server failed...\n");
                    return(stop("Java server crashed. perhaps a RAM problem?"))})
         if (debug) md.log("prediction was cleaned", trace=FALSE)
 
@@ -316,7 +316,7 @@ iterate <- function(procedure,
       }
 
       else { #if the error increased
-        if (debug) print(paste("INCREASED", errImprovement, percentImprove, -tolerance))
+        if (debug) message(paste("INCREASED", errImprovement, percentImprove, -tolerance))
         iterationMetric[, error_metric] <- NA
         metrics <- rbind(metrics, iterationMetric)
         if (!doublecheck) {
@@ -327,7 +327,7 @@ iterate <- function(procedure,
 
     tryCatch(h2o::h2o.rm(fit),
              error = function(cond) {
-               #cat("connection to JAVA server failed...\n");
+               #message("connection to JAVA server failed...\n");
                return(stop("Java server crashed. perhaps a RAM problem?"))})
     if (debug) md.log("model was cleaned", trace=FALSE)
     Sys.sleep(sleep)
@@ -433,15 +433,15 @@ iterate <- function(procedure,
   if (flush) {
     tryCatch(HEX <- as.data.frame(hex),
              error = function(cond) {
-               #cat("connection to JAVA server failed...\n");
+               #message("connection to JAVA server failed...\n");
                return(stop("Java server crashed. perhaps a RAM problem?"))})
     tryCatch(BHEX<- as.data.frame(bhex),
              error = function(cond) {
-               #cat("connection to JAVA server failed...\n");
+               #message("connection to JAVA server failed...\n");
                return(stop("Java server crashed. perhaps a RAM problem?"))})
     tryCatch(h2o::h2o.removeAll(timeout_secs = 0),
              error = function(cond) {
-               #cat("connection to JAVA server failed...\n");
+               #message("connection to JAVA server failed...\n");
                return(stop("Java server crashed. perhaps a RAM problem?"))})
     Sys.sleep(sleep)
     gc()
@@ -454,11 +454,11 @@ iterate <- function(procedure,
     Sys.sleep(sleep)
     tryCatch(hex <- h2o::as.h2o(HEX) ,
              error = function(cond) {
-               #cat("connection to JAVA server failed...\n");
+               #message("connection to JAVA server failed...\n");
                return(stop("Java server crashed. perhaps a RAM problem?"))})
     tryCatch(bhex <- h2o::as.h2o(BHEX),
              error = function(cond) {
-               #cat("connection to JAVA server failed...\n");
+               #message("connection to JAVA server failed...\n");
                return(stop("Java server crashed. perhaps a RAM problem?"))})
     #ID: data_
      #ID: data_

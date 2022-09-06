@@ -67,7 +67,7 @@ stoppingCriteria <- function(method = "iteration_RMSE",
       error <- mean(metrics[metrics$iteration == k,
                             error_metric], na.rm = TRUE)
 
-      if (k == 1) cat("\n   ",error_metric,
+      if (k == 1) message("\n   ",error_metric,
                       " = ", round(error,4), "\n", sep = "")
 
       if (k >= 2) {
@@ -84,17 +84,17 @@ stoppingCriteria <- function(method = "iteration_RMSE",
 
         if (!is.na(errImprovement)) {
           if (percentImprove < 0) {
-            cat("\n   ",error_metric,
+            message("\n   ",error_metric,
                 " = ", round(error,4), " (improved by ",
                 round(-percentImprove*100, 3),"%)", "\n", sep = "")
           }
           else {
-            cat("\n   ",error_metric,
+            message("\n   ",error_metric,
                 " = ", round(error,4), " (increased by ",
                 round(percentImprove*100, 3),"%)", "\n", sep = "")
           }
 
-          #print(paste0(error_metric,
+          #message(paste0(error_metric,
           #            " improved by: ", round(-percentImprove*100,4),"%"))
           #running <- errImprovement < (-tolerance)
           running <- percentImprove < (-tolerance)
@@ -107,7 +107,7 @@ stoppingCriteria <- function(method = "iteration_RMSE",
   # if maximum iteration has been reached and still is running...
   # ------------------------------------------------------------
   if (k == maxiter & running) {
-    cat("\n")
+    message("\n")
     warning(paste("\n\nthe imputation could be further improved",
                   "by increasing number of iterations.",
                   "if you have saved an mlim object via 'save.mlim'",

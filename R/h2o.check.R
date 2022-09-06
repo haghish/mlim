@@ -13,23 +13,23 @@ server.check <- function() {
 
   # check that the cluster is up
   # ============================================================
-  for (i in 1:3) {
+  for (i in 1:5) {
     if (!up) tryCatch(up <- h2o.clusterIsUp(),
                             error = function(cond){
-                              cat("trying to connect to JAVA server...\n");
+                              message("trying to connect to JAVA server...\n");
                               return(NULL)})
-    if (!up) Sys.sleep(1)
+    if (!up) Sys.sleep(3)
   }
   if (!up) stop("h2o server is down... perhaps heavy RAM consumption crashed the JAVA server?\nNOTE: save your imputation with the 'save' argument to continue \n      from where the imputation crashed")
 
   # make sure the cluster is healthy
   # ============================================================
-  for (i in 1:3) {
+  for (i in 1:5) {
     if (!healthy) tryCatch(healthy <- h2o.clusterStatus()$healthy,
                                       error = function(cond){
-                                        cat("trying to connect to JAVA server...\n");
+                                        message("trying to connect to JAVA server...\n");
                                         return(NULL)})
-    if (!healthy) Sys.sleep(1)
+    if (!healthy) Sys.sleep(3)
   }
   if (!healthy) stop("h2o server is down... perhaps heavy RAM consumption crashed the JAVA server?\nNOTE: save your imputation with the 'save' argument to continue \n      from where the imputation crashed")
 
