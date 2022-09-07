@@ -568,7 +568,13 @@ mlim <- function(data = NULL,
     error <- setNames(rep(1, length(vars2impute)), vars2impute)
   }
 
-  # bdata must be NULL at the beginning of each itteration. Currently
+  # drop 'load' from the memory
+  # ---------------------------
+  rm(load)
+  gc()
+  load <- NULL
+
+  # ??? bdata must be NULL at the beginning of each itteration. Currently
   # this is NOT happenning when the 'mlim' object is loaded
 
   for (m.it in m.it:m) {

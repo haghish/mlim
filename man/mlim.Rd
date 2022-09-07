@@ -10,7 +10,7 @@ mlim(
   algos = c("ELNET"),
   postimpute = FALSE,
   ignore = NULL,
-  tuning_time = 180,
+  tuning_time = 900,
   max_models = NULL,
   maxiter = 10L,
   matching = "AUTO",
@@ -69,10 +69,13 @@ should be ignored in the process of imputation.}
 
 \item{tuning_time}{integer. maximum runtime (in seconds) for fine-tuning the
 imputation model for each variable in each iteration. the default
-time is 600 seconds but for a large dataset, you
+time is 900 seconds but for a large dataset, you
 might need to provide a larger model development
 time. this argument also influences \code{max_models},
-see below.}
+see below. If you are using 'ELNET' algorithm (default),
+you can be generous with the 'tuning_time' argument because
+'ELNET' tunes much faster than the rest and will only
+produce one model.}
 
 \item{max_models}{integer. maximum number of models that can be generated in
 the proecess of fine-tuning the parameters. this value
