@@ -369,7 +369,7 @@ mlim <- function(data = NULL,
     MI             <- load$MI
     dataNA         <- load$dataNA
     data           <- load$data
-    bdata          <- load$bdata
+    #bdata          <- load$bdata
     dataLast       <- load$dataLast
     metrics        <- load$metrics
     mem            <- load$mem
@@ -568,7 +568,11 @@ mlim <- function(data = NULL,
     error <- setNames(rep(1, length(vars2impute)), vars2impute)
   }
 
+  # bdata must be NULL at the beginning of each itteration. Currently
+  # this is NOT happenning when the 'mlim' object is loaded
+
   for (m.it in m.it:m) {
+    bdata <- NULL #it is always NULL. It doesn't have to be saved
     dataLast <- iteration_loop(MI, dataNA, data, bdata, boot=m>1,
                                metrics, tolerance, doublecheck,
                                m, k, X, Y, z, m.it,

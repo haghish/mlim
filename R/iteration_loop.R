@@ -38,23 +38,36 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
                message("trying to connect to JAVA server...\n");
                return(stop("Java server has crashed (low RAM?)"))})
     bhex <- hex
+    adjusted_weight_column <- weights_column
     Sys.sleep(sleep)
   }
+
+  #### PROBLEM
+  #### drop the duplicates because they screw up the k-fold cross-validation.
+  #### multiple identical observations might go to train and test datasets.
+
   else {
     rownames(data) <- 1:nrow(data) #remember the rows that are missing
-    if (is.null(bdata)) {
+    #??? it doesn't matter. you can always bootstrap at the beginning
+    #if (is.null(bdata)) {
       sampling_index <- sample.int(nrow(data), nrow(data), replace=TRUE)
 
-      # drop the duplicates because they screw up the k-fold cross-validation.
-      # multiple identical observations might go to train and test datasets.
+      ## SOLUTION 1: DROP THE DUPLICATES AND DO UNDERSAMPLING
+      ## ----------------------------------------------------
+      # sampling_index <- sampling_index[!duplicated(sampling_index)]
+      # bdata <- data[sampling_index, ]
 
-      #??? you might still consider that in the bootstrap one row was selected multiple
-      #times by adding weight_column. discuss that with the team later, if it makes
-      #any sense to do that. adding weight is analogous to including multiple
-      #rows, with the difference that it will not screw up the cross-validation...
-      sampling_index <- sampling_index[!duplicated(sampling_index)]
-      bdata <- data[sampling_index, ]
-    }
+      ## SOLUTION 2: ADD THE DUPLICATES TO THE WEIGHT_COLUMN
+      ## ----------------------------------------------------
+      dups <- bootstrapWeight(sampling_index)
+      bdata <- data[1:nrow(data) %in% dups[,1], ]
+      if (!is.null(weights_column)) weights_column <- weights_column[1:nrow(data) %in% dups[,1]]
+
+      # calculate bootstrap weight
+      adjusted_weight_column <- dups[,2]
+      if (!is.null(weights_column)) adjusted_weight_column <- weights_column + adjusted_weight_column - 1
+
+    #}
 
     tryCatch(hex <- h2o::as.h2o(data),
              error = function(cond) {
@@ -110,7 +123,7 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
                     allPredictors, preimpute, impute, postimputealgos,
                     # settings
                     error_metric, FAMILY=FAMILY, cv, tuning_time,
-                    max_models, weights_column,
+                    max_models, weights_column, adjusted_weight_column,
                     keep_cv,
                     autobalance, balance, seed, save, flush,
                     verbose, debug, report, sleep,
