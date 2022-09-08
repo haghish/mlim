@@ -35,8 +35,9 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
      #ID: data_
     tryCatch(hex <- h2o::as.h2o(data),
              error = function(cond) {
-               message("trying to connect to JAVA server...\n");
-               return(stop("Java server has crashed (low RAM?)"))})
+               message("trying to upload data to JAVA server...\n");
+               message("ERROR: Data could not be uploaded to the Java Server\nJava server returned the following error:\n")
+               return(stop(cond))})
     bhex <- hex
     adjusted_weight_column <- weights_column
     Sys.sleep(sleep)
@@ -71,13 +72,15 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
 
     tryCatch(hex <- h2o::as.h2o(data),
              error = function(cond) {
-               message("trying to connect to JAVA server...\n");
-               return(stop("Java server has crashed (low RAM?)"))})
+               message("trying to upload data to JAVA server...\n");
+               message("ERROR: Data could not be uploaded to the Java Server\nJava server returned the following error:\n")
+               return(stop(cond))})
 
     tryCatch(bhex<- h2o::as.h2o(bdata),
              error = function(cond) {
-               message("trying to connect to JAVA server...\n");
-               return(stop("Java server has crashed (low RAM?)"))})
+               message("trying to upload data to JAVA server...\n");
+               message("ERROR: Data could not be uploaded to the Java Server\nJava server returned the following error:\n")
+               return(stop(cond))})
   }
   Sys.sleep(sleep)
 
