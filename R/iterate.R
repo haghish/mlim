@@ -345,17 +345,20 @@ iterate <- function(procedure,
     #h2o:::.h2o.garbageCollect()
   }
 
+  if (debug) md.log("itteration done", trace=FALSE)
+
   # Update the predictors during the first iteration
   # ------------------------------------------------------------
   if (preimpute == "iterate" && k == 1L && (Y %in% allPredictors)) {
     X <- union(X, Y)
+    if (debug) md.log("x was updated", trace=FALSE)
   }
 
   # .........................................................
   # POSTIMPUTATION PREPARATION
   # .........................................................
   if (!is.null(save)) {
-
+    if (debug) md.log("Saving the status", trace=FALSE)
     savestate <- list(
 
       # Data
@@ -417,6 +420,8 @@ iterate <- function(procedure,
     saveRDS(savestate, save)
   }
 
+  if (debug) md.log("saving done!", trace=FALSE)
+
   # Flush the Java server to regain RAM
   # ------------------------------------------------------------
   #
@@ -431,6 +436,7 @@ iterate <- function(procedure,
   # considered a bad practice and should be improved in future releases
   # ------------------------------------------------------------
   if (flush) {
+    if (debug) md.log("flushing the server...", trace=FALSE)
     tryCatch(HEX <- as.data.frame(hex),
              error = function(cond) {
                #message("connection to JAVA server failed...\n");
@@ -467,8 +473,12 @@ iterate <- function(procedure,
     if (debug) md.log("flushed", trace=FALSE)
   }
 
+  if (debug) md.log("flushing done!", trace=FALSE)
+
   # update the statusbar
   if (verbose==0) setTxtProgressBar(pb, z)
+
+  if (debug) md.log("return to loop!", trace=FALSE)
 
   return(list(X=X,
               hex = hex,
