@@ -115,7 +115,7 @@ iterate <- function(procedure,
     if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer'
         || FAMILY[z] == 'quasibinomial' ) {
       tryCatch(fit <- h2o::h2o.automl(x = setdiff(X, Y), y = Y,
-                                      training_frame = bhex[which(!y.na), ],
+                                      training_frame = if (is.null(bhex)) hex[which(!y.na), ] else bhex[which(!y.na), ],
                                       sort_metric = sort_metric,
                                       project_name = "mlim",
                                       include_algos = usedalgorithms,
@@ -167,7 +167,7 @@ iterate <- function(procedure,
       tryCatch(fit <- h2o::h2o.automl(x = setdiff(X, Y), y = Y,
                                       balance_classes = balance_classes,
                                       sort_metric = sort_metric,
-                                      training_frame = bhex[which(!y.na), ],
+                                      training_frame = if (is.null(bhex)) hex[which(!y.na), ] else bhex[which(!y.na), ],
                                       #validation_frame = bhex[vdFrame, ],
                                       project_name = "mlim",
                                       include_algos = usedalgorithms,
@@ -211,7 +211,7 @@ iterate <- function(procedure,
     roundRMSE <- getDigits(tolerance) + 1
     if (roundRMSE == 1) roundRMSE <- 4
 
-    iterationMetric <- extractMetrics(bhex, k, Y, perf, FAMILY[z])
+    iterationMetric <- extractMetrics(if (is.null(bhex)) hex else bhex, k, Y, perf, FAMILY[z])
 
 
     if (k == 1) {
@@ -251,7 +251,7 @@ iterate <- function(procedure,
         Sys.sleep(sleep)
       }
       else {
-        bhex <- hex
+        if (!is.null(bhex)) bhex <- hex
       }
 
       # update the metrics
@@ -302,7 +302,7 @@ iterate <- function(procedure,
                      return(stop("Java server crashed. perhaps a RAM problem?"))})
           Sys.sleep(sleep)
         }
-        else bhex <- hex
+        else if (!is.null(bhex)) bhex <- hex
 
         # RAM cleaning-ish, help needed
         tryCatch(h2o::h2o.rm(pred),
@@ -365,7 +365,7 @@ iterate <- function(procedure,
       # ----------------------------------
       MI = MI,
       dataNA = dataNA,
-      data=as.data.frame(hex),
+      data=as.data.frame(hex), #??? update this to only download the imputed vector
       #bdata=as.data.frame(bhex),
       dataLast=dataLast,
       metrics = metrics,
@@ -437,15 +437,17 @@ iterate <- function(procedure,
   # ------------------------------------------------------------
   if (flush) {
     if (debug) md.log("flushing the server...", trace=FALSE)
+
+    #??? 'as.data.frame()' IS SO SLOW. IT TAKES 1MB per second!
     tryCatch(HEX <- as.data.frame(hex),
              error = function(cond) {
                #message("connection to JAVA server failed...\n");
                return(stop("Java server crashed. perhaps a RAM problem?"))})
-    tryCatch(BHEX<- as.data.frame(bhex),
+    if (!is.null(bhex)) tryCatch(BHEX<- as.data.frame(bhex),
              error = function(cond) {
                #message("connection to JAVA server failed...\n");
                return(stop("Java server crashed. perhaps a RAM problem?"))})
-    tryCatch(h2o::h2o.removeAll(timeout_secs = 0),
+    tryCatch(h2o::h2o.removeAll(),
              error = function(cond) {
                #message("connection to JAVA server failed...\n");
                return(stop("Java server crashed. perhaps a RAM problem?"))})
@@ -462,7 +464,7 @@ iterate <- function(procedure,
              error = function(cond) {
                #message("connection to JAVA server failed...\n");
                return(stop("Java server crashed. perhaps a RAM problem?"))})
-    tryCatch(bhex <- h2o::as.h2o(BHEX),
+    if (!is.null(bhex)) tryCatch(bhex <- h2o::as.h2o(BHEX),
              error = function(cond) {
                #message("connection to JAVA server failed...\n");
                return(stop("Java server crashed. perhaps a RAM problem?"))})

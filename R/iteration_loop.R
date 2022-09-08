@@ -38,7 +38,7 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
                message("trying to upload data to JAVA server...\n");
                message("ERROR: Data could not be uploaded to the Java Server\nJava server returned the following error:\n")
                return(stop(cond))})
-    bhex <- hex
+    bhex <- NULL
     adjusted_weight_column <- weights_column
     Sys.sleep(sleep)
   }
