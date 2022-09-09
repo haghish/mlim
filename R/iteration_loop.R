@@ -19,7 +19,7 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
 
                     # settings
                     error_metric, FAMILY, cv, tuning_time,
-                    max_models, weights_column,
+                    max_models,
                     keep_cv,
                     autobalance, balance, seed, save, flush,
                     verbose, debug, report, sleep,
@@ -39,7 +39,6 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
                message("ERROR: Data could not be uploaded to the Java Server\nJava server returned the following error:\n")
                return(stop(cond))})
     bhex <- NULL
-    adjusted_weight_column <- weights_column
     Sys.sleep(sleep)
   }
 
@@ -62,11 +61,14 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
       ## ----------------------------------------------------
       dups <- bootstrapWeight(sampling_index)
       bdata <- data[1:nrow(data) %in% dups[,1], ]
-      if (!is.null(weights_column)) weights_column <- weights_column[1:nrow(data) %in% dups[,1]]
 
       # calculate bootstrap weight
-      adjusted_weight_column <- dups[,2]
-      if (!is.null(weights_column)) adjusted_weight_column <- weights_column + adjusted_weight_column - 1
+      bdata$mlim_bootstrap_weights_column_ <- dups[,2]
+
+adjusted_weight_column <- dups[,2]
+index <<- sampling_index
+a <<- adjusted_weight_column
+bb <<- bdata
 
     #}
 
@@ -126,12 +128,12 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
                     allPredictors, preimpute, impute, postimputealgos,
                     # settings
                     error_metric, FAMILY=FAMILY, cv, tuning_time,
-                    max_models, weights_column, adjusted_weight_column,
+                    max_models,
                     keep_cv,
                     autobalance, balance, seed, save, flush,
                     verbose, debug, report, sleep,
                     # saving settings
-                    dataLast, mem, orderedCols, ignore, maxiter,
+                    mem, orderedCols, ignore, maxiter,
                     miniter, matching, ignore.rank,
                     verbosity, error, cpu, max_ram, min_ram)
 

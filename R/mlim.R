@@ -152,14 +152,14 @@
 # @param stopping_metric character.
 # @param stopping_rounds integer.
 # @param stopping_tolerance numeric.
-#' @param weights_column non-negative integer. a vector of observation weights
-#'                       can be provided, which should be of the same length
-#'                       as the dataframe. giving an observation a weight of
-#'                       Zero is equivalent of ignoring that observation in the
-#'                       model. in contrast, a weight of 2 is equivalent of
-#'                       repeating that observation twice in the dataframe.
-#'                       the higher the weight, the more important an observation
-#'                       becomes in the modeling process. the default is NULL.
+# @param weights_column non-negative integer. a vector of observation weights
+#                       can be provided, which should be of the same length
+#                       as the dataframe. giving an observation a weight of
+#                       Zero is equivalent of ignoring that observation in the
+#                       model. in contrast, a weight of 2 is equivalent of
+#                       repeating that observation twice in the dataframe.
+#                       the higher the weight, the more important an observation
+#                       becomes in the modeling process. the default is NULL.
 #' @param seed integer. specify the random generator seed
 # @param plot logical. If TRUE, estimated error of the imputed dataset is plotted,
 #        showing the reduction in CV error
@@ -278,7 +278,7 @@ mlim <- function(data = NULL,
                  autobalance = TRUE,
                  balance = NULL,       #EXPERIMENTAL
                  #ignore.rank = FALSE, #to ignore it, they should make it unordered!
-                 weights_column = NULL,
+                 # weights_column = NULL,
 
                  # report and reproducibility
                  seed = NULL,
@@ -370,7 +370,7 @@ mlim <- function(data = NULL,
     dataNA         <- load$dataNA
     data           <- load$data
     #bdata          <- load$bdata
-    dataLast       <- load$dataLast
+    #dataLast       <- load$dataLast
     metrics        <- load$metrics
     mem            <- load$mem
     orderedCols    <- load$orderedCols
@@ -402,7 +402,7 @@ mlim <- function(data = NULL,
     max_models     <- load$max_models
     matching       <- load$matching
     ignore.rank    <- load$ignore.rank #KEEP IT HIDDEN
-    weights_column <- load$weights_column
+    #weights_column <- load$weights_column
     seed           <- load$seed
     verbosity      <- load$verbosity
     verbose        <- load$verbose #KEEP IT HIDDEN
@@ -432,7 +432,7 @@ mlim <- function(data = NULL,
 
     synt <- syntaxProcessing(data, preimpute, impute, ram,
                              matching=matching, miniter, maxiter, max_models,
-                             tuning_time, cv, weights_column, verbosity=verbosity, report)
+                             tuning_time, cv, verbosity=verbosity, report)
     min_ram <- synt$min_ram
     max_ram <- synt$max_ram
     keep_cv <- synt$keep_cross_validation_predictions
@@ -587,7 +587,7 @@ mlim <- function(data = NULL,
                                allPredictors, preimpute, impute, postimputealgos,
                                # settings
                                error_metric, FAMILY=FAMILY, cv, tuning_time,
-                               max_models, weights_column,
+                               max_models,
                                keep_cv,
                                autobalance, balance, seed, save, flush,
                                verbose, debug, report, sleep,

@@ -16,7 +16,6 @@ mlim(
   matching = "AUTO",
   autobalance = TRUE,
   balance = NULL,
-  weights_column = NULL,
   seed = NULL,
   verbosity = NULL,
   report = NULL,
@@ -112,15 +111,6 @@ decrease the overall accuracy of the imputation, because it
 attempts to ensure the representation of the rare outcome.
 this argument is optional and intended for advanced users that
 impute a severely imbalance categorical (nominal) variable.}
-
-\item{weights_column}{non-negative integer. a vector of observation weights
-can be provided, which should be of the same length
-as the dataframe. giving an observation a weight of
-Zero is equivalent of ignoring that observation in the
-model. in contrast, a weight of 2 is equivalent of
-repeating that observation twice in the dataframe.
-the higher the weight, the more important an observation
-becomes in the modeling process. the default is NULL.}
 
 \item{seed}{integer. specify the random generator seed}
 

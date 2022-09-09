@@ -9,7 +9,7 @@
 
 syntaxProcessing <- function(data, preimpute, impute, ram,
                              matching, miniter, maxiter, max_models,
-                             tuning_time, cv, weights_column,
+                             tuning_time, cv,
                              verbosity, report) {
 
   #if ("GBM" %in% impute) {
@@ -35,12 +35,12 @@ syntaxProcessing <- function(data, preimpute, impute, ram,
   #if (miniter < 2 & preimpute == "iterate") stop("'miniter' must not be less than 2")
   #if ( maxiter < 2 & preimpute == "iterate") stop("'maxiter' must not be less than 2")
 
-  if (!is.null(weights_column)) {
-    stopifnot(
-      "'weights_column' must have equal length with the data.frame" = length(weights_column) == nrow(data),
-      "'weights_column' must not have any missing observations" = !anyNA(weights_column)
-    )
-  }
+  # if (!is.null(weights_column)) {
+  #   stopifnot(
+  #     "'weights_column' must have equal length with the data.frame" = length(weights_column) == nrow(data),
+  #     "'weights_column' must not have any missing observations" = !anyNA(weights_column)
+  #   )
+  # }
 
 
   if (!is.null(ram)) {

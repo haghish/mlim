@@ -6,8 +6,8 @@
 #'              is specified for the imputation. such algorithms are used last in the imputation
 #'              to save time.
 #' @importFrom utils setTxtProgressBar txtProgressBar capture.output packageVersion
-#' @importFrom h2o h2o.init as.h2o h2o.automl h2o.predict h2o.ls
-#'             h2o.removeAll h2o.rm h2o.shutdown
+#' @importFrom h2o h2o.init as.h2o h2o.automl h2o.predict h2o.ls h2o.getId
+#'             h2o.removeAll h2o.rm h2o.shutdown h2o.load_frame h2o.save_frame
 #' @importFrom md.log md.log
 #' @importFrom memuse Sys.meminfo
 #' @importFrom stats var setNames na.omit
@@ -26,14 +26,14 @@ iterate <- function(procedure,
 
                     # settings
                     error_metric, FAMILY, cv, tuning_time,
-                    max_models, weights_column, adjusted_weight_column,
+                    max_models,
                     keep_cv,
                     autobalance, balance, seed, save, flush,
 
                     verbose, debug, report, sleep,
 
                     # saving settings
-                    dataLast, mem, orderedCols, ignore, maxiter,
+                    mem, orderedCols, ignore, maxiter,
                     miniter, matching, ignore.rank,
                     verbosity, error, cpu, max_ram, min_ram
                     ) {
@@ -103,12 +103,11 @@ iterate <- function(procedure,
     # message("cv:", cv, "\n")
     # message("tuning_time:", tuning_time, "\n")
     # message("max_models:", max_models, "\n")
-    # message("weights_column:", weights_column, "\n")
     # message("keep_cv:", keep_cv, "\n")
     # message("seed:", seed, "\n")
-    # message(which(!y.na))
-    # message(dim(as.data.frame(bhex)))
-    # message(dim(bhex[which(!y.na), ]))
+
+    #dodo <<- as.data.frame(bhex[which(!y.na), ])
+
     # ------------------------------------------------------------
     # fine-tune a gaussian model
     # ============================================================
@@ -123,7 +122,7 @@ iterate <- function(procedure,
                                       exploitation_ratio = 0.1,
                                       max_runtime_secs = tuning_time,
                                       max_models = max_models,
-                                      weights_column = adjusted_weight_column[which(!y.na)],
+                                      weights_column = if (is.null(bhex)) "mlim_bootstrap_weights_column_" else NULL, #adjusted_weight_column[which(!y.na)],
                                       keep_cross_validation_predictions = keep_cv,
                                       seed = seed
                                       # #stopping_metric = stopping_metric,
@@ -163,7 +162,7 @@ iterate <- function(procedure,
       #                    round(validation * length(nonMissingObs) )))
       #  trainingsample <- sort(setdiff(which(!y.na), vdFrame))
       #}
-
+WHICH <<- which(!y.na)
       tryCatch(fit <- h2o::h2o.automl(x = setdiff(X, Y), y = Y,
                                       balance_classes = balance_classes,
                                       sort_metric = sort_metric,
@@ -175,7 +174,7 @@ iterate <- function(procedure,
                                       exploitation_ratio = 0.1,
                                       max_runtime_secs = tuning_time,
                                       max_models = max_models,
-                                      weights_column = adjusted_weight_column[which(!y.na)],
+                                      weights_column = if (is.null(bhex)) "mlim_bootstrap_weights_column_" else NULL, #adjusted_weight_column[which(!y.na)],
                                       keep_cross_validation_predictions = keep_cv,
                                       seed = seed
                                       #stopping_metric = stopping_metric,
@@ -183,8 +182,8 @@ iterate <- function(procedure,
                                       #stopping_tolerance=stopping_tolerance
       ),
       error = function(cond) {
-        #message("connection to JAVA server failed...\n");
-        return(stop("model training failed. perhaps low RAM problem?"))})
+        message("model training failed. perhaps low RAM problem?...\n");
+        return(stop(cond))})
     }
     else {
       stop(paste(FAMILY[z], "is not recognized"))
@@ -198,11 +197,12 @@ iterate <- function(procedure,
       md.log("model was executed successfully", trace=FALSE)
     }
 
-
+FIT <<- fit
     tryCatch(perf <- h2o::h2o.performance(fit@leader, xval = TRUE),
              error = function(cond) {
-               message("connection to JAVA server failed...\n");
-               return(stop("Java server crashed. perhaps a RAM problem?"))})
+               message("Model performance evaluation failed...\n");
+               message("Java server crashed. perhaps a RAM problem?\n")
+               return(stop(cond))})
 
     Sys.sleep(sleep)
 
@@ -218,7 +218,7 @@ iterate <- function(procedure,
       ## do not convert pred to a vector. let it be "H2OFrame"
       tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = hex[which(v.na), X])[,1],
                error = function(cond) {
-                 message("connection to JAVA server failed...\n");
+                 message("generating the missing data predictions failed...\n");
                  return(stop("Java server crashed. perhaps a RAM problem?"))})
       Sys.sleep(sleep)
       if (debug) md.log("predictions were generated", trace=FALSE)
@@ -250,9 +250,8 @@ iterate <- function(procedure,
                    return(stop("Java server crashed. perhaps a RAM problem?"))})
         Sys.sleep(sleep)
       }
-      else {
-        if (!is.null(bhex)) bhex <- hex
-      }
+      # else if (!is.null(bhex)) bhex <- hex
+
 
       # update the metrics
       metrics <- rbind(metrics, iterationMetric)
@@ -302,7 +301,7 @@ iterate <- function(procedure,
                      return(stop("Java server crashed. perhaps a RAM problem?"))})
           Sys.sleep(sleep)
         }
-        else if (!is.null(bhex)) bhex <- hex
+        # else if (!is.null(bhex)) bhex <- hex
 
         # RAM cleaning-ish, help needed
         tryCatch(h2o::h2o.rm(pred),
@@ -367,7 +366,6 @@ iterate <- function(procedure,
       dataNA = dataNA,
       data=as.data.frame(hex), #??? update this to only download the imputed vector
       #bdata=as.data.frame(bhex),
-      dataLast=dataLast,
       metrics = metrics,
       mem=mem,
       orderedCols=orderedCols,
@@ -393,7 +391,6 @@ iterate <- function(procedure,
       max_models = max_models,
       matching = matching,
       ignore.rank = ignore.rank,
-      weights_column = weights_column,
       seed=seed,
       verbosity=verbosity,
       verbose = verbose,
@@ -435,18 +432,61 @@ iterate <- function(procedure,
   # it when the RAM goes below a certain amount... this feature is
   # considered a bad practice and should be improved in future releases
   # ------------------------------------------------------------
+
+  ####### FLUSHING (THE SHITY RAM MANAGEMENT OF JAVA!)
+  ####### ===================================================================
+  ### The reason for flushing is that there are some RAM management issues
+  ### with the h2o server and even after removing the frames, Java does not
+  ### flush well. Removing objects, while retaining the needed frames gave
+  ### some WEIRD bugs as well, so I gave up in the process. It seemed that
+  ### the data had more than one ID (there is another associated frame...).
+  ### weirdly, if I only remove the generated model, the RAM just keeps
+  ### accumulating, causing the server to crash. Well, this needs to be
+  ### validated in the future. in the process of development, I had to come
+  ### up with quick solutions to complete the first version of the algorithm...
+  ### on top of all this, .h2o.garbageCollect() function is not exported
+  ### and CRAN does not accepts it either. When I was trying the h2o.removeAll()
+  ### function, sometimes even listing the objects of Java was returning an error.
+  ### My understanding was that the Java server is highly RAM dependent and
+  ### as the RAM becomes occupied, the server becomes unstable...
+  ###
+  ### In the SOLUTION1, the data is downloaded to R, the whole server is
+  ### flushed, and then the data is reuploaded. I know, that is more of a
+  ### disease than a medicine! For a larger datasets, it becomes EXTREMELY
+  ### slow to download data from Java server to R. This itself became a
+  ### bug because sometimes the server would fail downloading a very large
+  ### dataset!
+  ###
+  ### In SOLUTION 2, the data is downloaded to the disk in native h2o format,
+  ### the server is entirely flushed, and then the data is uploaded again.
+  ### THIS SOLUTION IS SO MUCH FASTER and is currently implemented, until
+  ### I realize a proper solution what the hell should I do with the RAM
+  ### management.
+  ###
+  ### NOTE: If you'd like to use h2o.removeAll(), beware that retaining the
+  ### dataframe ID will cause a bug. if you prefer using h2o.rm(), make sure
+  ### it is effective!
+
+  ### The primary solution was to download the frame from Java to R,
+  ### clean Java, and re-upload the frames to Java.
+
   if (flush) {
     if (debug) md.log("flushing the server...", trace=FALSE)
 
-    #??? 'as.data.frame()' IS SO SLOW. IT TAKES 1MB per second!
-    tryCatch(HEX <- as.data.frame(hex),
-             error = function(cond) {
-               #message("connection to JAVA server failed...\n");
-               return(stop("Java server crashed. perhaps a RAM problem?"))})
-    if (!is.null(bhex)) tryCatch(BHEX<- as.data.frame(bhex),
-             error = function(cond) {
-               #message("connection to JAVA server failed...\n");
-               return(stop("Java server crashed. perhaps a RAM problem?"))})
+    ####### SOLUTION 2: save on disk > flush Java > reupload > erase
+    ####### =================================================
+
+    # 1. SAVE
+    hexID <- h2o.getId(hex)
+    h2o.save_frame(hex, dir = paste0(getwd(), "/flush"));
+    if (!is.null(bhex)) {
+      bhexID <- h2o.getId(bhex)
+      h2o.save_frame(bhex, dir = paste0(getwd(), "/flush"));
+    }
+    else bhexID <- NULL
+    if (debug) md.log("data stored", trace=FALSE)
+
+    # 2. FLUSH
     tryCatch(h2o::h2o.removeAll(),
              error = function(cond) {
                #message("connection to JAVA server failed...\n");
@@ -454,25 +494,84 @@ iterate <- function(procedure,
     Sys.sleep(sleep)
     gc()
     gc()
+    if (debug) md.log("server flushed", trace=FALSE)
 
-    ### NOT ALLOWED ON CRAN :/
-    #h2o:::.h2o.garbageCollect()
-    #h2o:::.h2o.garbageCollect()
-    #h2o:::.h2o.garbageCollect()
-    Sys.sleep(sleep)
-    tryCatch(hex <- h2o::as.h2o(HEX) ,
+    # 3. REUPLOAD
+    tryCatch(hex <- h2o::h2o.load_frame(hexID, dir = paste0(getwd(), "/flush")) ,
              error = function(cond) {
                #message("connection to JAVA server failed...\n");
                return(stop("Java server crashed. perhaps a RAM problem?"))})
-    if (!is.null(bhex)) tryCatch(bhex <- h2o::as.h2o(BHEX),
-             error = function(cond) {
-               #message("connection to JAVA server failed...\n");
-               return(stop("Java server crashed. perhaps a RAM problem?"))})
+    if (!is.null(bhexID)) tryCatch(bhex <- h2o::h2o.load_frame(bhexID, dir = paste0(getwd(), "/flush")),
+                                 error = function(cond) {
+                                   #message("connection to JAVA server failed...\n");
+                                   return(stop("Java server crashed. perhaps a RAM problem?"))})
     #ID: data_
-     #ID: data_
+    #ID: data_
+    if (debug) md.log("data reuploaded", trace=FALSE)
+
+    # 4. ERASE
+    tryCatch(do.call(file.remove,
+                     list(list.files(paste0(getwd(), "/flush"),
+                                     full.names = TRUE))),
+             error = function(cond) {
+               message("mlim could not flush the temporary data...\n Perhaps restricted access permission?\n");
+               return()})
+
     Sys.sleep(sleep)
-    #hexID <- h2o::h2o.getId(hex)
-    if (debug) md.log("flushed", trace=FALSE)
+
+    ####### SOLUTION 1: store in RAM > flush Java > reupload
+    ####### =================================================
+    # catch <- NULL
+    # catchN<- 0
+    # while(is.null(NULL)) {
+    #   catch <- tryCatch(HEX <- as.data.frame(hex),
+    #            error = function(cond) {
+    #              #message("connection to JAVA server failed...\n");
+    #              return(NULL)})
+    #   if (is.null(catch)) {
+    #     catchN <- catchN + 1
+    #     message(paste("Try",catchN,":",
+    #                   "data.frame could not be downloaded from Java server. will try again in 10 seconds...\n"))
+    #     Sys.sleep(10)
+    #   }
+    #
+    #   if (catchN > 3) stop("data.frame could not be downloaded from Java server.")
+    # }
+    #
+    # if (!is.null(bhex)) tryCatch(BHEX<- as.data.frame(bhex),
+    #          error = function(cond) {
+    #            #message("connection to JAVA server failed...\n");
+    #            return(stop("Java server crashed. perhaps a RAM problem?"))})
+    #
+    #
+    #
+    # tryCatch(h2o::h2o.removeAll(),
+    #          error = function(cond) {
+    #            #message("connection to JAVA server failed...\n");
+    #            return(stop("Java server crashed. perhaps a RAM problem?"))})
+    # Sys.sleep(sleep)
+    # gc()
+    # gc()
+    #
+    # ### NOT ALLOWED ON CRAN :/
+    # #h2o:::.h2o.garbageCollect()
+    # #h2o:::.h2o.garbageCollect()
+    # #h2o:::.h2o.garbageCollect()
+    # #Sys.sleep(sleep)
+    # tryCatch(hex <- h2o::as.h2o(HEX) ,
+    #          error = function(cond) {
+    #            #message("connection to JAVA server failed...\n");
+    #            return(stop("Java server crashed. perhaps a RAM problem?"))})
+    # if (!is.null(bhex)) tryCatch(bhex <- h2o::as.h2o(BHEX),
+    #          error = function(cond) {
+    #            #message("connection to JAVA server failed...\n");
+    #            return(stop("Java server crashed. perhaps a RAM problem?"))})
+    # #ID: data_
+    #  #ID: data_
+    # Sys.sleep(sleep)
+    # #hexID <- h2o::h2o.getId(hex)
+    #
+    # if (debug) md.log("flushing completed", trace=FALSE)
   }
 
   if (debug) md.log("flushing done!", trace=FALSE)
