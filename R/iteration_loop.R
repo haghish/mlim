@@ -10,6 +10,7 @@
 #' @author E. F. Haghish
 #' @keywords Internal
 #' @noRd
+
 iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, doublecheck,
                     m, k, X, Y, z, m.it,
 
