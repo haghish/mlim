@@ -65,7 +65,7 @@ iterate <- function(procedure,
   md.log(paste(X, collapse = ","))
 
   if (length(X) == 0L) {
-    if (debug) md.log("uni impute", trace=FALSE)
+    if (debug) md.log("uni impute", date=debug, time=debug, trace=FALSE)
     #??? change this with a self-written function
     tryCatch(hex[[Y]] <- h2o::as.h2o(missRanger::imputeUnivariate(data[[Y]])),
              error = function(cond) {
@@ -75,8 +75,8 @@ iterate <- function(procedure,
   }
   else {
 
-    if (debug) md.log(paste("X:",paste(setdiff(X, Y), collapse = ", ")), trace=FALSE)
-    if (debug) md.log(paste("Y:",paste(Y, collapse = ", ")), trace=FALSE)
+    if (debug) md.log(paste("X:",paste(setdiff(X, Y), collapse = ", ")), date=debug, time=debug, trace=FALSE)
+    if (debug) md.log(paste("Y:",paste(Y, collapse = ", ")), date=debug, time=debug, trace=FALSE)
 
     # sort_metric specifications
     # ============================================================
@@ -106,7 +106,7 @@ iterate <- function(procedure,
     # message("keep_cv:", keep_cv, "\n")
     # message("seed:", seed, "\n")
 
-    #dodo <<- as.data.frame(bhex[which(!y.na), ])
+dodo <<- as.data.frame(bhex[which(!y.na), ])
 
     # ------------------------------------------------------------
     # fine-tune a gaussian model
@@ -122,7 +122,7 @@ iterate <- function(procedure,
                                       exploitation_ratio = 0.1,
                                       max_runtime_secs = tuning_time,
                                       max_models = max_models,
-                                      weights_column = if (is.null(bhex)) "mlim_bootstrap_weights_column_" else NULL, #adjusted_weight_column[which(!y.na)],
+                                      weights_column = if (is.null(bhex)) NULL else "mlim_bootstrap_weights_column_", #adjusted_weight_column[which(!y.na)],
                                       keep_cross_validation_predictions = keep_cv,
                                       seed = seed
                                       # #stopping_metric = stopping_metric,
@@ -130,8 +130,8 @@ iterate <- function(procedure,
                                       # #stopping_tolerance=stopping_tolerance
       ),
       error = function(cond) {
-        #message("connection to JAVA server failed...\n");
-        return(stop("model training failed. perhaps low RAM problem?"))})
+        message(paste("Model training for variable", y, "failed... see the Java server error below:\n"));
+        return(stop(cond))})
 
     }
 
@@ -148,12 +148,14 @@ iterate <- function(procedure,
         balance_classes <- TRUE
       }
 
-      if (FAMILY[z] == 'binomial' & !balance_classes) {
-        #sort_metric <- "AUC"
-      }
-      if (FAMILY[z] == 'binomial' & balance_classes) {
-        #sort_metric <- "AUCPR"
-      }
+      ## SHOULD MLIM INCLUDE DIFFERENT MODEL EVALUATION METRICS BASED ON VARTYPE?
+      ## FOR NOW, KEEP IT TO THE DEFAULT
+      # if (FAMILY[z] == 'binomial' & !balance_classes) {
+      #   #sort_metric <- "AUC"
+      # }
+      # if (FAMILY[z] == 'binomial' & balance_classes) {
+      #   #sort_metric <- "AUCPR"
+      # }
 
       #???
       #if (validation > 0) {
@@ -162,7 +164,7 @@ iterate <- function(procedure,
       #                    round(validation * length(nonMissingObs) )))
       #  trainingsample <- sort(setdiff(which(!y.na), vdFrame))
       #}
-WHICH <<- which(!y.na)
+
       tryCatch(fit <- h2o::h2o.automl(x = setdiff(X, Y), y = Y,
                                       balance_classes = balance_classes,
                                       sort_metric = sort_metric,
@@ -174,7 +176,7 @@ WHICH <<- which(!y.na)
                                       exploitation_ratio = 0.1,
                                       max_runtime_secs = tuning_time,
                                       max_models = max_models,
-                                      weights_column = if (is.null(bhex)) "mlim_bootstrap_weights_column_" else NULL, #adjusted_weight_column[which(!y.na)],
+                                      weights_column = if (!balance_classes) {if (is.null(bhex)) NULL else "mlim_bootstrap_weights_column_"} else NULL, #adjusted_weight_column[which(!y.na)],
                                       keep_cross_validation_predictions = keep_cv,
                                       seed = seed
                                       #stopping_metric = stopping_metric,
@@ -189,15 +191,16 @@ WHICH <<- which(!y.na)
       stop(paste(FAMILY[z], "is not recognized"))
     }
 
+fit <<- fit
+
+
     Sys.sleep(sleep)
     #message(fit@leaderboard)
+    if (debug) md.log("model fitted", date=debug, time=debug, trace=FALSE)
+    if (debug) md.log(paste("leader:", fit@leader@model_id), date=debug, time=debug, trace=FALSE)
 
-    if (debug) {
-      md.log("model fitted", trace=FALSE)
-      md.log("model was executed successfully", trace=FALSE)
-    }
 
-FIT <<- fit
+
     tryCatch(perf <- h2o::h2o.performance(fit@leader, xval = TRUE),
              error = function(cond) {
                message("Model performance evaluation failed...\n");
@@ -221,7 +224,7 @@ FIT <<- fit
                  message("generating the missing data predictions failed...\n");
                  return(stop("Java server crashed. perhaps a RAM problem?"))})
       Sys.sleep(sleep)
-      if (debug) md.log("predictions were generated", trace=FALSE)
+      if (debug) md.log("predictions were generated", date=debug, time=debug, trace=FALSE)
 
       #h2o requires numeric subsetting
       tryCatch(hex[which(v.na), Y] <- pred,
@@ -235,7 +238,7 @@ FIT <<- fit
                  message("connection to JAVA server failed...\n");
                  return(stop("Java server crashed. perhaps a RAM problem?"))})
 
-      if (debug) md.log("prediction was cleaned", trace=FALSE)
+      if (debug) md.log("prediction was cleaned", date=debug, time=debug, trace=FALSE)
       Sys.sleep(sleep)
 
       # also update the bootstraped data, otherwise, update the pointer
@@ -284,10 +287,10 @@ FIT <<- fit
                    message("connection to JAVA server failed...\n");
                    return(stop("Java server crashed. perhaps a RAM problem?"))})
         Sys.sleep(sleep)
-        if (debug) md.log("predictions were generated", trace=FALSE)
+        if (debug) md.log("predictions were generated", date=debug, time=debug, trace=FALSE)
         hex[which(v.na), Y] <- pred #h2o requires numeric subsetting
         Sys.sleep(sleep)
-        if (debug) md.log("data was updated in h2o cloud", trace=FALSE)
+        if (debug) md.log("data was updated in h2o cloud", date=debug, time=debug, trace=FALSE)
 
         # also update the bootstraped data, otherwise update the pointer
         if (boot) {
@@ -308,7 +311,7 @@ FIT <<- fit
                  error = function(cond) {
                    message("connection to JAVA server failed...\n");
                    return(stop("Java server crashed. perhaps a RAM problem?"))})
-        if (debug) md.log("prediction was cleaned", trace=FALSE)
+        if (debug) md.log("prediction was cleaned", date=debug, time=debug, trace=FALSE)
 
         # update the metrics
         metrics <- rbind(metrics, iterationMetric)
@@ -328,7 +331,7 @@ FIT <<- fit
              error = function(cond) {
                #message("connection to JAVA server failed...\n");
                return(stop("Java server crashed. perhaps a RAM problem?"))})
-    if (debug) md.log("model was cleaned", trace=FALSE)
+    if (debug) md.log("model was cleaned", date=debug, time=debug, trace=FALSE)
     Sys.sleep(sleep)
 
     # clean h2o memory
@@ -344,20 +347,20 @@ FIT <<- fit
     #h2o:::.h2o.garbageCollect()
   }
 
-  if (debug) md.log("itteration done", trace=FALSE)
+  if (debug) md.log("itteration done", date=debug, time=debug, trace=FALSE)
 
   # Update the predictors during the first iteration
   # ------------------------------------------------------------
   if (preimpute == "iterate" && k == 1L && (Y %in% allPredictors)) {
     X <- union(X, Y)
-    if (debug) md.log("x was updated", trace=FALSE)
+    if (debug) md.log("x was updated", date=debug, time=debug, trace=FALSE)
   }
 
   # .........................................................
   # POSTIMPUTATION PREPARATION
   # .........................................................
   if (!is.null(save)) {
-    if (debug) md.log("Saving the status", trace=FALSE)
+    if (debug) md.log("Saving the status", date=debug, time=debug, trace=FALSE)
     savestate <- list(
 
       # Data
@@ -419,7 +422,7 @@ FIT <<- fit
     saveRDS(savestate, save)
   }
 
-  if (debug) md.log("saving done!", trace=FALSE)
+  if (debug) md.log("saving done!", date=debug, time=debug, trace=FALSE)
 
   # Flush the Java server to regain RAM
   # ------------------------------------------------------------
@@ -496,8 +499,8 @@ FIT <<- fit
     else bhexID <- NULL
     mlimID <- list(hexID, bhexID)
     class(mlimID) <- "mlim.id"
-    saveRDS(object = list(hexID, bhexID), file = "mlim.id")
-    if (debug) md.log("data stored", trace=FALSE)
+    saveRDS(object = list(hexID, bhexID), file = paste0(getwd(), "/.flush/mlim.id"))
+    if (debug) md.log("data stored", date=debug, time=debug, trace=FALSE)
 
     # 2. FLUSH
     tryCatch(h2o::h2o.removeAll(),
@@ -507,7 +510,7 @@ FIT <<- fit
     Sys.sleep(sleep)
     gc()
     gc()
-    if (debug) md.log("server flushed", trace=FALSE)
+    if (debug) md.log("server flushed", date=debug, time=debug, trace=FALSE)
 
     # 3. REUPLOAD
     tryCatch(hex <- h2o::h2o.load_frame(hexID, dir = paste0(getwd(), "/.flush")) ,
@@ -520,7 +523,7 @@ FIT <<- fit
                                    return(stop("Java server crashed. perhaps a RAM problem?"))})
     #ID: data_
     #ID: data_
-    if (debug) md.log("data reuploaded", trace=FALSE)
+    if (debug) md.log("data reuploaded", date=debug, time=debug, trace=FALSE)
 
 
 
@@ -583,7 +586,7 @@ FIT <<- fit
 
   # IF NOT FLUSHING, BUT SAVING, STILL SAVE THE DATA TO FLUSH
   # ---------------------------------------------------------
-  if (!flush & save) {
+  if (!flush & !is.null(save)) {
     tryCatch(do.call(file.remove,
                      list(list.files(paste0(getwd(), "/.flush"),
                                      full.names = TRUE))),
@@ -597,12 +600,12 @@ FIT <<- fit
     h2o.save_frame(hex, dir = paste0(getwd(), "/.flush"))
   }
 
-  if (debug) md.log("flushing done!", trace=FALSE)
+  if (debug) md.log("flushing done!", date=debug, time=debug, trace=FALSE)
 
   # update the statusbar
   if (verbose==0) setTxtProgressBar(pb, z)
 
-  if (debug) md.log("return to loop!", trace=FALSE)
+  if (debug) md.log("return to loop!", date=debug, time=debug, trace=FALSE)
 
   return(list(X=X,
               hex = hex,

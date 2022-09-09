@@ -83,16 +83,27 @@
 #'                   more time in the process of individualized fine-tuning.
 #'                   as a result, the better tuned the model, the more accurate
 #'                   the imputed values are expected to be
-#' @param autobalance logical. if TRUE, binary and multinomial factor variables
-#'                    will be balanced before the imputation to increase the
-#'                    Mean Per Class Error (MPCE) in the process of optimization.
-#'                    if FALSE, MMPCE will be sacrificed for overall accuracy, which
-#'                    is not recommended. in fact, higher overall accuracy does
-#'                    not mean a better imputation as long as minority classes
-#'                    are neglected, which increases the bias in favor of the
+#' @param autobalance logical. if TRUE (default), binary and multinomial factor variables
+#'                    will be balanced before the imputation to obtain fairer
+#'                    and less-biased imputations, which are typically in favor
+#'                    of the majority class.
+#'                    if FALSE, imputation fairness will be sacrificed for overall accuracy, which
+#'                    is not recommended, although it is commonly practiced in other missing data
+#'                    imputation software. MLIM is highly concerned with imputation fairness for
+#'                    factor variables and autobalancing is generally recommended.
+#'                    in fact, higher overall accuracy does not mean a better imputation as
+#'                    long as minority classes are neglected, which increases the bias in favor of the
 #'                    majority class. if you do not wish to autobalance all the
 #'                    factor variables, you can manually specify the variables
-#'                    that should be balanced using the 'balance' argument (see below)
+#'                    that should be balanced using the 'balance' argument (see below).
+#'
+#                    NOTE: when a variable is balanced prior to the imputation, a different
+#                    bootstrap sampling procedure will be used. in doing so, instead of
+#                    carrying out bootstrap subsamples with replacement and adding the
+#                    duplicated observations as weights in the imputation, undersampling
+#                    bootstrap procedure without replacement is performed because the weights
+#                    of the artificially balanced data will conflicts the weights of the
+#                    bootstrap data.
 #' @param balance character vector, specifying variable names that should be
 #'                balanced before imputation. balancing the prevalence might
 #'                decrease the overall accuracy of the imputation, because it

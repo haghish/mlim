@@ -64,12 +64,16 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
       bdata <- data[1:nrow(data) %in% dups[,1], ]
 
       # calculate bootstrap weight
-      bdata$mlim_bootstrap_weights_column_ <- dups[,2]
+      bdata[, "mlim_bootstrap_weights_column_"] <- dups[,2]
 
-adjusted_weight_column <- dups[,2]
-index <<- sampling_index
-a <<- adjusted_weight_column
-bb <<- bdata
+      ####### ===============================================
+      ####### BOOTSTRAP AND BALANCING DRAMA
+      ####### ===============================================
+      #??? THIS NEEDS FURTHER UPDATE IF 'autobalance' IS ACTIVATED
+      # THE SOlUTION WOULD BE TO CALCULATE BALANCING WEIGHTS FOR
+      # EACH OBSERVATION AND THEN MULTIPLY IT BY THE WEIGHTS_COLUMN.
+      # OR CARRY OUT BALANCED STRATIFIED SAMPLING FOR CATEGORICAL
+      # VARIABLES...
 
     #}
 
@@ -106,11 +110,12 @@ bb <<- bdata
     message(paste0("\ndata ", m.it, ", iteration ", k, " (RAM = ", memuse::Sys.meminfo()$freeram,")", ":\n"), sep = "") #":\t"
     md.log(paste("Iteration", k), section="section")
 
-    if (debug) md.log("store last data", trace=FALSE)
-
-    dataLast <- as.data.frame(hex)
-    attr(dataLast, "metrics") <- metrics
-    attr(dataLast, "rmse") <- error
+    # ## AVOID THIS PRACTICE BECAUSE DOWNLOADING DATA FROM THE SERVER IS SLOW
+    # # store the last data
+    # if (debug) md.log("store last data", date=debug, time=debug, trace=FALSE)
+    # dataLast <- as.data.frame(hex)
+    # attr(dataLast, "metrics") <- metrics
+    # attr(dataLast, "rmse") <- error
 
     # .........................................................
     # IMPUTATION & POSTIMPUTATION LOOP
@@ -151,7 +156,7 @@ bb <<- bdata
 
     # CHECK CRITERIA FOR RUNNING THE NEXT ITERATION
     # --------------------------------------------------------------
-    if (debug) md.log("evaluating stopping criteria", trace=FALSE)
+    if (debug) md.log("evaluating stopping criteria", date=debug, time=debug, trace=FALSE)
     SC <- stoppingCriteria(method="varwise_NA", miniter, maxiter,
                            metrics, k, vars2impute,
                            error_metric,
@@ -160,9 +165,8 @@ bb <<- bdata
                            runpostimpute,
                            md.log = report)
     if (debug) {
-      md.log(paste("running: ", SC$running), trace=FALSE)
-      md.log(paste("Estimated",error_metric,
-                   "error:", SC$error), trace=FALSE)
+      md.log(paste("running: ", SC$running), date=debug, time=debug, trace=FALSE)
+      md.log(paste("Estimated",error_metric, "error:", SC$error), date=debug, time=debug, trace=FALSE)
     }
 
     running <- SC$running
@@ -185,18 +189,18 @@ bb <<- bdata
   # ............................................................
   if (verbose) message("\n\n")
 
-  md.log("This is the end, beautiful friend...", trace=FALSE)
+  md.log("This is the end, beautiful friend...", date=debug, time=debug, trace=FALSE)
 
   # if the iterations stops on minimum or maximum, return the last data
   if (k == miniter || (k == maxiter && running) || maxiter == 1) {
-    md.log("limit reached", trace=FALSE)
+    md.log("limit reached", date=debug, time=debug, trace=FALSE)
     dataLast <- as.data.frame(hex)
     Sys.sleep(sleep)
     attr(dataLast, "metrics") <- metrics
     attr(dataLast, error_metric) <- error
   }
   else {
-    md.log("return previous iteration's data", trace=FALSE)
+    md.log("return previous iteration's data", date=debug, time=debug, trace=FALSE)
   }
 
   if (clean) tryCatch(h2o::h2o.removeAll(),
@@ -205,7 +209,7 @@ bb <<- bdata
                         return(stop("Java server has crashed (low RAM?)"))})
 
   if (shutdown) {
-    md.log("shutting down the server", trace=FALSE)
+    md.log("shutting down the server", date=debug, time=debug, trace=FALSE)
     tryCatch(h2o::h2o.shutdown(prompt = FALSE),
              error = function(cond) {
                message("trying to connect to JAVA server...\n");
@@ -231,7 +235,7 @@ bb <<- bdata
         #message(matchedVal)
         if (!is.null(matchedVal)) dataLast[v.na, Y] <- matchedVal
         else {
-          md.log("matching failed", trace=FALSE)
+          md.log("matching failed", date=debug, time=debug, trace=FALSE)
         }
       }
     }

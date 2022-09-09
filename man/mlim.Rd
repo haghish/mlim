@@ -94,16 +94,19 @@ closest value to the non-missing values of the variable.
 if set to "AUTO", 'mlim' decides whether to match
 or not, based on the variable classes. the default is "AUTO".}
 
-\item{autobalance}{logical. if TRUE, binary and multinomial factor variables
-will be balanced before the imputation to increase the
-Mean Per Class Error (MPCE) in the process of optimization.
-if FALSE, MMPCE will be sacrificed for overall accuracy, which
-is not recommended. in fact, higher overall accuracy does
-not mean a better imputation as long as minority classes
-are neglected, which increases the bias in favor of the
+\item{autobalance}{logical. if TRUE (default), binary and multinomial factor variables
+will be balanced before the imputation to obtain fairer
+and less-biased imputations, which are typically in favor
+of the majority class.
+if FALSE, imputation fairness will be sacrificed for overall accuracy, which
+is not recommended, although it is commonly practiced in other missing data
+imputation software. MLIM is highly concerned with imputation fairness for
+factor variables and autobalancing is generally recommended.
+in fact, higher overall accuracy does not mean a better imputation as
+long as minority classes are neglected, which increases the bias in favor of the
 majority class. if you do not wish to autobalance all the
 factor variables, you can manually specify the variables
-that should be balanced using the 'balance' argument (see below)}
+that should be balanced using the 'balance' argument (see below).}
 
 \item{balance}{character vector, specifying variable names that should be
 balanced before imputation. balancing the prevalence might
