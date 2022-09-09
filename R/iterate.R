@@ -364,8 +364,10 @@ FIT <<- fit
       # ----------------------------------
       MI = MI,
       dataNA = dataNA,
-      data=as.data.frame(hex), #??? update this to only download the imputed vector
+      #data=as.data.frame(hex), #??? update this to only download the imputed vector
       #bdata=as.data.frame(bhex),
+      hexID = h2o.getId(hex),
+      hexPATH = paste0(getwd(), "/.flush"),
       metrics = metrics,
       mem=mem,
       orderedCols=orderedCols,
@@ -473,17 +475,28 @@ FIT <<- fit
   if (flush) {
     if (debug) md.log("flushing the server...", trace=FALSE)
 
-    ####### SOLUTION 2: save on disk > flush Java > reupload > erase
+    ####### SOLUTION 2: save on disk > flush Java > reupload
     ####### =================================================
+
+    # 0. ERASE the .flush directory
+    tryCatch(do.call(file.remove,
+                     list(list.files(paste0(getwd(), "/.flush"),
+                                     full.names = TRUE))),
+             error = function(cond) {
+               message("mlim could not flush the temporary data...\n Perhaps restricted access permission?\n");
+               return()})
 
     # 1. SAVE
     hexID <- h2o.getId(hex)
-    h2o.save_frame(hex, dir = paste0(getwd(), "/flush"));
+    h2o.save_frame(hex, dir = paste0(getwd(), "/.flush"))
     if (!is.null(bhex)) {
       bhexID <- h2o.getId(bhex)
-      h2o.save_frame(bhex, dir = paste0(getwd(), "/flush"));
+      h2o.save_frame(bhex, dir = paste0(getwd(), "/.flush"))
     }
     else bhexID <- NULL
+    mlimID <- list(hexID, bhexID)
+    class(mlimID) <- "mlim.id"
+    saveRDS(object = list(hexID, bhexID), file = "mlim.id")
     if (debug) md.log("data stored", trace=FALSE)
 
     # 2. FLUSH
@@ -497,11 +510,11 @@ FIT <<- fit
     if (debug) md.log("server flushed", trace=FALSE)
 
     # 3. REUPLOAD
-    tryCatch(hex <- h2o::h2o.load_frame(hexID, dir = paste0(getwd(), "/flush")) ,
+    tryCatch(hex <- h2o::h2o.load_frame(hexID, dir = paste0(getwd(), "/.flush")) ,
              error = function(cond) {
                #message("connection to JAVA server failed...\n");
                return(stop("Java server crashed. perhaps a RAM problem?"))})
-    if (!is.null(bhexID)) tryCatch(bhex <- h2o::h2o.load_frame(bhexID, dir = paste0(getwd(), "/flush")),
+    if (!is.null(bhexID)) tryCatch(bhex <- h2o::h2o.load_frame(bhexID, dir = paste0(getwd(), "/.flush")),
                                  error = function(cond) {
                                    #message("connection to JAVA server failed...\n");
                                    return(stop("Java server crashed. perhaps a RAM problem?"))})
@@ -509,13 +522,7 @@ FIT <<- fit
     #ID: data_
     if (debug) md.log("data reuploaded", trace=FALSE)
 
-    # 4. ERASE
-    tryCatch(do.call(file.remove,
-                     list(list.files(paste0(getwd(), "/flush"),
-                                     full.names = TRUE))),
-             error = function(cond) {
-               message("mlim could not flush the temporary data...\n Perhaps restricted access permission?\n");
-               return()})
+
 
     Sys.sleep(sleep)
 
@@ -572,6 +579,22 @@ FIT <<- fit
     # #hexID <- h2o::h2o.getId(hex)
     #
     # if (debug) md.log("flushing completed", trace=FALSE)
+  }
+
+  # IF NOT FLUSHING, BUT SAVING, STILL SAVE THE DATA TO FLUSH
+  # ---------------------------------------------------------
+  if (!flush & save) {
+    tryCatch(do.call(file.remove,
+                     list(list.files(paste0(getwd(), "/.flush"),
+                                     full.names = TRUE))),
+             error = function(cond) {
+               message("mlim could not flush the temporary data...\n Perhaps restricted access permission?\n");
+               return()})
+    hexID <- h2o.getId(hex)
+    mlimID <- list(hexID, bhexID = NULL)
+    class(mlimID) <- "mlim.id"
+    saveRDS(object = list(hexID, bhexID), file = "mlim.id")
+    h2o.save_frame(hex, dir = paste0(getwd(), "/.flush"))
   }
 
   if (debug) md.log("flushing done!", trace=FALSE)
