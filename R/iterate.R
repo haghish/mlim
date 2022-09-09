@@ -106,7 +106,10 @@ iterate <- function(procedure,
     # message("keep_cv:", keep_cv, "\n")
     # message("seed:", seed, "\n")
 
-dodo <<- as.data.frame(bhex[which(!y.na), ])
+# dodo <<- as.data.frame(hex[which(!y.na), ])
+# bobo <<- as.data.frame(hex)
+# print(h2o.dim(hex))
+# print(h2o.getId(hex))
 
     # ------------------------------------------------------------
     # fine-tune a gaussian model
@@ -130,7 +133,7 @@ dodo <<- as.data.frame(bhex[which(!y.na), ])
                                       # #stopping_tolerance=stopping_tolerance
       ),
       error = function(cond) {
-        message(paste("Model training for variable", y, "failed... see the Java server error below:\n"));
+        message(paste("Model training for variable", Y, "failed... see the Java server error below:\n"));
         return(stop(cond))})
 
     }
@@ -191,8 +194,9 @@ dodo <<- as.data.frame(bhex[which(!y.na), ])
       stop(paste(FAMILY[z], "is not recognized"))
     }
 
-fit <<- fit
-
+# fit <<- fit
+# print(h2o.dim(hex))
+# print(h2o.getId(hex))
 
     Sys.sleep(sleep)
     #message(fit@leaderboard)
@@ -221,8 +225,8 @@ fit <<- fit
       ## do not convert pred to a vector. let it be "H2OFrame"
       tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = hex[which(v.na), X])[,1],
                error = function(cond) {
-                 message("generating the missing data predictions failed...\n");
-                 return(stop("Java server crashed. perhaps a RAM problem?"))})
+                 message("generating the missing data predictions failed... see the Java server error below:\n");
+                 return(stop(cond))})
       Sys.sleep(sleep)
       if (debug) md.log("predictions were generated", date=debug, time=debug, trace=FALSE)
 
@@ -517,14 +521,20 @@ fit <<- fit
              error = function(cond) {
                #message("connection to JAVA server failed...\n");
                return(stop("Java server crashed. perhaps a RAM problem?"))})
-    if (!is.null(bhexID)) tryCatch(bhex <- h2o::h2o.load_frame(bhexID, dir = paste0(getwd(), "/.flush")),
-                                 error = function(cond) {
-                                   #message("connection to JAVA server failed...\n");
-                                   return(stop("Java server crashed. perhaps a RAM problem?"))})
+    hex <- as.h2o(hex)
+    if (!is.null(bhexID)) {
+      tryCatch(bhex <- h2o::h2o.load_frame(bhexID, dir = paste0(getwd(), "/.flush")),
+               error = function(cond) {
+                 #message("connection to JAVA server failed...\n");
+                 return(stop("Java server crashed. perhaps a RAM problem?"))})
+      bhex <- as.h2o(bhex)
+    }
     #ID: data_
     #ID: data_
     if (debug) md.log("data reuploaded", date=debug, time=debug, trace=FALSE)
-
+# md.log(h2o.getId(hex))
+# md.log(h2o.dim(hex))
+# aa <<- as.data.frame(hex)
 
 
     Sys.sleep(sleep)
@@ -586,19 +596,19 @@ fit <<- fit
 
   # IF NOT FLUSHING, BUT SAVING, STILL SAVE THE DATA TO FLUSH
   # ---------------------------------------------------------
-  if (!flush & !is.null(save)) {
-    tryCatch(do.call(file.remove,
-                     list(list.files(paste0(getwd(), "/.flush"),
-                                     full.names = TRUE))),
-             error = function(cond) {
-               message("mlim could not flush the temporary data...\n Perhaps restricted access permission?\n");
-               return()})
-    hexID <- h2o.getId(hex)
-    mlimID <- list(hexID, bhexID = NULL)
-    class(mlimID) <- "mlim.id"
-    saveRDS(object = list(hexID, bhexID), file = "mlim.id")
-    h2o.save_frame(hex, dir = paste0(getwd(), "/.flush"))
-  }
+  # if (!flush & !is.null(save)) {
+  #   tryCatch(do.call(file.remove,
+  #                    list(list.files(paste0(getwd(), "/.flush"),
+  #                                    full.names = TRUE))),
+  #            error = function(cond) {
+  #              message("mlim could not flush the temporary data...\n Perhaps restricted access permission?\n");
+  #              return()})
+  #   hexID <- h2o.getId(hex)
+  #   mlimID <- list(hexID, bhexID = NULL)
+  #   class(mlimID) <- "mlim.id"
+  #   saveRDS(object = list(hexID, bhexID), file = "mlim.id")
+  #   h2o.save_frame(hex, dir = paste0(getwd(), "/.flush"))
+  # }
 
   if (debug) md.log("flushing done!", date=debug, time=debug, trace=FALSE)
 
@@ -607,6 +617,8 @@ fit <<- fit
 
   if (debug) md.log("return to loop!", date=debug, time=debug, trace=FALSE)
 
+# print(h2o.dim(hex))
+# print(h2o.getId(hex))
   return(list(X=X,
               hex = hex,
               bhex = bhex,

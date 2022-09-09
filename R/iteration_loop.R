@@ -125,7 +125,8 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
 
     for (Y in ITERATIONVARS[z:length(ITERATIONVARS)]) {
       start = as.integer(Sys.time())
-
+# print(h2o.getId(hex))
+# print(h2o.dim(hex))
       it <- iterate(procedure = procedure,
                     MI, dataNA, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
                     m, k, X, Y, z=which(ITERATIONVARS == Y), m.it,
@@ -148,6 +149,8 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
       metrics <- it$metrics
       data <- it$data
       hex <- it$hex
+# print(h2o.dim(hex))
+# print(h2o.getId(hex))
       bhex <- it$bhex
 
       time = as.integer(Sys.time()) - start
@@ -191,22 +194,27 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
 
   md.log("This is the end, beautiful friend...", date=debug, time=debug, trace=FALSE)
 
-  # if the iterations stops on minimum or maximum, return the last data
-  if (k == miniter || (k == maxiter && running) || maxiter == 1) {
-    md.log("limit reached", date=debug, time=debug, trace=FALSE)
-    dataLast <- as.data.frame(hex)
-    Sys.sleep(sleep)
-    attr(dataLast, "metrics") <- metrics
-    attr(dataLast, error_metric) <- error
-  }
-  else {
-    md.log("return previous iteration's data", date=debug, time=debug, trace=FALSE)
-  }
+  # # if the iterations stops on minimum or maximum, return the last data
+  # if (k == miniter || (k == maxiter && running) || maxiter == 1) {
+  ###### ALWAYS RETURN THE LAST DATA. THIS WAS A BUG, REMAINING AFTER I INDIVIDUALIZED IMPUTATION EVALUATION
+  md.log("limit reached", date=debug, time=debug, trace=FALSE)
+  dataLast <- as.data.frame(hex)
+  Sys.sleep(sleep)
+  attr(dataLast, "metrics") <- metrics
+  attr(dataLast, error_metric) <- error
+  # }
+  # else {
+  #   md.log("return previous iteration's data", date=debug, time=debug, trace=FALSE)
+  # }
 
-  if (clean) tryCatch(h2o::h2o.removeAll(),
-                      error = function(cond) {
-                        message("trying to connect to JAVA server...\n");
-                        return(stop("Java server has crashed (low RAM?)"))})
+
+  if (clean) {
+    tryCatch(h2o::h2o.removeAll(),
+             error = function(cond) {
+               message("trying to connect to JAVA server...\n");
+               return(stop("Java server has crashed (low RAM?)"))})
+    md.log("server was cleaned", date=debug, time=debug, trace=FALSE)
+  }
 
   if (shutdown) {
     md.log("shutting down the server", date=debug, time=debug, trace=FALSE)
