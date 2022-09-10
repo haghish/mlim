@@ -107,7 +107,7 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
   while (running) {
 
     # always print the iteration
-    message(paste0("\ndata ", m.it, ", iteration ", k, " (RAM = ", memuse::Sys.meminfo()$freeram,")", ":\n"), sep = "") #":\t"
+    message(paste0("\ndata ", m.it, ", iteration ", k, " (RAM = ", memuse::Sys.meminfo()$freeram,")", ":"), sep = "") #":\t"
     md.log(paste("Iteration", k), section="section")
 
     # ## AVOID THIS PRACTICE BECAUSE DOWNLOADING DATA FROM THE SERVER IS SLOW
@@ -144,14 +144,13 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
                     miniter, matching, ignore.rank,
                     verbosity, error, cpu, max_ram, min_ram)
 
-      X <- it$X
-      ITERATIONVARS <- it$ITERATIONVARS
-      metrics <- it$metrics
-      data <- it$data
-      hex <- it$hex
-# print(h2o.dim(hex))
-# print(h2o.getId(hex))
-      bhex <- it$bhex
+      X             <- it$X
+      ITERATIONVARS <- it$iterationvars
+      metrics       <- it$metrics
+      data          <- it$data
+      bdata         <- it$bdata
+      hex           <- it$hex
+      bhex          <- it$bhex
 
       time = as.integer(Sys.time()) - start
       if (debug) md.log(paste("done! after: ", time, " seconds"), time = TRUE, print = TRUE)

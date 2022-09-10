@@ -67,11 +67,9 @@
 #'               should be ignored in the process of imputation.
 #' @param tuning_time integer. maximum runtime (in seconds) for fine-tuning the
 #'                               imputation model for each variable in each iteration. the default
-#'                               time is 3600 seconds but for a large dataset, you
+#'                               time is 900 seconds but for a large dataset, you
 #'                               might need to provide a larger model development
-#'                               time. if mlim cannot tune a model withen the given tuning
-#'                               time, it will return an error.
-#'                               this argument also influences \code{max_models},
+#'                               time. this argument also influences \code{max_models},
 #'                               see below. If you are using 'ELNET' algorithm (default),
 #'                               you can be generous with the 'tuning_time' argument because
 #'                               'ELNET' tunes much faster than the rest and will only
@@ -280,7 +278,7 @@ mlim <- function(data = NULL,
                  ignore = NULL,
 
                  # computational resources
-                 tuning_time = 3600,
+                 tuning_time = 900,
                  max_models = NULL, # run all that you can
                  maxiter = 10L,
                  #miniter = 2L,
@@ -381,7 +379,7 @@ mlim <- function(data = NULL,
     # ----------------------------------
     MI             <- load$MI
     dataNA         <- load$dataNA
-    data           <- load$data
+    data           <- load$data         # preimputed dataset that is constantly updated
     #bdata          <- load$bdata
     #dataLast       <- load$dataLast
     metrics        <- load$metrics
@@ -502,7 +500,7 @@ mlim <- function(data = NULL,
   # ============================================================
   if (is.null(load)) {
     VARS <- selectVariables(data, ignore, verbose, report)
-    dataNA <- VARS$dataNA
+    dataNA <- VARS$dataNA # the missing data placeholder
     allPredictors <- VARS$allPredictors
     vars2impute <- VARS$vars2impute
     vars2postimpute <- VARS$vars2impute
@@ -542,6 +540,8 @@ mlim <- function(data = NULL,
         metrics <- getMetrics(preimputed.data)
       }
 
+      # SAVE RAM: if preimputed.data is given, replace the original data because
+      # its missing data is reserved within dataNA
       data <- preimputed.data
 
       # reset the relevant predictors
@@ -558,7 +558,7 @@ mlim <- function(data = NULL,
 
     # ??? deactivate "iterate" preimputation, because it's dull!
     # .........................................................
-    # PREIMPUTATION
+    # PREIMPUTATION: replace data with preimputed data
     # .........................................................
     if (preimpute != "iterate" & is.null(preimputed.data)) {
       data <- mlim.preimpute(data=data, preimpute=preimpute, seed = seed)
@@ -567,6 +567,12 @@ mlim <- function(data = NULL,
       X <- allPredictors
     }
   }
+
+  # ............................................................
+  # Remove 'preimputed.data'
+  # ............................................................
+  preimputed.data <- NULL
+  gc()
 
   # ............................................................
   # ............................................................
