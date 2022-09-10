@@ -106,11 +106,6 @@ iterate <- function(procedure,
     # message("keep_cv:", keep_cv, "\n")
     # message("seed:", seed, "\n")
 
-# dodo <<- as.data.frame(hex[which(!y.na), ])
-# bobo <<- as.data.frame(hex)
-# print(h2o.dim(hex))
-# print(h2o.getId(hex))
-
     # ------------------------------------------------------------
     # fine-tune a gaussian model
     # ============================================================
@@ -193,10 +188,6 @@ iterate <- function(procedure,
     else {
       stop(paste(FAMILY[z], "is not recognized"))
     }
-
-# fit <<- fit
-# print(h2o.dim(hex))
-# print(h2o.getId(hex))
 
     Sys.sleep(sleep)
     #message(fit@leaderboard)
@@ -298,7 +289,8 @@ iterate <- function(procedure,
                    message("\nServer's data could not be updated with the new predictions...\n see the error below:");
                    return(stop(cond))})
         Sys.sleep(sleep)
-        tryCatch(data[which(y.na), Y] <- as.vector(pred),
+
+        tryCatch(data[which(v.na), Y] <- as.vector(pred[,1]),
                  error = function(cond) {
                    message("\ndata could not be updated with the new predictions...\n see the error below:");
                    return(stop(cond))})
@@ -321,7 +313,7 @@ iterate <- function(procedure,
           Sys.sleep(sleep)
 
           # UPDATE THE DATAFRAME
-          tryCatch(bdata[which(y.na), Y] <- as.vector(pred),
+          tryCatch(bdata[which(y.na), Y] <- as.vector(pred[,1]),
                    error = function(cond) {
                      message("data could not be updated with the new predictions...\n see the error below:");
                      return(stop(cond))})
@@ -396,15 +388,16 @@ iterate <- function(procedure,
       dataNA = dataNA,
       data = data, #as.data.frame(hex), #??? update this to only download the imputed vector
       #bdata=as.data.frame(bhex),
-      hexID = h2o.getId(hex),
-      hexPATH = paste0(getwd(), "/.flush"),
+      # hexID   = h2o.getId(hex),
+      # hexPATH = paste0(getwd(), "/.flush"),
       metrics = metrics,
       mem=mem,
       orderedCols=orderedCols,
 
       # Loop data
       # ----------------------------------
-      m = m , k = k, z=z, X=X, Y=Y, m.it = m.it,
+      m = m , k = k, z= z ,
+      X=X, Y=Y, m.it = m.it,
       vars2impute=vars2impute, FAMILY=FAMILY,
 
       # settings
@@ -536,6 +529,7 @@ iterate <- function(procedure,
 
     # ####### SOLUTION 2: save on disk > flush Java > reupload
     # ####### =================================================
+    # NOTE: if you activate this solution, remember to update the 'save' list
     #
     # # 0. ERASE the .flush directory
     # tryCatch(do.call(file.remove,

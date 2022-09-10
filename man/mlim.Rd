@@ -21,6 +21,7 @@ mlim(
   report = NULL,
   tolerance = 0.001,
   doublecheck = TRUE,
+  preimpute = "RF",
   cpu = -1,
   ram = NULL,
   preimputed.data = NULL,
@@ -61,7 +62,9 @@ imputed. if \code{'load'} argument is provided, this argument will be ignored.}
 \item{postimpute}{logical. if TRUE, mlim uses algorithms rather than 'ELNET' for carrying out
 postimputation optimization. however, if FALSE, all specified algorihms will
 be used in the process of 'reimputation' together. the 'Ensemble' algorithm
-is encouraged when other algorithms are used.}
+is encouraged when other algorithms are used. However, for general users
+unspecialized in machine learning, postimpute is NOT recommended because this
+feature is currently experimental.}
 
 \item{ignore}{character vector of column names or index of columns that should
 should be ignored in the process of imputation.}
@@ -148,6 +151,16 @@ FALSE. (EXPERIMENTAL: consider that by avoiding several iterations
 that marginally improve the imputation accuracy, you might gain
 higher accuracy by investing your computational resources in fine-tuning
 better algorithms such as "GBM")}
+
+\item{preimpute}{character. specifies the 'primary' procedure of handling the missing
+data. the default procedure is a quick "RF", which models the missing
+data with parallel Random Forest model. this is a very fast procedure,
+which later on, will be refined within the "reimputation" algorithms (see below).
+possible alternative is \code{"mm"},
+which carries out mean/mode replacement, as practiced by most imputation algorithms.
+"mm" is much faster than "RF". if your dataset is very
+large, consider pre-imputing it before hand using 'mlim.preimpute()'
+function and passing the preimputed dataset to mlim (see "preimputed.data" argument).}
 
 \item{cpu}{integer. number of CPUs to be dedicated for the imputation.
 the default takes all of the available CPUs.}

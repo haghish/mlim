@@ -40,14 +40,20 @@ mlim.preimpute <- function(data, preimpute = "RF", seed = NULL) {
   #  data <- VIM::kNN(data, imp_var=FALSE)
   #  if (!is.null(report)) md.log("kNN preimputation is done", date=debug, time=debug, trace=FALSE)
   #}
+
   if (tolower(preimpute) == "rf") {
-    message("\nRandom Forest preimputation in progress...\n")
+    message("\nPreimputation: Random Forest")
+    pb <- txtProgressBar(0, 1, style = 3)
     data <- missRanger::missRanger(data, num.trees=500, mtry=1,
                                    verbose = 0, returnOOB=TRUE, seed = seed)
+    setTxtProgressBar(pb, 1)
     #if (!is.null(report)) md.log("RF preimputation is done", date=debug, time=debug, trace=FALSE)
   }
   else if (tolower(preimpute) == "mm") {
+    message("\nPreimputation: Mean/Mode")
+    pb <- txtProgressBar(0, 1, style = 3)
     data <- meanmode(data)
+    setTxtProgressBar(pb, 1)
     #if (!is.null(report)) md.log("Mean/Mode preimputation is done", date=debug, time=debug, trace=FALSE)
   }
   else stop(paste(preimpute, "is not recognized preimputation argument"))

@@ -1,17 +1,6 @@
 #' @title missing data imputation with automated machine learning
 #' @description imputes data.frame with mixed variable types using automated
 #'              machine learning (AutoML)
-#'
-# @param preimpute character. specifies the 'primary' procedure of handling the missing
-#                  data, before optimization takes place. the default procedure
-#                  is "rf", which models the missing data with parallel Random Forest
-#                  model. this is a very fast procedure, which will be refined within the
-#                  "imputation" algorithms (see below). possible alternative is \code{"mm"},
-#                  which carries out mean/mode replacement. "mm" is much faster than "rf", but
-#                  will increase the number of required itterations, significantly adding
-#                  to the required computational resources. if your dataset is very
-#                  large, consider imputing it before hand and then passing the
-#                  imputed dataset for optimization (see "preimputed.data" argument)
 # @param impute character. specify a vector of algorithms to be used
 #        in the process of auto-tuning. the supported main algorithms are
 #        \code{"ELNET"}, \code{"RF"},
@@ -58,10 +47,21 @@
 #'              Note that code{"XGB"} is only available in Mac OS and Linux. moreover,
 #'              "GBM", "DL", "XGB", and "Ensemble" take the full given "tuning_time" (see below) to
 #'              tune the best model for imputing he given variable.
+#' @param preimpute character. specifies the 'primary' procedure of handling the missing
+#'                  data. the default procedure is a quick "RF", which models the missing
+#'                  data with parallel Random Forest model. this is a very fast procedure,
+#'                  which later on, will be refined within the "reimputation" algorithms (see below).
+#'                  possible alternative is \code{"mm"},
+#'                  which carries out mean/mode replacement, as practiced by most imputation algorithms.
+#'                  "mm" is much faster than "RF". if your dataset is very
+#'                  large, consider pre-imputing it before hand using 'mlim.preimpute()'
+#'                  function and passing the preimputed dataset to mlim (see "preimputed.data" argument).
 #' @param postimpute logical. if TRUE, mlim uses algorithms rather than 'ELNET' for carrying out
 #'                   postimputation optimization. however, if FALSE, all specified algorihms will
 #'                   be used in the process of 'reimputation' together. the 'Ensemble' algorithm
-#'                   is encouraged when other algorithms are used.
+#'                   is encouraged when other algorithms are used. However, for general users
+#'                   unspecialized in machine learning, postimpute is NOT recommended because this
+#'                   feature is currently experimental.
 # @param min_ram character. specifies the minimum size.
 #' @param ignore character vector of column names or index of columns that should
 #'               should be ignored in the process of imputation.
@@ -128,11 +128,11 @@
 #'        but it can be reduced to \code{3} (not recommended, see below).
 # @param miniter integer. minimum number of iterations. the default value is
 #                2.
-# @param flush logical (experimental). if TRUE, after each model, the server is
-#              cleaned to retrieve RAM. this feature is in testing mode and is
-#              currently set to TRUE.
-# @param cv logical. specify number of k-fold Cross-Validation (CV). values of
-#               10 or higher are recommended. default is 10.
+#' @param flush logical (experimental). if TRUE, after each model, the server is
+#'              cleaned to retrieve RAM. this feature is in testing mode and is
+#'              currently set to TRUE.
+#' @param cv logical. specify number of k-fold Cross-Validation (CV). values of
+#'               10 or higher are recommended. default is 10.
 # @param error_metric character. specify the minimum improvement
 #                                  in the estimated error to proceed to the
 #                                  following iteration or stop the imputation.
@@ -282,7 +282,7 @@ mlim <- function(data = NULL,
                  max_models = NULL, # run all that you can
                  maxiter = 10L,
                  #miniter = 2L,
-                 #cv = 10L,
+                 cv = 10L,
                  #validation = 0,
 
                  matching = "AUTO",    #EXPERIMENTAL
@@ -301,7 +301,7 @@ mlim <- function(data = NULL,
                  doublecheck = TRUE,
 
                  ## simplify the settings by taking these arguments out
-                 #preimpute = "RF",
+                 preimpute = "RF",
                  #impute = "AUTO",
                  #postimpute = "AUTO",
                  #error_metric  = "RMSE", #??? mormalize it
@@ -312,7 +312,7 @@ mlim <- function(data = NULL,
                  # setup the h2o cluster
                  cpu = -1,
                  ram = NULL,
-                 #flush = TRUE,
+                 flush = TRUE,
                  #init = TRUE,
 
                  # NOT YET IMPLEMENTED
@@ -337,7 +337,7 @@ mlim <- function(data = NULL,
 
   # check the ... arguments
   # ============================================================
-  hidden_args <- c("cv", "init", "flush", "ignore.rank", "sleep")
+  hidden_args <- c("init", "ignore.rank", "sleep")
   stopifnot(
     "incompatible '...' arguments" = (names(list(...)) %in% hidden_args)
   )
@@ -353,18 +353,16 @@ mlim <- function(data = NULL,
   metrics     <- NULL
   error       <- NULL
   debug       <- FALSE
-  cv          <- threeDots(name = "cv", ..., default = 10L)
   miniter     <- 2L
   init        <- threeDots(name = "init", ..., default = TRUE)
-  flush       <- threeDots(name = "flush", ..., default = TRUE)
+  # cv          <- threeDots(name = "cv", ..., default = 10L)
+  # flush       <- threeDots(name = "flush", ..., default = TRUE)
   verbose     <- 0
   error_metric<- "RMSE"
-  preimpute   <- "RF"
+  #preimpute   <- "RF"
   ignore.rank <- threeDots(name = "ignore.rank", ..., default = FALSE)  #EXPERIMENTAL
   sleep       <- threeDots(name = "sleep", ..., default = .25)
   set.seed(seed)
-
-
 
   # ============================================================
   # ============================================================
@@ -377,7 +375,7 @@ mlim <- function(data = NULL,
 
     # Data
     # ----------------------------------
-    MI             <- load$MI
+    MI             <- load$MI           # dataLast or multiple-imputation data
     dataNA         <- load$dataNA
     data           <- load$data         # preimputed dataset that is constantly updated
     #bdata          <- load$bdata
@@ -388,19 +386,19 @@ mlim <- function(data = NULL,
 
     # Loop data
     # ----------------------------------
-    m              <- load$m
-    m.it           <- load$m.it
-    k              <- load$k
-    z              <- load$z
+    m              <- load$m            # number of datasets to impute
+    m.it           <- load$m.it         # current dataset to impute
+    k              <- load$k            # current loop number (global imputation iteration)
+    z              <- load$z            # current local iteration number
     X              <- load$X
-    Y              <- load$Y
+    Y              <- load$Y            # last-imputed imputed variable. outside the 'load' argument, it means current variable to be imputed
     vars2impute    <- load$vars2impute
     FAMILY         <- load$FAMILY
 
     # settings
     # ----------------------------------
-    ITERATIONVARS  <- load$ITERATIONVARS
-    impute         <- load$impute
+    ITERATIONVARS  <- load$ITERATIONVARS# variables to be imputed
+    impute         <- load$impute       # reimputation algorithm(s)
     postimputealgos<- load$postimputealgos
     autobalance    <- load$autobalance
     balance        <- load$balance
@@ -428,6 +426,16 @@ mlim <- function(data = NULL,
     min_ram        <- load$min_ram #KEEP IT HIDDEN
     keep_cv        <- load$keep_cv
     pkg            <- load$pkg #KEEP IT HIDDEN
+
+
+    # MOVE-ON to the next variable after loading an mlim object
+    # ---------------------------------------------------------
+    moveOn <- iterationNextVar(m, m.it, k, z, Y, ITERATIONVARS, maxiter)
+    m    <- moveOn$m
+    m.it <- moveOn$m.it
+    k    <- moveOn$k
+    z    <- moveOn$z
+    Y    <- moveOn$Y
   }
 
   # ============================================================
@@ -562,7 +570,6 @@ mlim <- function(data = NULL,
     # .........................................................
     if (preimpute != "iterate" & is.null(preimputed.data)) {
       data <- mlim.preimpute(data=data, preimpute=preimpute, seed = seed)
-
       # reset the relevant predictors
       X <- allPredictors
     }
@@ -620,6 +627,8 @@ mlim <- function(data = NULL,
     if (m > 1) MI[[m.it]] <- dataLast
     else MI <- dataLast
   }
+
+  message("\n")
 
   if (shutdown) {
     md.log("shutting down the server", trace=FALSE)

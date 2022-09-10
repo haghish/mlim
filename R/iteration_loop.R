@@ -125,8 +125,6 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
 
     for (Y in ITERATIONVARS[z:length(ITERATIONVARS)]) {
       start = as.integer(Sys.time())
-# print(h2o.getId(hex))
-# print(h2o.dim(hex))
       it <- iterate(procedure = procedure,
                     MI, dataNA, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
                     m, k, X, Y, z=which(ITERATIONVARS == Y), m.it,
@@ -182,7 +180,7 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
       procedure <- "postimpute"
     }
 
-    # update the loop
+    # update the loop number
     k <- k + 1L
   }
 
@@ -228,12 +226,12 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
   # Auto-Matching specifications
   # ============================================================
   if (matching == "AUTO") {
-    z <- 0
+    mtc <- 0
     for (Y in vars2impute) {
-      z <- z + 1
+      mtc <- mtc + 1
       v.na <- dataNA[, Y]
 
-      if ((FAMILY[z] == 'gaussian_integer') | (FAMILY[z] == 'quasibinomial')) {
+      if ((FAMILY[mtc] == 'gaussian_integer') | (FAMILY[mtc] == 'quasibinomial')) {
         if (debug) md.log(paste("matching", Y))
 
         matchedVal <- matching(imputed=dataLast[v.na, Y],
