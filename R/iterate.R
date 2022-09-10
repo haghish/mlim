@@ -470,7 +470,14 @@ iterate <- function(procedure,
   ### the server is entirely flushed, and then the data is uploaded again.
   ### THIS SOLUTION IS SO MUCH FASTER and is currently implemented, until
   ### I realize a proper solution what the hell should I do with the RAM
-  ### management.
+  ### management. CURRENTLY, SOLUTION 2 IS IMPLEMENTED.
+  ###
+  ### SOLUTION 3: A perhaps a better solution would be to update the original
+  ### data in R, save it as RDS, and then flush the server and reupload.
+  ### storing the dataframe in h2o format was chunky and it will create a lot
+  ### of files, although the reading speed was quite high. MOREOVER, the
+  ### as.data.frame() function should be avoided anywhere in the package.
+  ### it is so slow and unstable, can easily crash with large datasets.
   ###
   ### NOTE: If you'd like to use h2o.removeAll(), beware that retaining the
   ### dataframe ID will cause a bug. if you prefer using h2o.rm(), make sure
@@ -480,7 +487,7 @@ iterate <- function(procedure,
   ### clean Java, and re-upload the frames to Java.
 
   if (flush) {
-    if (debug) md.log("flushing the server...", trace=FALSE)
+    if (debug) md.log("flushing the server...", date=debug, time=debug, trace=FALSE)
 
     ####### SOLUTION 2: save on disk > flush Java > reupload
     ####### =================================================

@@ -67,9 +67,11 @@
 #'               should be ignored in the process of imputation.
 #' @param tuning_time integer. maximum runtime (in seconds) for fine-tuning the
 #'                               imputation model for each variable in each iteration. the default
-#'                               time is 900 seconds but for a large dataset, you
+#'                               time is 3600 seconds but for a large dataset, you
 #'                               might need to provide a larger model development
-#'                               time. this argument also influences \code{max_models},
+#'                               time. if mlim cannot tune a model withen the given tuning
+#'                               time, it will return an error.
+#'                               this argument also influences \code{max_models},
 #'                               see below. If you are using 'ELNET' algorithm (default),
 #'                               you can be generous with the 'tuning_time' argument because
 #'                               'ELNET' tunes much faster than the rest and will only
@@ -278,7 +280,7 @@ mlim <- function(data = NULL,
                  ignore = NULL,
 
                  # computational resources
-                 tuning_time = 900,
+                 tuning_time = 3600,
                  max_models = NULL, # run all that you can
                  maxiter = 10L,
                  #miniter = 2L,
