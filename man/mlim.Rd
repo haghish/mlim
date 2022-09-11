@@ -13,6 +13,7 @@ mlim(
   tuning_time = 900,
   max_models = NULL,
   maxiter = 10L,
+  cv = 10L,
   matching = "AUTO",
   autobalance = TRUE,
   balance = NULL,
@@ -24,6 +25,7 @@ mlim(
   preimpute = "RF",
   cpu = -1,
   ram = NULL,
+  flush = TRUE,
   preimputed.data = NULL,
   save = NULL,
   load = NULL,
@@ -91,6 +93,9 @@ the imputed values are expected to be}
 
 \item{maxiter}{integer. maximum number of iterations. the default value is \code{15},
 but it can be reduced to \code{3} (not recommended, see below).}
+
+\item{cv}{logical. specify number of k-fold Cross-Validation (CV). values of
+10 or higher are recommended. default is 10.}
 
 \item{matching}{logical. if \code{TRUE}, imputed values are coerced to the
 closest value to the non-missing values of the variable.
@@ -170,6 +175,10 @@ memory allocation. by default, all the available memory is
 used for the imputation.
 large memory size is particularly advised, especially
 for multicore processes. the more you give the more you get!}
+
+\item{flush}{logical (experimental). if TRUE, after each model, the server is
+cleaned to retrieve RAM. this feature is in testing mode and is
+currently set to TRUE.}
 
 \item{preimputed.data}{data.frame. if you have used another software for missing
 data imputation, you can still optimize the imputation

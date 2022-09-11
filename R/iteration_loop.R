@@ -76,18 +76,6 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
       # VARIABLES...
 
     #}
-
-    tryCatch(hex <- h2o::as.h2o(data),
-             error = function(cond) {
-               message("trying to upload data to JAVA server...\n");
-               message("ERROR: Data could not be uploaded to the Java Server\nJava server returned the following error:\n")
-               return(stop(cond))})
-
-    tryCatch(bhex<- h2o::as.h2o(bdata),
-             error = function(cond) {
-               message("trying to upload data to JAVA server...\n");
-               message("ERROR: Data could not be uploaded to the Java Server\nJava server returned the following error:\n")
-               return(stop(cond))})
   }
   Sys.sleep(sleep)
 
@@ -103,6 +91,29 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
   # remove it from ITERATIONVARS. When you get to postimputation, reset the
   # ITERATIONVARS.
   ITERATIONVARS <- vars2impute
+
+
+  # .........................................................
+  # Generate the HEX datasets if there is NO FLUSHING
+  # .........................................................
+  if (!flush) {
+    tryCatch(hex <- h2o::as.h2o(data),
+             error = function(cond) {
+               message("trying to upload data to JAVA server...\n");
+               message("ERROR: Data could not be uploaded to the Java Server\nJava server returned the following error:\n")
+               return(stop(cond))})
+
+    tryCatch(bhex<- h2o::as.h2o(bdata),
+             error = function(cond) {
+               message("trying to upload data to JAVA server...\n");
+               message("ERROR: Data could not be uploaded to the Java Server\nJava server returned the following error:\n")
+               return(stop(cond))})
+  }
+  else {
+    hex  <- NULL
+    bhex <- NULL
+  }
+
 
   while (running) {
 
@@ -147,8 +158,8 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
       metrics       <- it$metrics
       data          <- it$data
       bdata         <- it$bdata
-      hex           <- it$hex
-      bhex          <- it$bhex
+      # hex           <- it$hex
+      # bhex          <- it$bhex
 
       time = as.integer(Sys.time()) - start
       if (debug) md.log(paste("done! after: ", time, " seconds"), time = TRUE, print = TRUE)
@@ -195,10 +206,19 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
   # if (k == miniter || (k == maxiter && running) || maxiter == 1) {
   ###### ALWAYS RETURN THE LAST DATA. THIS WAS A BUG, REMAINING AFTER I INDIVIDUALIZED IMPUTATION EVALUATION
   md.log("limit reached", date=debug, time=debug, trace=FALSE)
-  dataLast <- as.data.frame(hex)
-  Sys.sleep(sleep)
-  attr(dataLast, "metrics") <- metrics
-  attr(dataLast, error_metric) <- error
+
+  ### Workaround for buggy 'as.data.frame' function
+  ### =============================================
+
+  # INSTEAD OF DEFINING A NEW VARIABLE 'dataLast', just use the 'data' returned
+  # FROM iteration and most importantly, AVOID THE BLOODY 'as.data.frame' function
+  # which IS SO BUGGY
+  attr(data, "metrics") <- metrics
+  attr(data, error_metric) <- error
+  # dataLast <- as.data.frame(hex)
+  # Sys.sleep(sleep)
+  # attr(dataLast, "metrics") <- metrics
+  # attr(dataLast, error_metric) <- error
   # }
   # else {
   #   md.log("return previous iteration's data", date=debug, time=debug, trace=FALSE)
@@ -234,11 +254,11 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
       if ((FAMILY[mtc] == 'gaussian_integer') | (FAMILY[mtc] == 'quasibinomial')) {
         if (debug) md.log(paste("matching", Y))
 
-        matchedVal <- matching(imputed=dataLast[v.na, Y],
-                               nonMiss=unique(dataLast[!v.na,Y]),
+        matchedVal <- matching(imputed=data[v.na, Y],
+                               nonMiss=unique(data[!v.na,Y]),
                                md.log)
         #message(matchedVal)
-        if (!is.null(matchedVal)) dataLast[v.na, Y] <- matchedVal
+        if (!is.null(matchedVal)) data[v.na, Y] <- matchedVal
         else {
           md.log("matching failed", date=debug, time=debug, trace=FALSE)
         }
@@ -250,10 +270,10 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
   # Revert ordinal transformation
   # ============================================================
   if (!ignore.rank) {
-    dataLast[, orderedCols] <-  revert(dataLast[, orderedCols, drop = FALSE], mem)
+    data[, orderedCols] <-  revert(data[, orderedCols, drop = FALSE], mem)
   }
 
-  class(dataLast) <- c("mlim", "data.frame")
+  class(data) <- c("mlim", "data.frame")
 
-  return(dataLast=dataLast)
+  return(dataLast=data)
 }
