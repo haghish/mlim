@@ -11,4 +11,5 @@ getDigits <- function(x) {
     result[!is.finite(result)] = 0
     return(abs(result))
   }
+  else return(0)
 }
