@@ -103,11 +103,13 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
                message("ERROR: Data could not be uploaded to the Java Server\nJava server returned the following error:\n")
                return(stop(cond))})
 
-    tryCatch(bhex<- h2o::as.h2o(bdata),
-             error = function(cond) {
-               message("trying to upload data to JAVA server...\n");
-               message("ERROR: Data could not be uploaded to the Java Server\nJava server returned the following error:\n")
-               return(stop(cond))})
+    if (!is.null(bdata)) {
+      tryCatch(bhex<- h2o::as.h2o(bdata),
+               error = function(cond) {
+                 message("trying to upload data to JAVA server...\n");
+                 message("ERROR: Data could not be uploaded to the Java Server\nJava server returned the following error:\n")
+                 return(stop(cond))})
+    }
   }
   else {
     hex  <- NULL
