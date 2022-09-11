@@ -130,7 +130,8 @@
 #                2.
 #' @param flush logical (experimental). if TRUE, after each model, the server is
 #'              cleaned to retrieve RAM. this feature is in testing mode and is
-#'              currently set to TRUE.
+#'              currently set to FALSE by default, but it is recommended if you
+#'              have limited amount of RAM or large datasets.
 #' @param cv logical. specify number of k-fold Cross-Validation (CV). values of
 #'               10 or higher are recommended. default is 10.
 # @param error_metric character. specify the minimum improvement
@@ -312,13 +313,14 @@ mlim <- function(data = NULL,
                  # setup the h2o cluster
                  cpu = -1,
                  ram = NULL,
-                 flush = TRUE,
-                 #init = TRUE,
+                 flush = FALSE,
+
 
                  # NOT YET IMPLEMENTED
                  preimputed.data = NULL,
                  save = NULL,
                  load = NULL,
+                 #init = TRUE,
                  shutdown = TRUE,
                  java = NULL,
                  #force.load = TRUE,
