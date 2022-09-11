@@ -286,8 +286,8 @@ iterate <- function(procedure,
       percentImprove <- (errImprovement / errPrevious)
 
       # IF ERROR DECREASED
-      if (percentImprove < -tolerance) {
-        if (debug) message(paste(round(percentImprove, 6), -tolerance))
+      if (percentImprove < - (if (is.null(tolerance)) 0.001 else tolerance)) {
+        if (debug) message(paste(round(percentImprove, 6), - (if (is.null(tolerance)) 0.001 else tolerance)))
         ## do not convert pred to a vector. let it be "H2OFrame"
 
         tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = hex[which(v.na), X])[,1],
@@ -349,7 +349,7 @@ iterate <- function(procedure,
       }
 
       else { #if the error increased
-        if (debug) message(paste("INCREASED", errImprovement, percentImprove, -tolerance))
+        #if (debug) message(paste("INCREASED", errImprovement, percentImprove, -(if (is.null(tolerance)) 0.001 else tolerance)))
         iterationMetric[, error_metric] <- NA
         metrics <- rbind(metrics, iterationMetric)
         if (!doublecheck) {
