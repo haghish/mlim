@@ -7,7 +7,7 @@
 #' @keywords Internal
 #' @noRd
 
-selectVariables <- function(data, ignore=NULL, verbose=FALSE, md.log=NULL) {
+selectVariables <- function(data, ignore=NULL, verbose=FALSE, report=NULL) {
 
   suppressPackageStartupMessages({requireNamespace("md.log")})
 
@@ -29,7 +29,7 @@ selectVariables <- function(data, ignore=NULL, verbose=FALSE, md.log=NULL) {
   #
   #}
 
-  if (!is.null(md.log)) {
+  if (!is.null(report)) {
     md.log(paste("Variables to impute:", paste(colnames(data)[vars2impute],
                                                collapse = ", ")))
   }

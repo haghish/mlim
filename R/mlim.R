@@ -130,7 +130,8 @@
 #                2.
 #' @param flush logical (experimental). if TRUE, after each model, the server is
 #'              cleaned to retrieve RAM. this feature is in testing mode and is
-#'              currently set to TRUE.
+#'              currently set to FALSE by default, but it is recommended if you
+#'              have limited amount of RAM or large datasets.
 #' @param cv logical. specify number of k-fold Cross-Validation (CV). values of
 #'               10 or higher are recommended. default is 10.
 # @param error_metric character. specify the minimum improvement
@@ -312,13 +313,14 @@ mlim <- function(data = NULL,
                  # setup the h2o cluster
                  cpu = -1,
                  ram = NULL,
-                 flush = TRUE,
-                 #init = TRUE,
+                 flush = FALSE,
+
 
                  # NOT YET IMPLEMENTED
                  preimputed.data = NULL,
                  save = NULL,
                  load = NULL,
+                 #init = TRUE,
                  shutdown = TRUE,
                  java = NULL,
                  #force.load = TRUE,
@@ -377,6 +379,7 @@ mlim <- function(data = NULL,
     # ----------------------------------
     MI             <- load$MI           # dataLast or multiple-imputation data
     dataNA         <- load$dataNA
+    preimputed.data<- load$preimputed.data
     data           <- load$data         # preimputed dataset that is constantly updated
     #bdata          <- load$bdata
     #dataLast       <- load$dataLast
@@ -536,7 +539,8 @@ mlim <- function(data = NULL,
       # announced feature and thus, just take the first dataset as preimputation
       if (inherits(preimputed.data, "mlim.mi")) {
         #preimputed.data <- preimputed.data[[1]]
-        stop("use 'mlim.postimpute' function for postimputing multiple imputation datasets\n")
+        #stop("use 'mlim.postimpute' function for postimputing multiple imputation datasets\n")
+        stop("multiple imputation datasets cannot be used as 'preimputed.data'\n")
       }
 
       # if the preimputation was done with mlim, extract the metrics
@@ -560,7 +564,9 @@ mlim <- function(data = NULL,
                               ignore.rank=ignore.rank, report)
 
     FAMILY<- Features$family
-    data  <- Features$data
+    # data  <- Features$data ##> this will be moved inside the loop because
+    #                            in multiple imputation, we want to start over
+    #                            everytime!
     mem <- Features$mem
     orderedCols <- Features$orderedCols
 
@@ -576,9 +582,11 @@ mlim <- function(data = NULL,
   }
 
   # ............................................................
-  # Remove 'preimputed.data'
+  # Remove 'Features', but keep 'preimputed.data' in MI
   # ............................................................
-  preimputed.data <- NULL
+  if (m > 1) preimputed.data <- Features$data
+  else preimputed.data <- NULL
+  rm(Features)
   gc()
 
   # ............................................................
@@ -604,8 +612,16 @@ mlim <- function(data = NULL,
   # this is NOT happenning when the 'mlim' object is loaded
 
   for (m.it in m.it:m) {
-    bdata <- NULL #it is always NULL. It doesn't have to be saved
-    dataLast <- iteration_loop(MI, dataNA, data, bdata, boot=m>1,
+
+    # Start the new imputation data fresh, if it is multiple imputation
+    if (k == 1 & z == 1) {
+      if (!is.null(preimputed.data)) data  <- preimputed.data
+    }
+
+    #it is always NULL. It doesn't have to be saved
+    bdata <- NULL
+
+    dataLast <- iteration_loop(MI, dataNA, preimputed.data, data, bdata, boot=m>1,
                                metrics, tolerance, doublecheck,
                                m, k, X, Y, z, m.it,
                                # loop data

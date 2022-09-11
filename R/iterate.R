@@ -17,7 +17,7 @@
 #' @noRd
 
 iterate <- function(procedure,
-                    MI, dataNA, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
+                    MI, dataNA, preimputed.data, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
                     m, k, X, Y, z, m.it,
 
                     # loop data
@@ -218,6 +218,7 @@ iterate <- function(procedure,
 
     # update metrics, and if there is an improvement, update the data
     # ------------------------------------------------------------
+    #Note: if tolerance is NULL, getDigits returns zero
     roundRMSE <- getDigits(tolerance) + 1
     if (roundRMSE == 1) roundRMSE <- 4
 
@@ -285,8 +286,8 @@ iterate <- function(procedure,
       percentImprove <- (errImprovement / errPrevious)
 
       # IF ERROR DECREASED
-      if (percentImprove < -tolerance) {
-        if (debug) message(paste(round(percentImprove, 6), -tolerance))
+      if (percentImprove < - (if (is.null(tolerance)) 0.001 else tolerance)) {
+        if (debug) message(paste(round(percentImprove, 6), - (if (is.null(tolerance)) 0.001 else tolerance)))
         ## do not convert pred to a vector. let it be "H2OFrame"
 
         tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = hex[which(v.na), X])[,1],
@@ -348,7 +349,7 @@ iterate <- function(procedure,
       }
 
       else { #if the error increased
-        if (debug) message(paste("INCREASED", errImprovement, percentImprove, -tolerance))
+        #if (debug) message(paste("INCREASED", errImprovement, percentImprove, -(if (is.null(tolerance)) 0.001 else tolerance)))
         iterationMetric[, error_metric] <- NA
         metrics <- rbind(metrics, iterationMetric)
         if (!doublecheck) {
@@ -399,6 +400,7 @@ iterate <- function(procedure,
       # ----------------------------------
       MI = MI,
       dataNA = dataNA,
+      preimputed.data = preimputed.data,
       data = data, #as.data.frame(hex), #??? update this to only download the imputed vector
       #bdata=as.data.frame(bhex),
       # hexID   = h2o.getId(hex),

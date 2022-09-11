@@ -6,7 +6,10 @@
 #' @noRd
 
 getDigits <- function(x) {
-  result <- floor(log10(abs(x)))
-  result[!is.finite(result)] = 0
-  return(abs(result))
+  if (!is.null(x)) {
+    result <- floor(log10(abs(x)))
+    result[!is.finite(result)] = 0
+    return(abs(result))
+  }
+  else return(0)
 }
