@@ -10,18 +10,18 @@ mlim(
   algos = c("ELNET"),
   postimpute = FALSE,
   ignore = NULL,
-  tuning_time = 180,
+  tuning_time = 900,
   max_models = NULL,
   maxiter = 10L,
   matching = "AUTO",
   autobalance = TRUE,
   balance = NULL,
-  weights_column = NULL,
   seed = NULL,
   verbosity = NULL,
   report = NULL,
   tolerance = 0.001,
   doublecheck = TRUE,
+  preimpute = "RF",
   cpu = -1,
   ram = NULL,
   preimputed.data = NULL,
@@ -62,17 +62,22 @@ imputed. if \code{'load'} argument is provided, this argument will be ignored.}
 \item{postimpute}{logical. if TRUE, mlim uses algorithms rather than 'ELNET' for carrying out
 postimputation optimization. however, if FALSE, all specified algorihms will
 be used in the process of 'reimputation' together. the 'Ensemble' algorithm
-is encouraged when other algorithms are used.}
+is encouraged when other algorithms are used. However, for general users
+unspecialized in machine learning, postimpute is NOT recommended because this
+feature is currently experimental.}
 
 \item{ignore}{character vector of column names or index of columns that should
 should be ignored in the process of imputation.}
 
 \item{tuning_time}{integer. maximum runtime (in seconds) for fine-tuning the
 imputation model for each variable in each iteration. the default
-time is 600 seconds but for a large dataset, you
+time is 900 seconds but for a large dataset, you
 might need to provide a larger model development
 time. this argument also influences \code{max_models},
-see below.}
+see below. If you are using 'ELNET' algorithm (default),
+you can be generous with the 'tuning_time' argument because
+'ELNET' tunes much faster than the rest and will only
+produce one model.}
 
 \item{max_models}{integer. maximum number of models that can be generated in
 the proecess of fine-tuning the parameters. this value
@@ -92,16 +97,19 @@ closest value to the non-missing values of the variable.
 if set to "AUTO", 'mlim' decides whether to match
 or not, based on the variable classes. the default is "AUTO".}
 
-\item{autobalance}{logical. if TRUE, binary and multinomial factor variables
-will be balanced before the imputation to increase the
-Mean Per Class Error (MPCE) in the process of optimization.
-if FALSE, MMPCE will be sacrificed for overall accuracy, which
-is not recommended. in fact, higher overall accuracy does
-not mean a better imputation as long as minority classes
-are neglected, which increases the bias in favor of the
+\item{autobalance}{logical. if TRUE (default), binary and multinomial factor variables
+will be balanced before the imputation to obtain fairer
+and less-biased imputations, which are typically in favor
+of the majority class.
+if FALSE, imputation fairness will be sacrificed for overall accuracy, which
+is not recommended, although it is commonly practiced in other missing data
+imputation software. MLIM is highly concerned with imputation fairness for
+factor variables and autobalancing is generally recommended.
+in fact, higher overall accuracy does not mean a better imputation as
+long as minority classes are neglected, which increases the bias in favor of the
 majority class. if you do not wish to autobalance all the
 factor variables, you can manually specify the variables
-that should be balanced using the 'balance' argument (see below)}
+that should be balanced using the 'balance' argument (see below).}
 
 \item{balance}{character vector, specifying variable names that should be
 balanced before imputation. balancing the prevalence might
@@ -109,15 +117,6 @@ decrease the overall accuracy of the imputation, because it
 attempts to ensure the representation of the rare outcome.
 this argument is optional and intended for advanced users that
 impute a severely imbalance categorical (nominal) variable.}
-
-\item{weights_column}{non-negative integer. a vector of observation weights
-can be provided, which should be of the same length
-as the dataframe. giving an observation a weight of
-Zero is equivalent of ignoring that observation in the
-model. in contrast, a weight of 2 is equivalent of
-repeating that observation twice in the dataframe.
-the higher the weight, the more important an observation
-becomes in the modeling process. the default is NULL.}
 
 \item{seed}{integer. specify the random generator seed}
 
@@ -152,6 +151,16 @@ FALSE. (EXPERIMENTAL: consider that by avoiding several iterations
 that marginally improve the imputation accuracy, you might gain
 higher accuracy by investing your computational resources in fine-tuning
 better algorithms such as "GBM")}
+
+\item{preimpute}{character. specifies the 'primary' procedure of handling the missing
+data. the default procedure is a quick "RF", which models the missing
+data with parallel Random Forest model. this is a very fast procedure,
+which later on, will be refined within the "reimputation" algorithms (see below).
+possible alternative is \code{"mm"},
+which carries out mean/mode replacement, as practiced by most imputation algorithms.
+"mm" is much faster than "RF". if your dataset is very
+large, consider pre-imputing it before hand using 'mlim.preimpute()'
+function and passing the preimputed dataset to mlim (see "preimputed.data" argument).}
 
 \item{cpu}{integer. number of CPUs to be dedicated for the imputation.
 the default takes all of the available CPUs.}

@@ -10,6 +10,7 @@
 #' @author E. F. Haghish
 #' @keywords Internal
 #' @noRd
+
 iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, doublecheck,
                     m, k, X, Y, z, m.it,
 
@@ -19,7 +20,7 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
 
                     # settings
                     error_metric, FAMILY, cv, tuning_time,
-                    max_models, weights_column,
+                    max_models,
                     keep_cv,
                     autobalance, balance, seed, save, flush,
                     verbose, debug, report, sleep,
@@ -35,36 +36,58 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
      #ID: data_
     tryCatch(hex <- h2o::as.h2o(data),
              error = function(cond) {
-               message("trying to connect to JAVA server...\n");
-               return(stop("Java server has crashed (low RAM?)"))})
-    bhex <- hex
+               message("trying to upload data to JAVA server...\n");
+               message("ERROR: Data could not be uploaded to the Java Server\nJava server returned the following error:\n")
+               return(stop(cond))})
+    bhex <- NULL
     Sys.sleep(sleep)
   }
+
+  #### PROBLEM
+  #### drop the duplicates because they screw up the k-fold cross-validation.
+  #### multiple identical observations might go to train and test datasets.
+
   else {
     rownames(data) <- 1:nrow(data) #remember the rows that are missing
-    if (is.null(bdata)) {
+    #??? it doesn't matter. you can always bootstrap at the beginning
+    #if (is.null(bdata)) {
       sampling_index <- sample.int(nrow(data), nrow(data), replace=TRUE)
 
-      # drop the duplicates because they screw up the k-fold cross-validation.
-      # multiple identical observations might go to train and test datasets.
+      ## SOLUTION 1: DROP THE DUPLICATES AND DO UNDERSAMPLING
+      ## ----------------------------------------------------
+      # sampling_index <- sampling_index[!duplicated(sampling_index)]
+      # bdata <- data[sampling_index, ]
 
-      #??? you might still consider that in the bootstrap one row was selected multiple
-      #times by adding weight_column. discuss that with the team later, if it makes
-      #any sense to do that. adding weight is analogous to including multiple
-      #rows, with the difference that it will not screw up the cross-validation...
-      sampling_index <- sampling_index[!duplicated(sampling_index)]
-      bdata <- data[sampling_index, ]
-    }
+      ## SOLUTION 2: ADD THE DUPLICATES TO THE WEIGHT_COLUMN
+      ## ----------------------------------------------------
+      dups <- bootstrapWeight(sampling_index)
+      bdata <- data[1:nrow(data) %in% dups[,1], ]
+
+      # calculate bootstrap weight
+      bdata[, "mlim_bootstrap_weights_column_"] <- dups[,2]
+
+      ####### ===============================================
+      ####### BOOTSTRAP AND BALANCING DRAMA
+      ####### ===============================================
+      #??? THIS NEEDS FURTHER UPDATE IF 'autobalance' IS ACTIVATED
+      # THE SOlUTION WOULD BE TO CALCULATE BALANCING WEIGHTS FOR
+      # EACH OBSERVATION AND THEN MULTIPLY IT BY THE WEIGHTS_COLUMN.
+      # OR CARRY OUT BALANCED STRATIFIED SAMPLING FOR CATEGORICAL
+      # VARIABLES...
+
+    #}
 
     tryCatch(hex <- h2o::as.h2o(data),
              error = function(cond) {
-               message("trying to connect to JAVA server...\n");
-               return(stop("Java server has crashed (low RAM?)"))})
+               message("trying to upload data to JAVA server...\n");
+               message("ERROR: Data could not be uploaded to the Java Server\nJava server returned the following error:\n")
+               return(stop(cond))})
 
     tryCatch(bhex<- h2o::as.h2o(bdata),
              error = function(cond) {
-               message("trying to connect to JAVA server...\n");
-               return(stop("Java server has crashed (low RAM?)"))})
+               message("trying to upload data to JAVA server...\n");
+               message("ERROR: Data could not be uploaded to the Java Server\nJava server returned the following error:\n")
+               return(stop(cond))})
   }
   Sys.sleep(sleep)
 
@@ -84,14 +107,15 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
   while (running) {
 
     # always print the iteration
-    message(paste0("\ndata ", m.it, ", iteration ", k, " (RAM = ", memuse::Sys.meminfo()$freeram,")", ":\n"), sep = "") #":\t"
+    message(paste0("\ndata ", m.it, ", iteration ", k, " (RAM = ", memuse::Sys.meminfo()$freeram,")", ":"), sep = "") #":\t"
     md.log(paste("Iteration", k), section="section")
 
-    if (debug) md.log("store last data", trace=FALSE)
-
-    dataLast <- as.data.frame(hex)
-    attr(dataLast, "metrics") <- metrics
-    attr(dataLast, "rmse") <- error
+    # ## AVOID THIS PRACTICE BECAUSE DOWNLOADING DATA FROM THE SERVER IS SLOW
+    # # store the last data
+    # if (debug) md.log("store last data", date=debug, time=debug, trace=FALSE)
+    # dataLast <- as.data.frame(hex)
+    # attr(dataLast, "metrics") <- metrics
+    # attr(dataLast, "rmse") <- error
 
     # .........................................................
     # IMPUTATION & POSTIMPUTATION LOOP
@@ -101,7 +125,6 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
 
     for (Y in ITERATIONVARS[z:length(ITERATIONVARS)]) {
       start = as.integer(Sys.time())
-
       it <- iterate(procedure = procedure,
                     MI, dataNA, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
                     m, k, X, Y, z=which(ITERATIONVARS == Y), m.it,
@@ -110,21 +133,22 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
                     allPredictors, preimpute, impute, postimputealgos,
                     # settings
                     error_metric, FAMILY=FAMILY, cv, tuning_time,
-                    max_models, weights_column,
+                    max_models,
                     keep_cv,
                     autobalance, balance, seed, save, flush,
                     verbose, debug, report, sleep,
                     # saving settings
-                    dataLast, mem, orderedCols, ignore, maxiter,
+                    mem, orderedCols, ignore, maxiter,
                     miniter, matching, ignore.rank,
                     verbosity, error, cpu, max_ram, min_ram)
 
-      X <- it$X
-      ITERATIONVARS <- it$ITERATIONVARS
-      metrics <- it$metrics
-      data <- it$data
-      hex <- it$hex
-      bhex <- it$bhex
+      X             <- it$X
+      ITERATIONVARS <- it$iterationvars
+      metrics       <- it$metrics
+      data          <- it$data
+      bdata         <- it$bdata
+      hex           <- it$hex
+      bhex          <- it$bhex
 
       time = as.integer(Sys.time()) - start
       if (debug) md.log(paste("done! after: ", time, " seconds"), time = TRUE, print = TRUE)
@@ -132,7 +156,7 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
 
     # CHECK CRITERIA FOR RUNNING THE NEXT ITERATION
     # --------------------------------------------------------------
-    if (debug) md.log("evaluating stopping criteria", trace=FALSE)
+    if (debug) md.log("evaluating stopping criteria", date=debug, time=debug, trace=FALSE)
     SC <- stoppingCriteria(method="varwise_NA", miniter, maxiter,
                            metrics, k, vars2impute,
                            error_metric,
@@ -141,9 +165,8 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
                            runpostimpute,
                            md.log = report)
     if (debug) {
-      md.log(paste("running: ", SC$running), trace=FALSE)
-      md.log(paste("Estimated",error_metric,
-                   "error:", SC$error), trace=FALSE)
+      md.log(paste("running: ", SC$running), date=debug, time=debug, trace=FALSE)
+      md.log(paste("Estimated",error_metric, "error:", SC$error), date=debug, time=debug, trace=FALSE)
     }
 
     running <- SC$running
@@ -157,7 +180,7 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
       procedure <- "postimpute"
     }
 
-    # update the loop
+    # update the loop number
     k <- k + 1L
   }
 
@@ -166,27 +189,32 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
   # ............................................................
   if (verbose) message("\n\n")
 
-  md.log("This is the end, beautiful friend...", trace=FALSE)
+  md.log("This is the end, beautiful friend...", date=debug, time=debug, trace=FALSE)
 
-  # if the iterations stops on minimum or maximum, return the last data
-  if (k == miniter || (k == maxiter && running) || maxiter == 1) {
-    md.log("limit reached", trace=FALSE)
-    dataLast <- as.data.frame(hex)
-    Sys.sleep(sleep)
-    attr(dataLast, "metrics") <- metrics
-    attr(dataLast, error_metric) <- error
-  }
-  else {
-    md.log("return previous iteration's data", trace=FALSE)
-  }
+  # # if the iterations stops on minimum or maximum, return the last data
+  # if (k == miniter || (k == maxiter && running) || maxiter == 1) {
+  ###### ALWAYS RETURN THE LAST DATA. THIS WAS A BUG, REMAINING AFTER I INDIVIDUALIZED IMPUTATION EVALUATION
+  md.log("limit reached", date=debug, time=debug, trace=FALSE)
+  dataLast <- as.data.frame(hex)
+  Sys.sleep(sleep)
+  attr(dataLast, "metrics") <- metrics
+  attr(dataLast, error_metric) <- error
+  # }
+  # else {
+  #   md.log("return previous iteration's data", date=debug, time=debug, trace=FALSE)
+  # }
 
-  if (clean) tryCatch(h2o::h2o.removeAll(),
-                      error = function(cond) {
-                        message("trying to connect to JAVA server...\n");
-                        return(stop("Java server has crashed (low RAM?)"))})
+
+  if (clean) {
+    tryCatch(h2o::h2o.removeAll(),
+             error = function(cond) {
+               message("trying to connect to JAVA server...\n");
+               return(stop("Java server has crashed (low RAM?)"))})
+    md.log("server was cleaned", date=debug, time=debug, trace=FALSE)
+  }
 
   if (shutdown) {
-    md.log("shutting down the server", trace=FALSE)
+    md.log("shutting down the server", date=debug, time=debug, trace=FALSE)
     tryCatch(h2o::h2o.shutdown(prompt = FALSE),
              error = function(cond) {
                message("trying to connect to JAVA server...\n");
@@ -198,12 +226,12 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
   # Auto-Matching specifications
   # ============================================================
   if (matching == "AUTO") {
-    z <- 0
+    mtc <- 0
     for (Y in vars2impute) {
-      z <- z + 1
+      mtc <- mtc + 1
       v.na <- dataNA[, Y]
 
-      if ((FAMILY[z] == 'gaussian_integer') | (FAMILY[z] == 'quasibinomial')) {
+      if ((FAMILY[mtc] == 'gaussian_integer') | (FAMILY[mtc] == 'quasibinomial')) {
         if (debug) md.log(paste("matching", Y))
 
         matchedVal <- matching(imputed=dataLast[v.na, Y],
@@ -212,7 +240,7 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
         #message(matchedVal)
         if (!is.null(matchedVal)) dataLast[v.na, Y] <- matchedVal
         else {
-          md.log("matching failed", trace=FALSE)
+          md.log("matching failed", date=debug, time=debug, trace=FALSE)
         }
       }
     }
