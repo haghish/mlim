@@ -11,7 +11,7 @@
 #' @keywords Internal
 #' @noRd
 
-iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, doublecheck,
+iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metrics, tolerance, doublecheck,
                     m, k, X, Y, z, m.it,
 
                     # loop data
@@ -137,7 +137,7 @@ iteration_loop <- function(MI, dataNA, data, bdata, boot, metrics, tolerance, do
     for (Y in ITERATIONVARS[z:length(ITERATIONVARS)]) {
       start = as.integer(Sys.time())
       it <- iterate(procedure = procedure,
-                    MI, dataNA, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
+                    MI, dataNA, preimputed.data, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
                     m, k, X, Y, z=which(ITERATIONVARS == Y), m.it,
                     # loop data
                     ITERATIONVARS, vars2impute,

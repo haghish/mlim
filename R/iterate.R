@@ -17,7 +17,7 @@
 #' @noRd
 
 iterate <- function(procedure,
-                    MI, dataNA, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
+                    MI, dataNA, preimputed.data, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
                     m, k, X, Y, z, m.it,
 
                     # loop data
@@ -218,6 +218,7 @@ iterate <- function(procedure,
 
     # update metrics, and if there is an improvement, update the data
     # ------------------------------------------------------------
+    #Note: if tolerance is NULL, getDigits returns zero
     roundRMSE <- getDigits(tolerance) + 1
     if (roundRMSE == 1) roundRMSE <- 4
 
@@ -399,6 +400,7 @@ iterate <- function(procedure,
       # ----------------------------------
       MI = MI,
       dataNA = dataNA,
+      preimputed.data = preimputed.data,
       data = data, #as.data.frame(hex), #??? update this to only download the imputed vector
       #bdata=as.data.frame(bhex),
       # hexID   = h2o.getId(hex),

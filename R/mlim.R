@@ -377,6 +377,7 @@ mlim <- function(data = NULL,
     # ----------------------------------
     MI             <- load$MI           # dataLast or multiple-imputation data
     dataNA         <- load$dataNA
+    preimputed.data<- load$preimputed.data
     data           <- load$data         # preimputed dataset that is constantly updated
     #bdata          <- load$bdata
     #dataLast       <- load$dataLast
@@ -536,7 +537,8 @@ mlim <- function(data = NULL,
       # announced feature and thus, just take the first dataset as preimputation
       if (inherits(preimputed.data, "mlim.mi")) {
         #preimputed.data <- preimputed.data[[1]]
-        stop("use 'mlim.postimpute' function for postimputing multiple imputation datasets\n")
+        #stop("use 'mlim.postimpute' function for postimputing multiple imputation datasets\n")
+        stop("multiple imputation datasets cannot be used as 'preimputed.data'\n")
       }
 
       # if the preimputation was done with mlim, extract the metrics
@@ -560,7 +562,9 @@ mlim <- function(data = NULL,
                               ignore.rank=ignore.rank, report)
 
     FAMILY<- Features$family
-    data  <- Features$data
+    # data  <- Features$data ##> this will be moved inside the loop because
+    #                            in multiple imputation, we want to start over
+    #                            everytime!
     mem <- Features$mem
     orderedCols <- Features$orderedCols
 
@@ -576,9 +580,11 @@ mlim <- function(data = NULL,
   }
 
   # ............................................................
-  # Remove 'preimputed.data'
+  # Remove 'Features', but keep 'preimputed.data' in MI
   # ............................................................
-  preimputed.data <- NULL
+  if (m > 1) preimputed.data <- Features$data
+  else preimputed.data <- NULL
+  rm(Features)
   gc()
 
   # ............................................................
@@ -604,8 +610,16 @@ mlim <- function(data = NULL,
   # this is NOT happenning when the 'mlim' object is loaded
 
   for (m.it in m.it:m) {
-    bdata <- NULL #it is always NULL. It doesn't have to be saved
-    dataLast <- iteration_loop(MI, dataNA, data, bdata, boot=m>1,
+
+    # Start the new imputation data fresh, if it is multiple imputation
+    if (k == 1 & z == 1) {
+      if (!is.null(preimputed.data)) data  <- preimputed.data
+    }
+
+    #it is always NULL. It doesn't have to be saved
+    bdata <- NULL
+
+    dataLast <- iteration_loop(MI, dataNA, preimputed.data, data, bdata, boot=m>1,
                                metrics, tolerance, doublecheck,
                                m, k, X, Y, z, m.it,
                                # loop data
