@@ -113,13 +113,11 @@ checkNconvert <- function(data, vars2impute, ignore,
 
   # only return the class and family of the vars2impute, if not ignored
   # ============================================================
-  index <- match(vars2impute, COLNAMES)
-
   # now match the location of the variables according to vars2impute order
-  index <- match(COLNAMES, vars2impute)
+  index <- match(vars2impute, COLNAMES)
   return(list(class = features[index],
               family = family[index],
-              # COLNAMES = COLNAMES[index],
+              COLNAMES = COLNAMES[index],
               data = data,
               mem = mem,
               orderedCols = which(features == "ordered")))

@@ -511,6 +511,7 @@ mlim <- function(data = NULL,
   # ============================================================
   if (is.null(load)) {
     VARS <- selectVariables(data, ignore, verbose, report)
+# EEE<<- VARS
     dataNA <- VARS$dataNA # the missing data placeholder
     allPredictors <- VARS$allPredictors
     vars2impute <- VARS$vars2impute
@@ -564,6 +565,7 @@ mlim <- function(data = NULL,
                               ignore.rank=ignore.rank, report)
 
     FAMILY<- Features$family
+# FFF<<- Features
     # data  <- Features$data ##> this will be moved inside the loop because
     #                            in multiple imputation, we want to start over
     #                            everytime!
