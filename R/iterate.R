@@ -38,15 +38,28 @@ iterate <- function(procedure,
                     verbosity, error, cpu, max_ram, min_ram
                     ) {
 
-  # for the first dataframe imputation
-  #if (is.null(bhex)) bhex <- hex
 
-  #ZZ <- z
-  #message(paste("z:",z, "length:",  length(vars2impute)))
-  #if (z >= length(vars2impute)) ZZ <- length(vars2impute) - 1
+  # Define HEX and BHEX (if flushing is activated)
+  # ============================================================
+  if (flush) {
+    tryCatch(hex <- h2o::as.h2o(data),
+             error = function(cond) {
+               #message("connection to JAVA server failed...\n");
+               return(stop("Java server crashed. perhaps a RAM problem?"))})
+    if (!is.null(bdata)) {
+      tryCatch(bhex <- h2o::as.h2o(bdata),
+               error = function(cond) {
+                 #message("connection to JAVA server failed...\n");
+                 return(stop("Java server crashed. perhaps a RAM problem?"))})
+    }
+    if (debug) md.log("data reuploaded", date=debug, time=debug, trace=FALSE)
+  }
 
+  # Prepare the progress bar and iteration console text
+  # ============================================================
   if (verbose==0) pb <- txtProgressBar(z-1, length(vars2impute), style = 3)
   if (debug) message(paste0(Y," (RAM = ", memuse::Sys.meminfo()$freeram,")\n"))
+
 
   if (!boot) {
     v.na <- dataNA[, Y]
@@ -515,17 +528,7 @@ iterate <- function(procedure,
     gc()
     gc()
     if (debug) md.log("server flushed", date=debug, time=debug, trace=FALSE)
-    tryCatch(hex <- h2o::as.h2o(data),
-             error = function(cond) {
-               #message("connection to JAVA server failed...\n");
-               return(stop("Java server crashed. perhaps a RAM problem?"))})
-    if (!is.null(bdata)) {
-      tryCatch(bhex <- h2o::as.h2o(bdata),
-               error = function(cond) {
-                 #message("connection to JAVA server failed...\n");
-                 return(stop("Java server crashed. perhaps a RAM problem?"))})
-    }
-    if (debug) md.log("data reuploaded", date=debug, time=debug, trace=FALSE)
+
 
     # ####### SOLUTION 2: save on disk > flush Java > reupload
     # ####### =================================================
@@ -666,8 +669,8 @@ iterate <- function(procedure,
   return(list(X=X,
               metrics = metrics,
               iterationvars=ITERATIONVARS,
-              hex = hex,
-              bhex = bhex,
+              # hex = hex,
+              # bhex = bhex,
               data = data,
               bdata = bdata))
 }
