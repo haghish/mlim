@@ -177,7 +177,7 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
         #   X <- union(X, Y)
         #   if (debug) md.log("x was updated", date=debug, time=debug, trace=FALSE)
         # }
-        return(cat(cond))})
+        return(FALSE)})
     }
 
     # CHECK CRITERIA FOR RUNNING THE NEXT ITERATION
