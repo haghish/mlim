@@ -138,33 +138,46 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
 
     for (Y in ITERATIONVARS[z:length(ITERATIONVARS)]) {
       start = as.integer(Sys.time())
-      it <- iterate(procedure = procedure,
-                    MI, dataNA, preimputed.data, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
-                    m, k, X, Y, z=which(ITERATIONVARS == Y), m.it,
-                    # loop data
-                    ITERATIONVARS, vars2impute,
-                    allPredictors, preimpute, impute, postimputealgos,
-                    # settings
-                    error_metric, FAMILY=FAMILY, cv, tuning_time,
-                    max_models,
-                    keep_cv,
-                    autobalance, balance, seed, save, flush,
-                    verbose, debug, report, sleep,
-                    # saving settings
-                    mem, orderedCols, ignore, maxiter,
-                    miniter, matching, ignore.rank,
-                    verbosity, error, cpu, max_ram, min_ram)
 
-      X             <- it$X
-      ITERATIONVARS <- it$iterationvars
-      metrics       <- it$metrics
-      data          <- it$data
-      bdata         <- it$bdata
-      # hex           <- it$hex
-      # bhex          <- it$bhex
+      tryCatch({
+        it <- iterate(procedure = procedure,
+                      MI, dataNA, preimputed.data, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
+                      m, k, X, Y, z=which(ITERATIONVARS == Y), m.it,
+                      # loop data
+                      ITERATIONVARS, vars2impute,
+                      allPredictors, preimpute, impute, postimputealgos,
+                      # settings
+                      error_metric, FAMILY=FAMILY, cv, tuning_time,
+                      max_models,
+                      keep_cv,
+                      autobalance, balance, seed, save, flush,
+                      verbose, debug, report, sleep,
+                      # saving settings
+                      mem, orderedCols, ignore, maxiter,
+                      miniter, matching, ignore.rank,
+                      verbosity, error, cpu, max_ram, min_ram)
 
-      time = as.integer(Sys.time()) - start
-      if (debug) md.log(paste("done! after: ", time, " seconds"), time = TRUE, print = TRUE)
+        X             <- it$X
+        ITERATIONVARS <- it$iterationvars
+        metrics       <- it$metrics
+        data          <- it$data
+        bdata         <- it$bdata
+        # hex           <- it$hex
+        # bhex          <- it$bhex
+
+        time = as.integer(Sys.time()) - start
+        if (debug) md.log(paste("done! after: ", time, " seconds"), time = TRUE, print = TRUE)
+      },
+      error = function(cond) {
+        message(paste0("\nReimputing '", Y, "' with the current specified algorithms failed and this variable will be skipped! \nSee Java server's error below:"));
+        md.log(paste("Imputing", Y, "failed and the variable will be skipped!"), time = TRUE, print = TRUE)
+
+        # activate the code below if you allow "iterate" preimputation
+        # if (preimpute == "iterate" && k == 1L && (Y %in% allPredictors)) {
+        #   X <- union(X, Y)
+        #   if (debug) md.log("x was updated", date=debug, time=debug, trace=FALSE)
+        # }
+        return(cat(cond))})
     }
 
     # CHECK CRITERIA FOR RUNNING THE NEXT ITERATION
