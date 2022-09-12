@@ -38,7 +38,6 @@ iterate <- function(procedure,
                     verbosity, error, cpu, max_ram, min_ram
                     ) {
 
-
   # Define HEX and BHEX (if flushing is activated)
   # ============================================================
   if (flush) {
@@ -195,8 +194,36 @@ iterate <- function(procedure,
                                       #stopping_tolerance=stopping_tolerance
       ),
       error = function(cond) {
-        message("\nmodel training failed. perhaps low RAM problem?...\n");
+        message("\nmodel training failed...see the server's error below:\n");
         return(stop(cond))})
+
+      # # make sure that the model is not failed with a "dummy"
+      # if (fit@leader@model_id == "dummy" & ! "DRF" %in% usedalgorithms) {
+      #   message(paste("\nmlim reimputes", Y,  "with random forest now:"))
+      #   md.log(paste("mlim reimputes", Y,  "with random forest now:"), date=debug, time=debug, trace=FALSE)
+      #
+      #   tryCatch(fit <- h2o::h2o.automl(x = setdiff(X, Y), y = Y,
+      #                                   balance_classes = balance_classes,
+      #                                   sort_metric = sort_metric,
+      #                                   training_frame = if (is.null(bhex)) hex[which(!y.na), ] else bhex[which(!y.na), ],
+      #                                   #validation_frame = bhex[vdFrame, ],
+      #                                   project_name = "mlim",
+      #                                   include_algos = "DRF",
+      #                                   nfolds = cv,
+      #                                   exploitation_ratio = 0.1,
+      #                                   max_runtime_secs = tuning_time,
+      #                                   max_models = max_models,
+      #                                   weights_column = if (!balance_classes) {if (is.null(bhex)) NULL else "mlim_bootstrap_weights_column_"} else NULL, #adjusted_weight_column[which(!y.na)],
+      #                                   keep_cross_validation_predictions = keep_cv,
+      #                                   seed = seed
+      #                                   #stopping_metric = stopping_metric,
+      #                                   #stopping_rounds = stopping_rounds
+      #                                   #stopping_tolerance=stopping_tolerance
+      #   ),
+      #   error = function(cond) {
+      #     message("\nmodel training failed...see the server's error below:\n");
+      #     return(stop(cond))})
+      # }
     }
     else {
       stop(paste(FAMILY[z], "is not recognized"))
