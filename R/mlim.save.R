@@ -1,6 +1,6 @@
 #' @title save mlim object
 #' @description saves mlim object in feather format
-#' @importFrom feather write_feather
+#' @importFrom arrow write_feather
 #' @param mlimobject list of class mlim
 #' @param save character specifying file name of the mlim object
 #' @return nothing
@@ -8,8 +8,9 @@
 #' @keywords Internal
 #' @noRd
 
-mlim.save <- function(mlimobject, save) {
+mlim.save <- function(x, save) {
+  class(x) <- "mlim"
   result <- data.frame()
-  attr(result, "mlim") <- mlimobject
-  feather::write_feather(x=result, sink=save)
+  attr(result, "mlim") <- x
+  arrow::write_feather(x=result, sink=save)
 }
