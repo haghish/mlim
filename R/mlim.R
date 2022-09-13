@@ -490,7 +490,7 @@ mlim <- function(data = NULL,
                                       max_mem_size = max_ram,
                                       ignore_config = TRUE,
                                       java = java,
-                                      report),
+                                      report, debug),
                    file = report,
                    append = TRUE)
     #sink()
@@ -566,7 +566,7 @@ mlim <- function(data = NULL,
                               ignore.rank=ignore.rank, report)
 
     FAMILY<- Features$family
-# FFF<<- Features
+
     # data  <- Features$data ##> this will be moved inside the loop because
     #                            in multiple imputation, we want to start over
     #                            everytime!
@@ -582,15 +582,16 @@ mlim <- function(data = NULL,
       # reset the relevant predictors
       X <- allPredictors
     }
+
+    # .........................................................
+    # Remove 'Features', but keep 'preimputed.data' in MI
+    # .........................................................
+    if (m > 1) preimputed.data <- Features$data
+    else preimputed.data <- NULL
+    rm(Features)
+    gc()
   }
 
-  # ............................................................
-  # Remove 'Features', but keep 'preimputed.data' in MI
-  # ............................................................
-  if (m > 1) preimputed.data <- Features$data
-  else preimputed.data <- NULL
-  rm(Features)
-  gc()
 
   # ............................................................
   # ............................................................
