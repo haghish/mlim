@@ -134,7 +134,7 @@ iterate <- function(procedure,
                                       max_models = max_models,
                                       weights_column = if (is.null(bhex)) NULL else "mlim_bootstrap_weights_column_", #adjusted_weight_column[which(!y.na)],
                                       keep_cross_validation_predictions = keep_cv,
-                                      verbosity = if (debug) "debug" else NULL,
+                                      #verbosity = if (debug) "debug" else NULL,
                                       seed = seed
                                       # #stopping_metric = stopping_metric,
                                       # #stopping_rounds = stopping_rounds
@@ -189,7 +189,7 @@ iterate <- function(procedure,
                                       max_models = max_models,
                                       weights_column = if (!balance_classes) {if (is.null(bhex)) NULL else "mlim_bootstrap_weights_column_"} else NULL, #adjusted_weight_column[which(!y.na)],
                                       keep_cross_validation_predictions = keep_cv,
-                                      verbosity = if (debug) "debug" else NULL,
+                                      #verbosity = if (debug) "debug" else NULL,
                                       seed = seed
                                       #stopping_metric = stopping_metric,
                                       #stopping_rounds = stopping_rounds
