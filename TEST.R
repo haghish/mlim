@@ -14,7 +14,7 @@ dfNA$Sepal.Length <- mlim.na(dfNA$Sepal.Length, p = 0.2, seed = 2022)
 
 # run the ELNET single imputation (fastest imputation via 'mlim')
 MLIM <- mlim(dfNA, shutdown = FALSE, m = 1, save = "test.mlim", flush = FALSE,
-             algos = "ELNET", report = "bug.md", #verbosity = "error",
+             algos = "ELNET", report = "bug.md", verbosity = "debug",
              tolerance = NULL)
 
 a <- mlim.load("test.mlim")
