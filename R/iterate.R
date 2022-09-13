@@ -478,10 +478,12 @@ iterate <- function(procedure,
       # save the package version used for the imputation
       pkg=packageVersion("mlim")
     )
-    class(savestate) <- "mlim"
 
     # update iteration data
-    saveRDS(savestate, save)
+    tryCatch(mlim.save(savestate, save),
+             error = function(cond) {
+               message("saving 'mlim' object failed... see the error below:\n");
+               return(stop(cond))})
   }
 
   if (debug) md.log("saving done!", date=debug, time=debug, trace=FALSE)
