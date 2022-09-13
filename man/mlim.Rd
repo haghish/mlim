@@ -186,7 +186,7 @@ data imputation, you can still optimize the imputation
 by handing the data.frame to this argument, which will
 bypass the "preimpute" procedure.}
 
-\item{save}{(NOT YET IMPLEMENTED FOR R). filename. if a filename is specified, an \code{mlim} object is
+\item{save}{filename (with .mlim extension). if a filename is specified, an \code{mlim} object is
 saved after the end of each variable imputation. this object not only
 includes the imputed dataframe and estimated cross-validation error, but also
 includes the information needed for continuing the imputation,
@@ -194,7 +194,7 @@ which is very useful feature for imputing large datasets, with a
 long runtime. this argument is activated by default and an
 mlim object is stored in the local directory named \code{"mlim.rds"}.}
 
-\item{load}{(NOT YET IMPLEMENTED FOR R). an object of class "mlim", which includes the data, arguments,
+\item{load}{filename (with .mlim extension). an object of class "mlim", which includes the data, arguments,
 and settings for re-running the imputation, from where it was
 previously stopped. the "mlim" object saves the current state of
 the imputation and is particularly recommended for large datasets

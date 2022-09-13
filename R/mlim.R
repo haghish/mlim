@@ -18,6 +18,7 @@
 #        algorithms in the process of "postimputation" and let "ELNET" do most of the legwork to save
 #        computational resources.
 #' @importFrom utils setTxtProgressBar txtProgressBar capture.output packageVersion
+#' @importFrom tools file_ext
 #' @importFrom h2o h2o.init as.h2o h2o.automl h2o.predict h2o.ls
 #'             h2o.removeAll h2o.rm h2o.shutdown
 #' @importFrom md.log md.log
@@ -200,14 +201,14 @@
 #'                      data imputation, you can still optimize the imputation
 #'                      by handing the data.frame to this argument, which will
 #'                      bypass the "preimpute" procedure.
-#' @param save (NOT YET IMPLEMENTED FOR R). filename. if a filename is specified, an \code{mlim} object is
+#' @param save filename (with .mlim extension). if a filename is specified, an \code{mlim} object is
 #'             saved after the end of each variable imputation. this object not only
 #'             includes the imputed dataframe and estimated cross-validation error, but also
 #'             includes the information needed for continuing the imputation,
 #'             which is very useful feature for imputing large datasets, with a
 #'             long runtime. this argument is activated by default and an
 #'             mlim object is stored in the local directory named \code{"mlim.rds"}.
-#' @param load (NOT YET IMPLEMENTED FOR R). an object of class "mlim", which includes the data, arguments,
+#' @param load filename (with .mlim extension). an object of class "mlim", which includes the data, arguments,
 #'                 and settings for re-running the imputation, from where it was
 #'                 previously stopped. the "mlim" object saves the current state of
 #'                 the imputation and is particularly recommended for large datasets
@@ -454,7 +455,7 @@ mlim <- function(data = NULL,
 
     synt <- syntaxProcessing(data, preimpute, impute, ram,
                              matching=matching, miniter, maxiter, max_models,
-                             tuning_time, cv, verbosity=verbosity, report)
+                             tuning_time, cv, verbosity=verbosity, report, save)
     min_ram <- synt$min_ram
     max_ram <- synt$max_ram
     keep_cv <- synt$keep_cross_validation_predictions
@@ -489,7 +490,7 @@ mlim <- function(data = NULL,
                                       max_mem_size = max_ram,
                                       ignore_config = TRUE,
                                       java = java,
-                                      report),
+                                      report, debug),
                    file = report,
                    append = TRUE)
     #sink()
@@ -565,7 +566,7 @@ mlim <- function(data = NULL,
                               ignore.rank=ignore.rank, report)
 
     FAMILY<- Features$family
-# FFF<<- Features
+
     # data  <- Features$data ##> this will be moved inside the loop because
     #                            in multiple imputation, we want to start over
     #                            everytime!
@@ -581,15 +582,16 @@ mlim <- function(data = NULL,
       # reset the relevant predictors
       X <- allPredictors
     }
+
+    # .........................................................
+    # Remove 'Features', but keep 'preimputed.data' in MI
+    # .........................................................
+    if (m > 1) preimputed.data <- Features$data
+    else preimputed.data <- NULL
+    rm(Features)
+    gc()
   }
 
-  # ............................................................
-  # Remove 'Features', but keep 'preimputed.data' in MI
-  # ............................................................
-  if (m > 1) preimputed.data <- Features$data
-  else preimputed.data <- NULL
-  rm(Features)
-  gc()
 
   # ............................................................
   # ............................................................

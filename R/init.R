@@ -6,7 +6,7 @@
 #' @noRd
 
 init <- function(nthreads, min_mem_size, max_mem_size, ignore_config = TRUE,
-                 java = NULL, report) {
+                 java = NULL, report, debug) {
 
   if (!is.null(java)) {
     Sys.setenv(JAVA_HOME = java)
@@ -18,12 +18,19 @@ init <- function(nthreads, min_mem_size, max_mem_size, ignore_config = TRUE,
   connection <- NULL
   test       <- 1
   while (keepTrying) {
+    # h2o.init(jvm_custom_args = c("-help"))
+    # h2o.init(jvm_custom_args = c("-session_timeout=100"))
+    # bind_to_localhost = FALSE
+    # h2o.init(jvm_custom_args=c("-Dsys.ai.h2o.heartbeat.benchmark.enabled=true"))
     tryCatch(connection <- h2o::h2o.init(nthreads = nthreads,
                                          #name = "mlim_connection",
                                          min_mem_size = min_mem_size,
                                          max_mem_size = max_mem_size,
                                          ignore_config = ignore_config,
-                                         insecure = TRUE),
+                                         insecure = TRUE,
+                                         https = FALSE,
+                                         log_level = if (debug) "DEBUG" else "FATA",
+                                         bind_to_localhost = FALSE),
              error = function(cond) {
                #message("connection to JAVA server failed...\n");
                return()})

@@ -8,17 +8,18 @@ h2o.shutdown(F)
 # faster, I add NAs only to a single variable.
 dfNA <- iris
 dfNA$Species <- mlim.na(dfNA$Species, p = 0.3, stratify = TRUE, seed = 2022)
-#dfNA$Sepal.Length <- mlim.na(dfNA$Sepal.Length, p = 0.2, seed = 2022)
+dfNA$Sepal.Length <- mlim.na(dfNA$Sepal.Length, p = 0.2, seed = 2022)
 #dfNA$Sepal.Width <- mlim.na(dfNA$Sepal.Width, p = 0.6, seed = 2022)
 # dfNA <- mlim.na(dfNA, p = 0.1, seed = 2023)
 
 # run the ELNET single imputation (fastest imputation via 'mlim')
 MLIM <- mlim(dfNA, shutdown = FALSE, m = 1, save = "test.mlim", flush = FALSE,
+             algos = "ELNET", report = "bug.md", #verbosity = "error",
              tolerance = NULL)
 
+a <- mlim.load("test.mlim")
 
-
-
+MLIM <- mlim(load = "test.mlim")
 
 mlim.error(MLIM, dfNA, iris)
 

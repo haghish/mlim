@@ -1,7 +1,7 @@
 Package: mlim
 Type: Package
 Title: Multiple Imputation with Automated Machine Learning
-Version: 0.1.5
+Version: 0.1.7
 Authors@R: 
     person("E. F. Haghish",
            role = c("aut", "cre", "cph"),
@@ -37,7 +37,7 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 Imports:
     h2o (>= 3.34.0.0),
-    curl (>= 4.3.0),
+    curl (>= 4.3.2),
     mice,
     missRanger,
     memuse,

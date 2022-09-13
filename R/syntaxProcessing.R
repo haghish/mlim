@@ -2,6 +2,7 @@
 #' @title syntaxProcessing
 #' @description extracts performance metrics from cross-validation
 #' @importFrom memuse Sys.meminfo
+#' @importFrom tools file_ext
 #' @author E. F. Haghish
 #' @keywords Internal
 #' @noRd
@@ -10,7 +11,7 @@
 syntaxProcessing <- function(data, preimpute, impute, ram,
                              matching, miniter, maxiter, max_models,
                              tuning_time, cv,
-                             verbosity, report) {
+                             verbosity, report, save) {
 
   #if ("GBM" %in% impute) {
     #if (nrow(data) < 200) stop("too few rows... use 'ELNET' or 'DRF' instead")
@@ -29,7 +30,8 @@ syntaxProcessing <- function(data, preimpute, impute, ram,
     #length(formula <- as.character(formula)) == 3L,
     #"'max_models' must be a positive integer equal or more than 1" = max_models >= 1,
     #"'tuning_time' must be a positive integer" = tuning_time >= 2,
-    "'cv' must be a positive integer equal or more than 10" = cv >= 10
+    "'cv' must be a positive integer equal or more than 10" = cv >= 10,
+    "'save' argument must have '*.mlim' file extension" = tools::file_ext(save) == "mlim"
   )
 
   #if (miniter < 2 & preimpute == "iterate") stop("'miniter' must not be less than 2")
