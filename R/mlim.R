@@ -373,7 +373,7 @@ mlim <- function(data = NULL,
   # ============================================================
   # ============================================================
   if (!is.null(load)) {
-    if (inherits(load, "character")) load <- mlim.load(load) #readRDS(load)
+    if (inherits(load, "character")) load <- readRDS(load)
     if (!inherits(load, "mlim")) stop("loaded object must be of class 'mlim'")
 
     # Data

@@ -2,13 +2,10 @@
 
 export(mlim)
 export(mlim.error)
-export(mlim.load)
 export(mlim.mids)
 export(mlim.na)
 export(mlim.preimpute)
 export(mlim.summarize)
-importFrom(arrow,read_feather)
-importFrom(arrow,write_feather)
 importFrom(curl,curl)
 importFrom(h2o,as.h2o)
 importFrom(h2o,h2o.automl)

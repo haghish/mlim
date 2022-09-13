@@ -483,10 +483,8 @@ iterate <- function(procedure,
     )
 
     # update iteration data
-    tryCatch(mlim.save(savestate, save),
-             error = function(cond) {
-               message("saving 'mlim' object failed... see the error below:\n");
-               return(stop(cond))})
+    class(savestate) <- "mlim"
+    saveRDS(savestate, save)
   }
 
   if (debug) md.log("saving done!", date=debug, time=debug, trace=FALSE)
