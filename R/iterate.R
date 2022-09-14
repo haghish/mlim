@@ -38,28 +38,34 @@ iterate <- function(procedure,
                     verbosity, error, cpu, max_ram, min_ram
                     ) {
 
+  # Update the report
+  # ============================================================
+  if (debug) {
+    md.log(paste0("\n",Y), section="paragraph")
+    md.log(paste("family:", FAMILY[z]), trace = FALSE)
+  }
+  else {
+    md.log(paste("imputing:", Y, "  family:", FAMILY[z], " (RAM = ", memuse::Sys.meminfo()$freeram,")"), trace = FALSE)
+  }
+
   # Define HEX and BHEX (if flushing is activated)
   # ============================================================
   if (flush) {
     tryCatch(hex <- h2o::as.h2o(data),
              error = function(cond) {
-               #message("connection to JAVA server failed...\n");
-               return(stop("Java server crashed. perhaps a RAM problem?"))})
+               message("Data could not be uploaded to Java server. see the error below:\n");
+               return(stop(cond))})
     if (!is.null(bdata)) {
       tryCatch(bhex <- h2o::as.h2o(bdata),
                error = function(cond) {
-                 #message("connection to JAVA server failed...\n");
-                 return(stop("Java server crashed. perhaps a RAM problem?"))})
+                 message("Data could not be uploaded to Java server. see the error below:\n");
+                 return(stop(cond))})
     }
     if (debug) md.log("data reuploaded", date=debug, time=debug, trace=FALSE)
   }
 
-  # Prepare the progress bar and iteration console text
+  # index the missing data
   # ============================================================
-  if (verbose==0) pb <- txtProgressBar(z-1, length(vars2impute), style = 3)
-  if (debug) message(paste0(Y," (RAM = ", memuse::Sys.meminfo()$freeram,")\n"))
-
-
   if (!boot) {
     v.na <- dataNA[, Y]
     y.na <- v.na
@@ -69,12 +75,7 @@ iterate <- function(procedure,
     y.na <- rownames(bdata) %in% which(v.na)
   }
 
-  if (debug) {
-    md.log(Y, section="subsection")
-    md.log(paste("family:", FAMILY[z]))
-  }
 
-  md.log(paste(X, collapse = ","))
 
   if (length(X) == 0L) {
     if (debug) md.log("uni impute", date=debug, time=debug, trace=FALSE)
@@ -692,12 +693,7 @@ iterate <- function(procedure,
   #   h2o.save_frame(hex, dir = paste0(getwd(), "/.flush"))
   # }
 
-  if (debug) md.log("flushing done!", date=debug, time=debug, trace=FALSE)
-
-  # update the statusbar
-  if (verbose==0) setTxtProgressBar(pb, z)
-
-  if (debug) md.log("return to loop!", date=debug, time=debug, trace=FALSE)
+  if (debug) md.log("flushing done! return to the loop", date=debug, time=debug, trace=FALSE)
 
 # print(h2o.dim(hex))
 # print(h2o.getId(hex))

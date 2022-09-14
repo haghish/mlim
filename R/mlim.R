@@ -20,7 +20,7 @@
 #' @importFrom utils setTxtProgressBar txtProgressBar capture.output packageVersion
 #' @importFrom tools file_ext
 #' @importFrom h2o h2o.init as.h2o h2o.automl h2o.predict h2o.ls
-#'             h2o.removeAll h2o.rm h2o.shutdown
+#'             h2o.removeAll h2o.rm h2o.shutdown h2o.no_progress
 #' @importFrom md.log md.log
 #' @importFrom memuse Sys.meminfo
 #' @importFrom stats var setNames na.omit
@@ -340,7 +340,7 @@ mlim <- function(data = NULL,
 
   # check the ... arguments
   # ============================================================
-  hidden_args <- c("init", "ignore.rank", "sleep")
+  hidden_args <- c("superdebug", "init", "ignore.rank", "sleep")
   stopifnot(
     "incompatible '...' arguments" = (names(list(...)) %in% hidden_args)
   )
@@ -365,6 +365,7 @@ mlim <- function(data = NULL,
   #preimpute   <- "RF"
   ignore.rank <- threeDots(name = "ignore.rank", ..., default = FALSE)  #EXPERIMENTAL
   sleep       <- threeDots(name = "sleep", ..., default = .25)
+  superdebug  <- threeDots(name = "superdebug", ..., default = FALSE)
   set.seed(seed)
 
   # ============================================================
@@ -464,21 +465,22 @@ mlim <- function(data = NULL,
   }
 
   # disable h2o progress_bar
-  if (!debug) h2o::h2o.no_progress()
+  #if (!debug) h2o::h2o.no_progress()
+  if (!superdebug) h2o::h2o.no_progress()
 
-  # Initialize the Markdown report / log
   # ============================================================
+  # Initialize the Markdown report
+  # ============================================================
+  if (is.null(report)) md.log("System information", file=tempfile(),
+           trace=TRUE, sys.info = TRUE, date=TRUE, time=TRUE)
 
-  if (is.null(report)) {
-    md.log("System information",
-           file=tempfile(), trace=TRUE, sys.info = TRUE,
-           date=TRUE, time=TRUE) #, print=TRUE
-  }
-  else {
-    md.log("System information",
-           file=report, trace=TRUE, sys.info = TRUE,
-           date=TRUE, time=TRUE) #, print=TRUE
-  }
+  else if (is.null(load)) md.log("System information", file=report,
+                                 append = FALSE, trace=TRUE, sys.info = TRUE,
+                                 date=TRUE, time=TRUE) #, print=TRUE
+
+  else if (!is.null(load)) md.log("\nContinuing from where it was left...", file=report,
+              append = TRUE, trace=TRUE, sys.info = TRUE,
+              date=TRUE, time=TRUE)
 
   # Run H2O on the statistics server¤
   # ============================================================
@@ -491,8 +493,7 @@ mlim <- function(data = NULL,
                                       ignore_config = TRUE,
                                       java = java,
                                       report, debug),
-                   file = report,
-                   append = TRUE)
+                   file = report, append = TRUE)
     #sink()
 
     ## ??? DO NOT CLOSE ALL THE CONNECTIONS
@@ -620,11 +621,11 @@ mlim <- function(data = NULL,
     # Start the new imputation data fresh, if it is multiple imputation
     if (k == 1 & z == 1) {
       if (!is.null(preimputed.data)) data  <- preimputed.data
+      md.log(paste("Dataset", m.it), section="section")
     }
 
     #it is always NULL. It doesn't have to be saved
     bdata <- NULL
-
     dataLast <- iteration_loop(MI, dataNA, preimputed.data, data, bdata, boot=m>1,
                                metrics, tolerance, doublecheck,
                                m, k, X, Y, z, m.it,

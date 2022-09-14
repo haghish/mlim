@@ -121,7 +121,7 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
 
     # always print the iteration
     message(paste0("\ndata ", m.it, ", iteration ", k, " (RAM = ", memuse::Sys.meminfo()$freeram,")", ":"), sep = "") #":\t"
-    md.log(paste("Iteration", k), section="section")
+    md.log(paste("Iteration", k), section="subsection")
 
     # ## AVOID THIS PRACTICE BECAUSE DOWNLOADING DATA FROM THE SERVER IS SLOW
     # # store the last data
@@ -137,25 +137,34 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
     else procedure <- "impute"
 
     for (Y in ITERATIONVARS[z:length(ITERATIONVARS)]) {
-      start = as.integer(Sys.time())
+      start <- as.integer(Sys.time())
+      z <- which(ITERATIONVARS == Y)
+
+      # Prepare the progress bar and iteration console text
+      # ============================================================
+      if (verbose==0) pb <- txtProgressBar(z-1, length(vars2impute), style = 3)
+      if (verbose!=0) message(paste0("    ",Y))
 
       tryCatch({
-        it <- iterate(procedure = procedure,
-                      MI, dataNA, preimputed.data, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
-                      m, k, X, Y, z=which(ITERATIONVARS == Y), m.it,
-                      # loop data
-                      ITERATIONVARS, vars2impute,
-                      allPredictors, preimpute, impute, postimputealgos,
-                      # settings
-                      error_metric, FAMILY=FAMILY, cv, tuning_time,
-                      max_models,
-                      keep_cv,
-                      autobalance, balance, seed, save, flush,
-                      verbose, debug, report, sleep,
-                      # saving settings
-                      mem, orderedCols, ignore, maxiter,
-                      miniter, matching, ignore.rank,
-                      verbosity, error, cpu, max_ram, min_ram)
+        capture.output(it <- iterate(
+          procedure = procedure,
+          MI, dataNA, preimputed.data, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
+          m, k, X, Y, z, m.it,
+          # loop data
+          ITERATIONVARS, vars2impute,
+          allPredictors, preimpute, impute, postimputealgos,
+          # settings
+          error_metric, FAMILY=FAMILY, cv, tuning_time,
+          max_models,
+          keep_cv,
+          autobalance, balance, seed, save, flush,
+          verbose, debug, report, sleep,
+          # saving settings
+          mem, orderedCols, ignore, maxiter,
+          miniter, matching, ignore.rank,
+          verbosity, error, cpu, max_ram, min_ram
+        ),
+        file = report, append = TRUE)
 
         X             <- it$X
         ITERATIONVARS <- it$iterationvars
@@ -166,11 +175,13 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
         # bhex          <- it$bhex
 
         time = as.integer(Sys.time()) - start
-        if (debug) md.log(paste("done! after: ", time, " seconds"), time = TRUE, print = TRUE)
+        if (debug) md.log(paste("done! after: ", time, " seconds"),
+                          date = TRUE, time = TRUE, print = FALSE, trace = FALSE)
       },
       error = function(cond) {
         message(paste0("\nReimputing '", Y, "' with the current specified algorithms failed and this variable will be skipped! \nSee Java server's error below:"));
-        md.log(paste("Imputing", Y, "failed and the variable will be skipped!"), time = TRUE, print = TRUE)
+        md.log(paste("Reimputing", Y, "failed and the variable will be skipped!"),
+               date = TRUE, time = TRUE, print = TRUE)
 
         # activate the code below if you allow "iterate" preimputation
         # if (preimpute == "iterate" && k == 1L && (Y %in% allPredictors)) {
@@ -178,6 +189,9 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
         #   if (debug) md.log("x was updated", date=debug, time=debug, trace=FALSE)
         # }
         return(FALSE)})
+
+      # update the statusbar
+      if (verbose==0) setTxtProgressBar(pb, z)
     }
 
     # CHECK CRITERIA FOR RUNNING THE NEXT ITERATION
@@ -213,14 +227,12 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
   # ............................................................
   # END OF THE ITERATIONS
   # ............................................................
-  if (verbose) message("\n\n")
-
-  md.log("This is the end, beautiful friend...", date=debug, time=debug, trace=FALSE)
+  if (verbose) message("\n")
+  md.log("", section="paragraph", trace=FALSE)
 
   # # if the iterations stops on minimum or maximum, return the last data
   # if (k == miniter || (k == maxiter && running) || maxiter == 1) {
   ###### ALWAYS RETURN THE LAST DATA. THIS WAS A BUG, REMAINING AFTER I INDIVIDUALIZED IMPUTATION EVALUATION
-  md.log("limit reached", date=debug, time=debug, trace=FALSE)
 
   ### Workaround for buggy 'as.data.frame' function
   ### =============================================
@@ -245,11 +257,11 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
              error = function(cond) {
                message("trying to connect to JAVA server...\n");
                return(stop("Java server has crashed (low RAM?)"))})
-    md.log("server was cleaned", date=debug, time=debug, trace=FALSE)
+    md.log("server was cleaned", section="paragraph", trace=FALSE)
   }
 
   if (shutdown) {
-    md.log("shutting down the server", date=debug, time=debug, trace=FALSE)
+    md.log("shutting down the server", section="paragraph", trace=FALSE)
     tryCatch(h2o::h2o.shutdown(prompt = FALSE),
              error = function(cond) {
                message("trying to connect to JAVA server...\n");
@@ -267,7 +279,7 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
       v.na <- dataNA[, Y]
 
       if ((FAMILY[mtc] == 'gaussian_integer') | (FAMILY[mtc] == 'quasibinomial')) {
-        if (debug) md.log(paste("matching", Y))
+        if (debug) md.log(paste("matching", Y), section="paragraph")
 
         matchedVal <- matching(imputed=data[v.na, Y],
                                nonMiss=unique(data[!v.na,Y]),
@@ -275,7 +287,7 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
         #message(matchedVal)
         if (!is.null(matchedVal)) data[v.na, Y] <- matchedVal
         else {
-          md.log("matching failed", date=debug, time=debug, trace=FALSE)
+          md.log("matching failed", section="paragraph", trace=FALSE)
         }
       }
     }
