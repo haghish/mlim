@@ -559,9 +559,9 @@ iterate <- function(procedure,
                return(stop("Java server crashed. perhaps a RAM problem?"))})
     Sys.sleep(sleep)
     gc()
-    try(eval(parse(text="h2o:::.h2o.garbageCollect()")), silent = TRUE)
-    try(eval(parse(text="h2o:::.h2o.garbageCollect()")), silent = TRUE)
-    try(eval(parse(text="h2o:::.h2o.garbageCollect()")), silent = TRUE)
+    try(eval(parse(text=javaServer("flush"))), silent = TRUE)
+    try(eval(parse(text=javaServer("flush"))), silent = TRUE)
+    try(eval(parse(text=javaServer("flush"))), silent = TRUE)
     gc()
     if (debug) md.log("server flushed", date=debug, time=debug, trace=FALSE)
 
