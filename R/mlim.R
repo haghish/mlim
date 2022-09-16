@@ -33,21 +33,21 @@
 #'              imputation. supported algorithms are "ELNET", "RF", "GBM", "DL",
 #'              "XGB", and "Ensemble". if more than one algorithm is specified,
 #'              mlim changes behavior to save on runtime. for example,
-#'              the default is "ELNET", which only uses Elastic Net for the imputation.
-#'              However, 'algos = c("ELNET", "GBM")' will not only use
-#'              ELNET for the initial imputation, but also, uses 'GBM'
-#'              as long as the 'maxiter' argument is not reached or GBM stops
-#'              improving. However, note that by specifying more than one algorithm,
-#'              "mlim" does not fine-tune them all together. Instead, it carries
-#'              out imputation with the first one and when the algorithm stops
-#'              improving, it follows with postimputation, (in this example "GBM")
-#'              to further optimize the imputations. the reason for having
-#'              this setup is that in general, "ELNET" fine-tunes much faster than "GBM",
-#'              "XGB", and "DL".
+#'              the default is "ELNET", which fine-tunes an Elastic Net model.
+#'              In general, "ELNET" is expected to
+#'              be the best algorithm because it fine-tunes very fast, it is
+#'              very robust to over-fitting, and hence, it generalizes very well.
+#'              However, if your data has many factor variables, each with several
+#'              levels, it is recommended to have c("ELNET", "RF") as your imputation
+#'              algorithms (and possibly add "Ensemble" as well, to make the most out
+#'              of tuning the models).
 #'
 #'              Note that code{"XGB"} is only available in Mac OS and Linux. moreover,
-#'              "GBM", "DL", "XGB", and "Ensemble" take the full given "tuning_time" (see below) to
-#'              tune the best model for imputing he given variable.
+#'              "GBM", "DL" and "XGB" take the full given "tuning_time" (see below) to
+#'              tune the best model for imputing he given variable, whereas "ELNET"
+#'              will produce only one fine-tuned model, often at less time than
+#'              other algorithms need for developing a single model, which is why "ELNET"
+#'              is work horse of the mlim imputation package.
 #' @param preimpute character. specifies the 'primary' procedure of handling the missing
 #'                  data. the default procedure is a quick "RF", which models the missing
 #'                  data with parallel Random Forest model. this is a very fast procedure,
@@ -57,12 +57,12 @@
 #'                  "mm" is much faster than "RF". if your dataset is very
 #'                  large, consider pre-imputing it before hand using 'mlim.preimpute()'
 #'                  function and passing the preimputed dataset to mlim (see "preimputed.data" argument).
-#' @param postimpute logical. if TRUE, mlim uses algorithms rather than 'ELNET' for carrying out
+#' @param postimpute (EXPERIMENTAL FEATURE) logical. if TRUE, mlim uses algorithms rather than 'ELNET' for carrying out
 #'                   postimputation optimization. however, if FALSE, all specified algorihms will
 #'                   be used in the process of 'reimputation' together. the 'Ensemble' algorithm
 #'                   is encouraged when other algorithms are used. However, for general users
 #'                   unspecialized in machine learning, postimpute is NOT recommended because this
-#'                   feature is currently experimental.
+#'                   feature is currently experimental, prone to over-fitting, and highly computationally extensive.
 # @param min_ram character. specifies the minimum size.
 #' @param ignore character vector of column names or index of columns that should
 #'               should be ignored in the process of imputation.
