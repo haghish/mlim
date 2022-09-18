@@ -48,7 +48,7 @@ iterate <- function(procedure,
     md.log(paste("imputing:", Y, "  family:", FAMILY[z], " (RAM = ", memuse::Sys.meminfo()$freeram,")"), trace = FALSE)
   }
 
-  # Define HEX and BHEX (if flushing is activated)
+  # Redefine HEX and BHEX, if flushing is activated
   # ============================================================
   if (flush) {
     tryCatch(hex <- h2o::as.h2o(data),
@@ -64,7 +64,7 @@ iterate <- function(procedure,
     if (debug) md.log("data reuploaded", date=debug, time=debug, trace=FALSE)
   }
 
-  # index the missing data
+  # Index the missing data
   # ============================================================
   if (!boot) {
     v.na <- dataNA[, Y]
@@ -75,8 +75,11 @@ iterate <- function(procedure,
     y.na <- rownames(bdata) %in% which(v.na)
   }
 
-
-
+  # ============================================================
+  # If predictors are NULL, randomly fill the missing values
+  # ELSE continue with the main procedure
+  # ============================================================
+  # ============================================================
   if (length(X) == 0L) {
     if (debug) md.log("uni impute", date=debug, time=debug, trace=FALSE)
     #??? change this with a self-written function
@@ -87,9 +90,10 @@ iterate <- function(procedure,
     Sys.sleep(sleep)
   }
   else {
-
-    if (debug) md.log(paste("X:",paste(setdiff(X, Y), collapse = ", ")), date=debug, time=debug, trace=FALSE)
-    if (debug) md.log(paste("Y:",paste(Y, collapse = ", ")), date=debug, time=debug, trace=FALSE)
+    if (debug) md.log(paste("X:",paste(setdiff(X, Y), collapse = ", ")),
+                      date=debug, time=debug, trace=FALSE)
+    if (debug) md.log(paste("Y:",paste(Y, collapse = ", ")),
+                      date=debug, time=debug, trace=FALSE)
 
     # sort_metric specifications
     # ============================================================
@@ -198,6 +202,7 @@ iterate <- function(procedure,
       ),
       error = function(cond) {
         message("\nmodel training failed...see the server's error below:\n");
+        if (fit@leader@model_id == "dummy") message("Multinomial coefficents cannot be null... this can be caused by having factor variables with many levels, but no observations in some dummy variables. Add 'RF' to the list of 'algos' arguments to impute this variable...");
         return(stop(cond))})
 
       # # make sure that the model is not failed with a "dummy"
@@ -256,8 +261,14 @@ iterate <- function(procedure,
     iterationMetric <- extractMetrics(if (is.null(bhex)) hex else bhex, k, Y, perf, FAMILY[z])
 
 
+    #> h2o requires numeric subsetting, NOT logical
+    #> ## do not convert 'pred' to a vector. let it be "H2OFrame", unless you want to update data.frame
+    #> only update the HEX files if 'flush' is deactivated
+    # ------------------------------------------------------------
+    # Update the dataset with predicted values (FIRST ITERATION)
+    # ============================================================
+    # ============================================================
     if (k == 1) {
-      ## do not convert pred to a vector. let it be "H2OFrame"
       tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = hex[which(v.na), X])[,1],
                error = function(cond) {
                  message("\ngenerating the missing data predictions failed... see the Java server error below:\n");
@@ -265,58 +276,70 @@ iterate <- function(procedure,
       Sys.sleep(sleep)
       if (debug) md.log("predictions were generated", date=debug, time=debug, trace=FALSE)
 
-      #h2o requires numeric subsetting
-      tryCatch(hex[which(v.na), Y] <- pred,
+      tryCatch(data[which(v.na), Y] <- as.vector(pred[,1]),
                error = function(cond) {
-                 message("\nupdating the data on the java server failed...\nSee the error below:");
+                 message("\ndata could not be updated with the new predictions...\n see the error below:");
                  return(stop(cond))})
 
-      # RAM cleaning-ish, help needed
-      tryCatch(h2o::h2o.rm(pred),
-               error = function(cond) {
-                 message("\nRemoving the prediction vector from the server failed...\nSee the server's error:");
-                 return(stop(cond))})
+      if (!flush) {
+        tryCatch(hex[which(v.na), Y] <- pred,
+                 error = function(cond) {
+                   message("\nupdating the data on the java server failed...\nSee the error below:");
+                   return(stop(cond))})
+      }
 
-      if (debug) md.log("prediction was cleaned", date=debug, time=debug, trace=FALSE)
-      Sys.sleep(sleep)
-
-      # also update the bootstraped data, otherwise, update the pointer
+      # also update the bootstraped data
+      # ------------------------------------------------------------
       if (boot) {
         tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = bhex[which(y.na), X])[,1],
                  error = function(cond) {
                    message("\nGenerating the predictions on bootstrap data failed...\nSee the server's error:");
                    return(stop(cond))})
-        tryCatch(bhex[which(y.na), Y] <- pred,
-                 error = function(cond) {
-                   message("\nUpdating the server's bootstrap data failed...\nSee the server's error:");
-                   return(stop(cond))})
-        Sys.sleep(sleep)
-      }
-      # else if (!is.null(bhex)) bhex <- hex
 
+        tryCatch(bdata[which(y.na), Y] <- as.vector(pred[,1]),
+                 error = function(cond) {
+                   message("data could not be updated with the new predictions...\n see the error below:");
+                   return(stop(cond))})
+
+        if (!flush) {
+          tryCatch(bhex[which(y.na), Y] <- pred,
+                   error = function(cond) {
+                     message("\nUpdating the server's bootstrap data failed...\nSee the server's error:");
+                     return(stop(cond))})
+          Sys.sleep(sleep)
+        }
+      }
 
       # update the metrics
+      # ------------------------------------------------------------
       metrics <- rbind(metrics, iterationMetric)
     }
     else {
+
+      # get the previous estimated imputation error of the variable
+      # ------------------------------------------------------------
       errPrevious <- min(metrics[metrics$variable == Y, error_metric], na.rm = TRUE)
+      if (!is.null(errPrevious)) {
+        if (is.na(errPrevious)) {
+          errPrevious <- 1
+        }
+      }
+      else errPrevious <- 1
       errPrevious <- round(errPrevious, digits = 5)
+
+      # get iteration metric
+      # ------------------------------------------------------------
       checkMetric <- iterationMetric[iterationMetric$variable == Y, error_metric]
       checkMetric <- round(checkMetric, digits = 5)
 
-      # >>> this bit looks like I'm paranoid again... improvement needed
-      # if (!is.null(errPrevious)) {
-      #   if (is.na(errPrevious)) {
-      #     errPrevious <- 1
-      #   }
-      # }
-      # else errPrevious <- 1
-      # <<<
-
+      # calculate the relative improvement of the prediction
+      # ------------------------------------------------------------
       errImprovement <- checkMetric - errPrevious
       percentImprove <- (errImprovement / errPrevious)
 
-      # IF ERROR DECREASED
+      # ------------------------------------------------------------
+      # IF ERROR DECREASED, REPLACE IMPUTED VALUES WITH NEW ONES
+      # ------------------------------------------------------------
       if (percentImprove < - (if (is.null(tolerance)) 0.001 else tolerance)) {
         if (debug) message(paste(round(percentImprove, 6), - (if (is.null(tolerance)) 0.001 else tolerance)))
         ## do not convert pred to a vector. let it be "H2OFrame"
@@ -329,33 +352,27 @@ iterate <- function(procedure,
         if (debug) md.log("predictions were generated", date=debug, time=debug, trace=FALSE)
 
         # update the dataset
-        tryCatch(hex[which(y.na), Y] <- pred, #h2o requires numeric subsetting
-                 error = function(cond) {
-                   message("\nServer's data could not be updated with the new predictions...\n see the error below:");
-                   return(stop(cond))})
-        Sys.sleep(sleep)
-
         tryCatch(data[which(v.na), Y] <- as.vector(pred[,1]),
                  error = function(cond) {
                    message("\ndata could not be updated with the new predictions...\n see the error below:");
                    return(stop(cond))})
         Sys.sleep(sleep)
 
+        if (!flush) {
+          tryCatch(hex[which(y.na), Y] <- pred, #h2o requires numeric subsetting
+                   error = function(cond) {
+                     message("\nServer's data could not be updated with the new predictions...\n see the error below:");
+                     return(stop(cond))})
+          if (debug) md.log("data was updated in h2o cloud", date=debug, time=debug, trace=FALSE)
+          Sys.sleep(sleep)
+        }
 
-        Sys.sleep(sleep)
-        if (debug) md.log("data was updated in h2o cloud", date=debug, time=debug, trace=FALSE)
-
-        # also update the bootstraped data, otherwise update the pointer
+        # also update the bootstraped data
         if (boot) {
           tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = bhex[which(y.na), X])[,1],
                    error = function(cond) {
                      message("predictions could not be generated from the model...\nsee the server's error below:");
                      return(stop(cond))})
-          tryCatch(bhex[which(y.na), Y] <- pred,
-                   error = function(cond) {
-                     message("Server's data could not be updated with the new predictions...\n see the error below:");
-                     return(stop(cond))})
-          Sys.sleep(sleep)
 
           # UPDATE THE DATAFRAME
           tryCatch(bdata[which(y.na), Y] <- as.vector(pred[,1]),
@@ -363,23 +380,23 @@ iterate <- function(procedure,
                      message("data could not be updated with the new predictions...\n see the error below:");
                      return(stop(cond))})
           Sys.sleep(sleep)
-        }
-        # else if (!is.null(bhex)) bhex <- hex
 
-        # RAM cleaning-ish, help needed
-        if (!flush) {
-          tryCatch(h2o::h2o.rm(pred),
-                   error = function(cond) {
-                     message("\nremoving prediction data from the server failed...\n see the server's error below:");
-                     return(stop(cond))})
-          if (debug) md.log("prediction was cleaned", date=debug, time=debug, trace=FALSE)
+          if (!flush) {
+            tryCatch(bhex[which(y.na), Y] <- pred,
+                     error = function(cond) {
+                       message("Server's data could not be updated with the new predictions...\n see the error below:");
+                       return(stop(cond))})
+            Sys.sleep(sleep)
+          }
         }
 
         # update the metrics
         metrics <- rbind(metrics, iterationMetric)
       }
 
-      else { #if the error increased
+      # if the error increased...
+      # ------------------------------------------------------------
+      else {
         #if (debug) message(paste("INCREASED", errImprovement, percentImprove, -(if (is.null(tolerance)) 0.001 else tolerance)))
         iterationMetric[, error_metric] <- NA
         metrics <- rbind(metrics, iterationMetric)
@@ -389,6 +406,8 @@ iterate <- function(procedure,
       }
     }
 
+    # clean the predictions
+    # ------------------------------------------------------------
     if (!flush) {
       tryCatch(h2o::h2o.rm(fit),
                error = function(cond) {
@@ -559,9 +578,9 @@ iterate <- function(procedure,
                return(stop("Java server crashed. perhaps a RAM problem?"))})
     Sys.sleep(sleep)
     gc()
-    try(eval(parse(text="h2o:::.h2o.garbageCollect()")), silent = TRUE)
-    try(eval(parse(text="h2o:::.h2o.garbageCollect()")), silent = TRUE)
-    try(eval(parse(text="h2o:::.h2o.garbageCollect()")), silent = TRUE)
+    try(eval(parse(text=javaServer("flush"))), silent = TRUE)
+    try(eval(parse(text=javaServer("flush"))), silent = TRUE)
+    try(eval(parse(text=javaServer("flush"))), silent = TRUE)
     gc()
     if (debug) md.log("server flushed", date=debug, time=debug, trace=FALSE)
 
