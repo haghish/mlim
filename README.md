@@ -1,16 +1,31 @@
 
 <a href="https://github.com/haghish/mlim"><img src='man/figures/mlim.png' align="right" height="200" /></a>
 
-# **`mlim`** : Multiple Imputation with Automated Machine Learning
+**`mlim`** : Multiple Imputation with Automated Machine Learning
+================================================================
 
 <!--<a href="https://github.com/haghish/mlim"><img src="./web/mlim.png" align="left" width="140" hspace="10" vspace="6"></a> -->
-[![GitHub dev](https://img.shields.io/github/release/haghish/mlim?color=2eb885)](https://github.com/haghish/mlim/releases/?include_prereleases&sort=semver "View GitHub releases")
-[![CRAN version](http://www.r-pkg.org/badges/version/mlim?color=2eb8b3)](https://cran.r-project.org/package=mlim)  [![](https://cranlogs.r-pkg.org/badges/grand-total/mlim?color=a958d1)](https://cran.r-project.org/package=mlim) [![](man/figures/manual.svg)](https://cran.r-project.org/web/packages/mlim/mlim.pdf) [![](man/figures/handbook_stupid.svg)](https://github.com/haghish/mlim_handbook/blob/main/mlim_handbook.pdf)
+[![GitHub dev](https://img.shields.io/github/release/haghish/mlim.svg?color=2eb885)](https://github.com/haghish/mlim/releases/?include_prereleases&sort=semver "View GitHub releases")
+[![CRAN version](http://www.r-pkg.org/badges/version/mlim?color=2eb8b3)](https://cran.r-project.org/package=mlim)  [![](https://cranlogs.r-pkg.org/badges/grand-total/mlim?color=a958d1)](https://cran.r-project.org/package=mlim) [![](man/figures/manual.svg)](https://cran.r-project.org/web/packages/mlim/mlim.pdf) [![](man/figures/handbook_stupid.svg)](https://github.com/haghish/mlim_handbook/blob/main/mlim_handbook.pdf) 
 
-<!-- [![](https://cranlogs.r-pkg.org/badges/mlim?color=a958d1)](https://cran.r-project.org/package=mlim) https://shields.io/ -->
+<!-- [![](https://cranlogs.r-pkg.org/badges/mlim?color=a958d1)](https://cran.r-project.org/package=mlim) https://shields.io/ 
+
+[![GitHub dev](https://img.shields.io/github/v/tag/haghish/mlim.svg?sort=semver?color=2eb885)](https://github.com/haghish/mlim/releases/?include_prereleases&sort=semver "View GitHub releases")
+ -->
 
 
-In reccent years, there have been several attempts for using machine learning for missing data imputation. Yet, **`mlim`** R package is unique because it is the first R package to implement automated machine learning for multiple imputation and brings the state-of-the-arts of machine learning to provide a versatile missing data solution. Not only **`mlim`** supports various data types (continuous, binary or multinomial, and ordinal), but also, it is expected to result in lower imputation error compared to other missing data imputation software. Simply put, for each variable in the dataset, **`mlim`** automatically fine-tunes a fast machine learning model, which results in significantly lower imputation error compared to classical statistical models or even untuned machine learning imputation software that use Random Forest or unsuperwised learning algorithms. Moreover, **`mlim`** is intended to give social scientists a powerful solution to their missing data problem, a tool that can automatically adopts to different variable types, that can appear at different rates, with unknown destributions and have high correlations or interactions with one another. 
+**`mlim`** is the first missing data imputation software to implement automated machine learning for performing _multiple imputation_ or _single imputation_ of missing data. The software, which is currently implemented as an R package, brings the state-of-the-arts of machine learning to provide a versatile missing data solution for various data types (continuous, binary, multinomial, and ordinal). In a nutshell, **`mlim`** is expected to outperform any other available missing data imputation software on many grounds. For example, **`mlim`** is expected to deliver:
+
+1. **Lower imputation error** compared to other missing data imputation software.
+2. **Higher imputation fairness**, when the data suffers from severe class imbalance, unnormal destribution, or the variables (features) have interactions with one another.
+3. **Faster imputation of big datasets** because **`mlim`** excells in making an efficient use of available CPU cores and the runtime scales fairly well as the size of data becomes huge. 
+
+The high performance of **`mlim`** is mainly by **fine-tuning** an **`ELNET`** algorithm, which often outperforms any standard statistical procedure or untuned machine learning algorithm and generalizes very well. However, **`mlim`** is an active research project and hence, it comes with a set of **experimental optimization toolkit** for exploring the possibility of performing multiple imputation with industry-standard machine learning algorithms such as _Deep Learning_, _Gradient Boosting Machine_, _Extreme Gradient Boosting_, and _Stacked Ensembles_. These algorithms can be used for either imputing missing data or optimizing already imputed data, but are **NOT used by default NOR recommended to all users**. Advanced users who are interested in exploring the possibilities of imputing missing data with these algorithms are recommended to read the free handbook (see below). These algorithms, as noted, are experimental, and the author is intended to examine their effectiveness for academic research (at this point). If you are interested to collaborate, [get in touch with the author](https://www.sv.uio.no/psi/english/people/aca/haghish/). 
+
+Fine-tuning missing data imputation
+-----------------------------------
+
+Simply put, for each variable in the dataset, **`mlim`** automatically fine-tunes a fast machine learning model, which results in significantly lower imputation error compared to classical statistical models or even untuned machine learning imputation software that use Random Forest or unsuperwised learning algorithms. Moreover, **`mlim`** is intended to give social scientists a powerful solution to their missing data problem, a tool that can automatically adopts to different variable types, that can appear at different rates, with unknown destributions and have high correlations or interactions with one another. **But it is not just about higher accuracy! `mlim` also delivers fairer imputation, particularly for categorical and ordinal variables because it automatically balances the levels of the avriable, minimizing the bias resulting from class imbalance, which can often be seen in social science data and has been commonly ignored by missing data imputation software.**
 
 
 <!-- The figure below shows the normalized RMSE of the imputation of several algorithms, including `MICE`, `missForest`, `missRanger`, and `mlim`. Here, two of **`mlim`**'s algorithms, Elastic Net (ELNET) and Gradient Boosting Machine (GBM) are used for the imputation and the result are compared with Random Forest imputations as well as Multiple Imputation with Chained Equations (MICE), which uses Predictive Mean Matching (PMM). This imputation was carried out on __iris__ dataset in R, by adding 10% artifitial missing data and comparing the imputed values with the original. -->
