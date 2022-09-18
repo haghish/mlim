@@ -49,14 +49,21 @@
 #'              other algorithms need for developing a single model, which is why "ELNET"
 #'              is work horse of the mlim imputation package.
 #' @param preimpute character. specifies the 'primary' procedure of handling the missing
-#'                  data. the default procedure is a quick "RF", which models the missing
+#'                  data. before 'mlim' begins imputing the missing observations, they should
+#'                  be prepared for the imputation algorithms and thus, they should be replaced
+#'                  with some values.
+#'                  the default procedure is a quick "RF", which models the missing
 #'                  data with parallel Random Forest model. this is a very fast procedure,
-#'                  which later on, will be refined within the "reimputation" algorithms (see below).
-#'                  possible alternative is \code{"mm"},
+#'                  which later on, will be replaced within the "reimputation" procedure (see below).
+#'                  possible other alternative is \code{"mm"},
 #'                  which carries out mean/mode replacement, as practiced by most imputation algorithms.
 #'                  "mm" is much faster than "RF". if your dataset is very
 #'                  large, consider pre-imputing it before hand using 'mlim.preimpute()'
 #'                  function and passing the preimputed dataset to mlim (see "preimputed.data" argument).
+#
+#                  another alternative is "iterate", which instead of filling the missing observations with mean and mode, it
+#                  gradually adds the imputed variables to the vector of predictors, as it carries out the
+#                  first iteration.
 #' @param postimpute (EXPERIMENTAL FEATURE) logical. if TRUE, mlim uses algorithms rather than 'ELNET' for carrying out
 #'                   postimputation optimization. however, if FALSE, all specified algorihms will
 #'                   be used in the process of 'reimputation' together. the 'Ensemble' algorithm
@@ -574,7 +581,6 @@ mlim <- function(data = NULL,
     mem <- Features$mem
     orderedCols <- Features$orderedCols
 
-    # ??? deactivate "iterate" preimputation, because it's dull!
     # .........................................................
     # PREIMPUTATION: replace data with preimputed data
     # .........................................................
