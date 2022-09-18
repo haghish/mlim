@@ -183,7 +183,8 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
         md.log(paste("Reimputing", Y, "failed and the variable will be skipped!"),
                date = TRUE, time = TRUE, print = TRUE)
 
-        # activate the code below if you allow "iterate" preimputation
+        ### ??? activate the code below if you allow "iterate" preimputation
+        ### ??? or should it be ignored...
         # if (preimpute == "iterate" && k == 1L && (Y %in% allPredictors)) {
         #   X <- union(X, Y)
         #   if (debug) md.log("x was updated", date=debug, time=debug, trace=FALSE)
