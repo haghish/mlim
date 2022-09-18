@@ -164,11 +164,8 @@ with some values.
 the default procedure is a quick "RF", which models the missing
 data with parallel Random Forest model. this is a very fast procedure,
 which later on, will be replaced within the "reimputation" procedure (see below).
-possible other alternatives are \code{"mm"},
-which carries out mean/mode replacement, as practiced by most imputation algorithms or
-"iterate", which instead of filling the missing observations with mean or mode, it
-gradually adds the imputed variables to the vector of predictors, as it carries out the
-first iteration.
+possible other alternative is \code{"mm"},
+which carries out mean/mode replacement, as practiced by most imputation algorithms.
 "mm" is much faster than "RF". if your dataset is very
 large, consider pre-imputing it before hand using 'mlim.preimpute()'
 function and passing the preimputed dataset to mlim (see "preimputed.data" argument).}
