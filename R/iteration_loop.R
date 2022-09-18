@@ -30,54 +30,39 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
                     miniter, matching, ignore.rank,
                     verbosity, error, cpu, max_ram, min_ram, shutdown, clean) {
 
-  # bootrtap
   # ------------------------------------------------------------
-  if (!boot) {
-     #ID: data_
-    tryCatch(hex <- h2o::as.h2o(data),
-             error = function(cond) {
-               message("trying to upload data to JAVA server...\n");
-               message("ERROR: Data could not be uploaded to the Java Server\nJava server returned the following error:\n")
-               return(stop(cond))})
-    bhex <- NULL
-    Sys.sleep(sleep)
-  }
-
+  # bootrtap
+  # ============================================================
   #### PROBLEM
   #### drop the duplicates because they screw up the k-fold cross-validation.
   #### multiple identical observations might go to train and test datasets.
 
-  else {
+  if (boot) {
     rownames(data) <- 1:nrow(data) #remember the rows that are missing
-    #??? it doesn't matter. you can always bootstrap at the beginning
-    #if (is.null(bdata)) {
-      sampling_index <- sample.int(nrow(data), nrow(data), replace=TRUE)
+    sampling_index <- sample.int(nrow(data), nrow(data), replace=TRUE)
 
-      ## SOLUTION 1: DROP THE DUPLICATES AND DO UNDERSAMPLING
-      ## ----------------------------------------------------
-      # sampling_index <- sampling_index[!duplicated(sampling_index)]
-      # bdata <- data[sampling_index, ]
+    ## SOLUTION 1: DROP THE DUPLICATES AND DO UNDERSAMPLING
+    ## ----------------------------------------------------
+    # sampling_index <- sampling_index[!duplicated(sampling_index)]
+    # bdata <- data[sampling_index, ]
 
-      ## SOLUTION 2: ADD THE DUPLICATES TO THE WEIGHT_COLUMN
-      ## ----------------------------------------------------
-      dups <- bootstrapWeight(sampling_index)
-      bdata <- data[1:nrow(data) %in% dups[,1], ]
+    ## SOLUTION 2: ADD THE DUPLICATES TO THE WEIGHT_COLUMN
+    ## ----------------------------------------------------
+    dups <- bootstrapWeight(sampling_index)
+    bdata <- data[1:nrow(data) %in% dups[,1], ]
 
-      # calculate bootstrap weight
-      bdata[, "mlim_bootstrap_weights_column_"] <- dups[,2]
+    # calculate bootstrap weight
+    bdata[, "mlim_bootstrap_weights_column_"] <- dups[,2]
 
-      ####### ===============================================
-      ####### BOOTSTRAP AND BALANCING DRAMA
-      ####### ===============================================
-      #??? THIS NEEDS FURTHER UPDATE IF 'autobalance' IS ACTIVATED
-      # THE SOlUTION WOULD BE TO CALCULATE BALANCING WEIGHTS FOR
-      # EACH OBSERVATION AND THEN MULTIPLY IT BY THE WEIGHTS_COLUMN.
-      # OR CARRY OUT BALANCED STRATIFIED SAMPLING FOR CATEGORICAL
-      # VARIABLES...
-
-    #}
+    ####### ===============================================
+    ####### BOOTSTRAP AND BALANCING DRAMA
+    ####### ===============================================
+    #??? THIS NEEDS FURTHER UPDATE IF 'autobalance' IS ACTIVATED
+    # THE SOlUTION WOULD BE TO CALCULATE BALANCING WEIGHTS FOR
+    # EACH OBSERVATION AND THEN MULTIPLY IT BY THE WEIGHTS_COLUMN.
+    # OR CARRY OUT BALANCED STRATIFIED SAMPLING FOR CATEGORICAL
+    # VARIABLES...
   }
-  Sys.sleep(sleep)
 
   # update the fresh data
   # ------------------------------------------------------------
@@ -92,10 +77,9 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
   # ITERATIONVARS.
   ITERATIONVARS <- vars2impute
 
-
-  # .........................................................
+  # ------------------------------------------------------------
   # Generate the HEX datasets if there is NO FLUSHING
-  # .........................................................
+  # ------------------------------------------------------------
   if (!flush) {
     tryCatch(hex <- h2o::as.h2o(data),
              error = function(cond) {
@@ -103,6 +87,7 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
                message("ERROR: Data could not be uploaded to the Java Server\nJava server returned the following error:\n")
                return(stop(cond))})
 
+    bhex <- NULL
     if (!is.null(bdata)) {
       tryCatch(bhex<- h2o::as.h2o(bdata),
                error = function(cond) {
@@ -116,7 +101,11 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
     bhex <- NULL
   }
 
-
+  # ============================================================
+  # ============================================================
+  # global iteration loop
+  # ============================================================
+  # ============================================================
   while (running) {
 
     # always print the iteration
@@ -133,23 +122,27 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
     # .........................................................
     # IMPUTATION & POSTIMPUTATION LOOP
     # .........................................................
-    if (runpostimpute) procedure <- "postimpute"
+    if (runpostimpute) {
+      procedure <- "postimpute"
+      if (debug) md.log("Running POSTIMPUTATION", date = TRUE, time = TRUE, print = FALSE, trace = FALSE)
+    }
     else procedure <- "impute"
 
     for (Y in ITERATIONVARS[z:length(ITERATIONVARS)]) {
       start <- as.integer(Sys.time())
-      z <- which(ITERATIONVARS == Y)
 
       # Prepare the progress bar and iteration console text
       # ============================================================
-      if (verbose==0) pb <- txtProgressBar(z-1, length(vars2impute), style = 3)
+      if (verbose==0) pb <- txtProgressBar((which(ITERATIONVARS == Y))-1, length(vars2impute), style = 3)
       if (verbose!=0) message(paste0("    ",Y))
 
-      tryCatch({
-        capture.output(it <- iterate(
+      it <- NULL
+      tryCatch(
+        {#capture.output(
+          it <- iterate(
           procedure = procedure,
           MI, dataNA, preimputed.data, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
-          m, k, X, Y, z, m.it,
+          m, k, X, Y, z=which(ITERATIONVARS == Y), m.it,
           # loop data
           ITERATIONVARS, vars2impute,
           allPredictors, preimpute, impute, postimputealgos,
@@ -163,16 +156,7 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
           mem, orderedCols, ignore, maxiter,
           miniter, matching, ignore.rank,
           verbosity, error, cpu, max_ram, min_ram
-        ),
-        file = report, append = TRUE)
-
-        X             <- it$X
-        ITERATIONVARS <- it$iterationvars
-        metrics       <- it$metrics
-        data          <- it$data
-        bdata         <- it$bdata
-        # hex           <- it$hex
-        # bhex          <- it$bhex
+        )#, file = report, append = TRUE)
 
         time = as.integer(Sys.time()) - start
         if (debug) md.log(paste("done! after: ", time, " seconds"),
@@ -182,6 +166,7 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
         message(paste0("\nReimputing '", Y, "' with the current specified algorithms failed and this variable will be skipped! \nSee Java server's error below:"));
         md.log(paste("Reimputing", Y, "failed and the variable will be skipped!"),
                date = TRUE, time = TRUE, print = TRUE)
+        message(cond)
 
         ### ??? activate the code below if you allow "iterate" preimputation
         ### ??? or should it be ignored...
@@ -189,10 +174,27 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
         #   X <- union(X, Y)
         #   if (debug) md.log("x was updated", date=debug, time=debug, trace=FALSE)
         # }
-        return(FALSE)})
+        return(NULL)
+      })
 
       # update the statusbar
-      if (verbose==0) setTxtProgressBar(pb, z)
+      if (verbose==0) setTxtProgressBar(pb, (which(ITERATIONVARS == Y)))
+
+      if (!is.null(it)) {
+        X             <- it$X
+        ITERATIONVARS <- it$iterationvars
+        metrics       <- it$metrics
+        data          <- it$data
+        bdata         <- it$bdata
+        hex           <- it$hex
+        bhex          <- it$bhex
+      }
+
+      # If there was an error, make sure the model is cleared
+      # --------------------------------------------------------------
+      else tryCatch(h2o::h2o.rm(h2o.get_automl("mlim")),
+                 error = function(cond) {
+                   return(NULL)})
     }
 
     # CHECK CRITERIA FOR RUNNING THE NEXT ITERATION
@@ -207,7 +209,7 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
                            md.log = report)
     if (debug) {
       md.log(paste("running: ", SC$running), date=debug, time=debug, trace=FALSE)
-      md.log(paste("Estimated",error_metric, "error:", SC$error), date=debug, time=debug, trace=FALSE)
+      md.log(paste("Estimated", error_metric, "error:", SC$error), section="paragraph", date=debug, time=debug, trace=FALSE)
     }
 
     running <- SC$running
