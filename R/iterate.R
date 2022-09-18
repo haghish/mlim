@@ -82,11 +82,11 @@ iterate <- function(procedure,
   # ============================================================
   if (length(X) == 0L) {
     if (debug) md.log("uni impute", date=debug, time=debug, trace=FALSE)
-    #??? change this with a self-written function
-    tryCatch(hex[[Y]] <- h2o::as.h2o(missRanger::imputeUnivariate(data[[Y]])),
+    data[[Y]] <- missRanger::imputeUnivariate(data[[Y]])
+    tryCatch(hex[[Y]] <- h2o::as.h2o(data[[Y]]),
              error = function(cond) {
-               #message("connection to JAVA server failed...\n");
-               return(stop("preimputation failed! \nuse 'mlim.preimpute' function and pass it via 'preimputed.data' to mlim"))})
+               message("preimputation failed! \nuse 'mlim.preimpute' function and pass it via 'preimputed.data' to mlim");
+               return(stop(cond))})
     Sys.sleep(sleep)
   }
   else {
@@ -258,8 +258,7 @@ iterate <- function(procedure,
     roundRMSE <- getDigits(tolerance) + 1
     if (roundRMSE == 1) roundRMSE <- 4
 
-    iterationMetric <- extractMetrics(if (is.null(bhex)) hex else bhex, k, Y, perf, FAMILY[z])
-
+    iterationMetric <- extractMetrics(if (is.null(bdata)) data else bdata, k, Y, perf, FAMILY[z])
 
     #> h2o requires numeric subsetting, NOT logical
     #> ## do not convert 'pred' to a vector. let it be "H2OFrame", unless you want to update data.frame
@@ -310,21 +309,41 @@ iterate <- function(procedure,
         }
       }
 
+      # clean the model & predictions
+      # ------------------------------------------------------------
+      if (!flush) {
+        tryCatch(h2o::h2o.rm(fit),
+                 error = function(cond) {
+                   message("\nremoving fitted model from the server failed...\n see the server's error below:");
+                   return(cond)})
+        if (debug) md.log("model was cleaned", date=debug, time=debug, trace=FALSE)
+        Sys.sleep(sleep)
+
+        tryCatch(h2o::h2o.rm(pred),
+                 error = function(cond) {
+                   message("\nremoving predicted values from the server failed...\n see the server's error below:");
+                   return(cond)})
+        if (debug) md.log("predictions were cleaned", date=debug, time=debug, trace=FALSE)
+        Sys.sleep(sleep)
+      }
+
       # update the metrics
       # ------------------------------------------------------------
       metrics <- rbind(metrics, iterationMetric)
+      # print(metrics)
+      # M <<- metrics
     }
     else {
 
       # get the previous estimated imputation error of the variable
       # ------------------------------------------------------------
       errPrevious <- min(metrics[metrics$variable == Y, error_metric], na.rm = TRUE)
-      if (!is.null(errPrevious)) {
-        if (is.na(errPrevious)) {
-          errPrevious <- 1
-        }
-      }
-      else errPrevious <- 1
+      # if (!is.null(errPrevious)) {
+      #   if (is.na(errPrevious)) {
+      #     errPrevious <- 1
+      #   }
+      # }
+      # else errPrevious <- 1
       errPrevious <- round(errPrevious, digits = 5)
 
       # get iteration metric
@@ -341,9 +360,10 @@ iterate <- function(procedure,
       # IF ERROR DECREASED, REPLACE IMPUTED VALUES WITH NEW ONES
       # ------------------------------------------------------------
       if (percentImprove < - (if (is.null(tolerance)) 0.001 else tolerance)) {
-        if (debug) message(paste(round(percentImprove, 6), - (if (is.null(tolerance)) 0.001 else tolerance)))
+        if (debug) md.log("imputation was improved, new values are replaced", date=debug, time=debug, trace=FALSE)
+        if (debug) md.log(paste(round(percentImprove, 6), "<", - (if (is.null(tolerance)) 0.001 else tolerance)),
+                          date=debug, time=debug, trace=FALSE)
         ## do not convert pred to a vector. let it be "H2OFrame"
-
         tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = hex[which(v.na), X])[,1],
                  error = function(cond) {
                    message("\npredictions could not be generated from the model...\nsee the server's error below:");
@@ -390,37 +410,61 @@ iterate <- function(procedure,
           }
         }
 
+        # clean the model & predictions
+        # ------------------------------------------------------------
+        if (!flush) {
+          tryCatch(h2o::h2o.rm(fit),
+                   error = function(cond) {
+                     md.log("\nremoving fitted model from the server failed...");
+                     return(cond)})
+          if (debug) md.log("model was cleaned", date=debug, time=debug, trace=FALSE)
+          Sys.sleep(sleep)
+
+          tryCatch(h2o::h2o.rm(pred),
+                   error = function(cond) {
+                     md.log("\nremoving predicted values from the server failed...");
+                     return(cond)})
+          if (debug) md.log("predictions were cleaned", date=debug, time=debug, trace=FALSE)
+          Sys.sleep(sleep)
+        }
+
         # update the metrics
         metrics <- rbind(metrics, iterationMetric)
+        #M <<- metrics
       }
 
-      # if the error increased...
+      # ------------------------------------------------------------
+      # if the error increased or did no decreased more than tolerance
       # ------------------------------------------------------------
       else {
+        if (debug) md.log("imputation was NOT improved, new values are rejected", date=debug, time=debug, trace=FALSE)
+        if (debug) md.log(paste(round(percentImprove, 6), ">", - (if (is.null(tolerance)) 0.001 else tolerance)),
+                          date=debug, time=debug, trace=FALSE)
         #if (debug) message(paste("INCREASED", errImprovement, percentImprove, -(if (is.null(tolerance)) 0.001 else tolerance)))
         iterationMetric[, error_metric] <- NA
         metrics <- rbind(metrics, iterationMetric)
         if (!doublecheck) {
           ITERATIONVARS <- setdiff(ITERATIONVARS, Y)
         }
-      }
-    }
 
-    # clean the predictions
-    # ------------------------------------------------------------
-    if (!flush) {
-      tryCatch(h2o::h2o.rm(fit),
-               error = function(cond) {
-                 message("\nremoving fitted model from the server failed...\n see the server's error below:");
-                 return(stop(cond))})
-      if (debug) md.log("model was cleaned", date=debug, time=debug, trace=FALSE)
-      Sys.sleep(sleep)
+        # clean the model & predictions
+        # ------------------------------------------------------------
+        if (!flush) {
+          if (debug) md.log("removing unimproved model:", date=debug, time=debug, trace=FALSE)
+          tryCatch(h2o::h2o.rm(fit),
+                   error = function(cond) {
+                     md.log("removing fitted model from the server failed...", date=debug, time=debug, trace=FALSE)
+                     md.log(cond, date=debug, time=debug, trace=FALSE)
+                     return(NULL)})
+          Sys.sleep(sleep)
+        }
+      }
     }
 
     # clean h2o memory
     # ------------------------------------------------------------
-    #h2o.clean(fit=fit, pred=pred, fun = "erasefit", timeout_secs = 30,
-    #          FLUSH = FALSE, retained_elements = c(hexID), md.log = md.log)
+    # h2o.clean(fit=fit, pred=pred, fun = "erasefit", timeout_secs = 30,
+    #           FLUSH = FALSE, retained_elements = c(hexID), md.log = md.log)
 
     gc()
     gc()
@@ -583,6 +627,8 @@ iterate <- function(procedure,
     try(eval(parse(text=javaServer("flush"))), silent = TRUE)
     gc()
     if (debug) md.log("server flushed", date=debug, time=debug, trace=FALSE)
+    hex  <- NULL
+    bhex <- NULL
 
 
     # ####### SOLUTION 2: save on disk > flush Java > reupload
@@ -714,13 +760,14 @@ iterate <- function(procedure,
 
   if (debug) md.log("flushing done! return to the loop", date=debug, time=debug, trace=FALSE)
 
+# print(metrics)
 # print(h2o.dim(hex))
 # print(h2o.getId(hex))
   return(list(X=X,
               metrics = metrics,
               iterationvars=ITERATIONVARS,
-              # hex = hex,
-              # bhex = bhex,
+              hex = hex,
+              bhex = bhex,
               data = data,
               bdata = bdata))
 }
