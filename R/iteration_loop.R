@@ -137,32 +137,26 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
       if (verbose!=0) message(paste0("    ",Y))
 
       it <- NULL
-      tryCatch(
-        {#capture.output(
+      tryCatch(capture.output(
           it <- iterate(
-          procedure = procedure,
-          MI, dataNA, preimputed.data, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
-          m, k, X, Y, z=which(ITERATIONVARS == Y), m.it,
-          # loop data
-          ITERATIONVARS, vars2impute,
-          allPredictors, preimpute, impute, postimputealgos,
-          # settings
-          error_metric, FAMILY=FAMILY, cv, tuning_time,
-          max_models,
-          keep_cv,
-          autobalance, balance, seed, save, flush,
-          verbose, debug, report, sleep,
-          # saving settings
-          mem, orderedCols, ignore, maxiter,
-          miniter, matching, ignore.rank,
-          verbosity, error, cpu, max_ram, min_ram
-        )#, file = report, append = TRUE)
-
-        time = as.integer(Sys.time()) - start
-        if (debug) md.log(paste("done! after: ", time, " seconds"),
-                          date = TRUE, time = TRUE, print = FALSE, trace = FALSE)
-      },
-      error = function(cond) {
+            procedure = procedure,
+            MI, dataNA, preimputed.data, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
+            m, k, X, Y, z=which(ITERATIONVARS == Y), m.it,
+            # loop data
+            ITERATIONVARS, vars2impute,
+            allPredictors, preimpute, impute, postimputealgos,
+            # settings
+            error_metric, FAMILY=FAMILY, cv, tuning_time,
+            max_models,
+            keep_cv,
+            autobalance, balance, seed, save, flush,
+            verbose, debug, report, sleep,
+            # saving settings
+            mem, orderedCols, ignore, maxiter,
+            miniter, matching, ignore.rank,
+            verbosity, error, cpu, max_ram, min_ram)
+          , file = report, append = TRUE)
+        , error = function(cond) {
         message(paste0("\nReimputing '", Y, "' with the current specified algorithms failed and this variable will be skipped! \nSee Java server's error below:"));
         md.log(paste("Reimputing", Y, "failed and the variable will be skipped!"),
                date = TRUE, time = TRUE, print = TRUE)
@@ -177,9 +171,11 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
         return(NULL)
       })
 
-      # update the statusbar
-      if (verbose==0) setTxtProgressBar(pb, (which(ITERATIONVARS == Y)))
 
+
+      # If there was no error, update the variables
+      # else make sure the model is cleared
+      # --------------------------------------------------------------
       if (!is.null(it)) {
         X             <- it$X
         ITERATIONVARS <- it$iterationvars
@@ -189,12 +185,20 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
         hex           <- it$hex
         bhex          <- it$bhex
       }
-
-      # If there was an error, make sure the model is cleared
-      # --------------------------------------------------------------
       else tryCatch(h2o::h2o.rm(h2o.get_automl("mlim")),
-                 error = function(cond) {
-                   return(NULL)})
+                    error = function(cond) {
+                      return(NULL)})
+
+      # log & statusbar
+      # --------------------------------------------------------------
+      time = as.integer(Sys.time()) - start
+      if (debug) md.log(paste("done! after: ", time, " seconds"),
+                        date = TRUE, time = TRUE, print = FALSE, trace = FALSE)
+
+      # update the statusbar
+      if (verbose==0) setTxtProgressBar(pb, (which(ITERATIONVARS == Y)))
+
+
     }
 
     # CHECK CRITERIA FOR RUNNING THE NEXT ITERATION
@@ -209,7 +213,7 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
                            md.log = report)
     if (debug) {
       md.log(paste("running: ", SC$running), date=debug, time=debug, trace=FALSE)
-      md.log(paste("Estimated", error_metric, "error:", SC$error), section="paragraph", date=debug, time=debug, trace=FALSE)
+      md.log(paste("\nEstimated", error_metric, "error:", SC$error), section="paragraph", date=debug, time=debug, trace=FALSE)
     }
 
     running <- SC$running
