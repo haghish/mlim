@@ -41,6 +41,8 @@ Simply put, for each variable in the dataset, **`mlim`** automatically fine-tune
 - Does not force a particular linear model 
 - Uses a blend of different machine learning models 
 
+<!-- 
+
 Download mlim multiple imputation handbook
 ------------------------------------------
 
@@ -50,7 +52,7 @@ Download mlim multiple imputation handbook
 <br>
 <br>
 <br>
-
+-->
 
 Procedure: From preimputation to imputation and postimputation
 ---------------------------------------------------------
@@ -129,7 +131,7 @@ Citation
 --------
 
 - Haghish, E. F. (2022). mlim: Multiple Imputation with Automated Machine Learning [Computer software]. https://CRAN.R-project.org/package=mlim. 
-- Haghish, E. F. (2022). mlim Multiple Imputation Handbook. Software Manual. https://github.com/haghish/mlim_handbook.
+<!-- - Haghish, E. F. (2022). mlim Multiple Imputation Handbook. Software Manual. https://github.com/haghish/mlim_handbook. -->
 
 <!--
 Preimputation
