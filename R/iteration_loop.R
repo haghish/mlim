@@ -2,7 +2,7 @@
 #' @description runs imputation iteration loop to fully impute a dataframe
 #' @importFrom utils setTxtProgressBar txtProgressBar capture.output packageVersion
 #' @importFrom h2o h2o.init as.h2o h2o.automl h2o.predict h2o.ls
-#'             h2o.removeAll h2o.rm h2o.shutdown
+#'             h2o.removeAll h2o.rm h2o.shutdown h2o.get_automl
 #' @importFrom md.log md.log
 #' @importFrom memuse Sys.meminfo
 #' @importFrom stats var setNames na.omit
@@ -185,7 +185,7 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
         hex           <- it$hex
         bhex          <- it$bhex
       }
-      else tryCatch(h2o::h2o.rm(h2o.get_automl("mlim")),
+      else tryCatch(h2o::h2o.rm(h2o::h2o.get_automl("mlim")),
                     error = function(cond) {
                       return(NULL)})
 
