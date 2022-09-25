@@ -26,7 +26,7 @@ Description: Machine learning algorithms have been used for performing
     first time by this package and is expected to outperform other packages for 
     imputing missing data that do not fine-tune their models. The multiple imputation 
     is implemented via bootstrapping without letting the duplicated observations to 
-    harm the cross-valdiation procedure, which is the way imputed variables are evaluated.
+    harm the cross-validation procedure, which is the way imputed variables are evaluated.
     Most notably, the package implements automated procedure for handling imputing imbalanced 
     data (class rarity problem), which happens when a factor variable has a level that is far more 
     prevalent than the other(s). This is known to result in biased predictions, hence, biased 
