@@ -29,7 +29,9 @@
 
 checkNconvert <- function(data, vars2impute, ignore,
                           ignore.rank=FALSE, report=NULL) {
-
+  
+  # CHECK THAT 'data' is a data.frame
+  
   mem <- NULL
   orderedIndex <- 0
 
