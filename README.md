@@ -198,6 +198,29 @@ rngr <- missRanger(irisNA, num.trees=100, seed = 2022)
 print(missRanger <- mlim.error(rngr, irisNA, iris))
 ```
 
+### Multiple imputation
 
+`mlim` supports multiple imputation. All you need to do is to specify an integer higher than 1 for the value of `m`. For example, set `m = 5` in the `mlim` function to impute 5 datasets. Then, `mlim` returns a list including 5 datasets. You can convert this list to a `mids` object using the **`mlim.mids()** function and then follow up the analysis with the `mids` object the same way it is carried out by the [`mice`](https://CRAN.R-project.org/package=mice) R package. Here is an example:
+
+```R
+# Comparison of different R packages imputing iris dataset
+# ===============================================================================
+rm(list = ls())
+library(mlim)
+library(mice)
+
+# Add artifitial missing data
+# ===============================================================================
+irisNA <- mlim.na(iris, p = 0.5, stratify = TRUE, seed = 2022)
+
+# multiple imputation with mlim, giving it 180 seconds to fine-tune each imputation
+# ===============================================================================
+MLIM2 <- mlim(irisNA,  m = 5, seed = 2022, tuning_time = 180) 
+print(MLIMerror2 <- mlim.error(MLIM2, irisNA, iris))
+mids <- mlim.mids(MLIM2, dfNA)
+fit <- with(data=mids, exp=glm(Species ~ Sepal.Length, family = "binomial"))
+res <- mice::pool(fit)
+summary(res)
+```
 
 
