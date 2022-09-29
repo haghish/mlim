@@ -166,7 +166,6 @@ rm(list = ls())
 library(mlim)
 library(mice)
 library(missForest)
-library(missRanger)
 library(VIM)
 
 # Add artifitial missing data
@@ -193,9 +192,6 @@ print(MCerror <- mlim.error(MC, irisNA, iris))
 set.seed(2022)
 RF <- missForest(irisNA)
 print(RFerror <- mlim.error(RF$ximp, irisNA, iris))
-
-rngr <- missRanger(irisNA, num.trees=100, seed = 2022)
-print(missRanger <- mlim.error(rngr, irisNA, iris))
 ```
 
 ### Multiple imputation
