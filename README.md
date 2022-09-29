@@ -159,6 +159,10 @@ Example
 
 `iris` ia a small dataset with 150 rows only. Let's add 50% of artifitial missing data and compare several state-of-the-art machine learning missing data imputation procedures. __`ELNET`__ comes up as a winner for a very simple reason! Because it was fine-tuned and all the rest were not. The larger the dataset and the higher the number of features, the difference between __`ELNET`__ and the others becomes more vivid. 
 
+### Single imputation
+
+In a single imputation, the NAs are replaced with the most plausible values according the model. You do not get the diversity of the multiple imputation, but you still get an estimated imputation error based on 10-fold (or higher, if specified) cross-validation procedure for each variable (column) in the dataset. As shown below, `mlim` provides the **`mlim.error()`** function to summarize the imputation error for the entire dataset or each variable. 
+
 ```R
 # Comparison of different R packages imputing iris dataset
 # ===============================================================================
