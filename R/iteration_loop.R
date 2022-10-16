@@ -45,14 +45,17 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
     ## ----------------------------------------------------
     # sampling_index <- sampling_index[!duplicated(sampling_index)]
     # bdata <- data[sampling_index, ]
+    # bdata[, "mlim_bootstrap_weights_column_"] <- 1
+    # bdataNA <- is.na(bdata[, vars2impute, drop = FALSE])
 
     ## SOLUTION 2: ADD THE DUPLICATES TO THE WEIGHT_COLUMN
     ## ----------------------------------------------------
     dups <- bootstrapWeight(sampling_index)
     bdata <- data[1:nrow(data) %in% dups[,1], ]
-
     # calculate bootstrap weight
-    bdata[, "mlim_bootstrap_weights_column_"] <- dups[,2]
+    bdata[, "mlim_bootstrap_weights_column_"] <- 1 # dups[,2] OR ALTERNATIVELY #dups[,2] / sum(dups[,2])
+    bdataNA <- is.na(bdata[, vars2impute, drop = FALSE])
+    #b <<- bdata
 
     ####### ===============================================
     ####### BOOTSTRAP AND BALANCING DRAMA
@@ -140,7 +143,8 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
       tryCatch(capture.output(
           it <- iterate(
             procedure = procedure,
-            MI, dataNA, preimputed.data, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
+            MI, dataNA, bdataNA,
+            preimputed.data, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
             m, k, X, Y, z=which(ITERATIONVARS == Y), m.it,
             # loop data
             ITERATIONVARS, vars2impute,

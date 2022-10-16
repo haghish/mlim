@@ -17,7 +17,8 @@
 #' @noRd
 
 iterate <- function(procedure,
-                    MI, dataNA, preimputed.data, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
+                    MI, dataNA, bdataNA,
+                    preimputed.data, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
                     m, k, X, Y, z, m.it,
 
                     # loop data
@@ -66,13 +67,10 @@ iterate <- function(procedure,
 
   # Index the missing data
   # ============================================================
-  if (!boot) {
-    v.na <- dataNA[, Y]
-    y.na <- v.na
-  }
-  else {
-    v.na <- dataNA[, Y]
-    y.na <- rownames(bdata) %in% which(v.na)
+  v.na <- dataNA[, Y]
+
+  if (boot) {
+    b.na <- bdataNA[, Y] #rownames(bdata) %in% which(v.na)
   }
 
   # ============================================================
@@ -129,7 +127,7 @@ iterate <- function(procedure,
     if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer'
         || FAMILY[z] == 'quasibinomial' ) {
       tryCatch(fit <- h2o::h2o.automl(x = setdiff(X, Y), y = Y,
-                                      training_frame = if (is.null(bhex)) hex[which(!y.na), ] else bhex[which(!y.na), ],
+                                      training_frame = if (is.null(bhex)) hex[which(!v.na), ] else bhex[which(!b.na), ],
                                       sort_metric = sort_metric,
                                       project_name = "mlim",
                                       include_algos = usedalgorithms,
@@ -137,7 +135,7 @@ iterate <- function(procedure,
                                       exploitation_ratio = 0.1,
                                       max_runtime_secs = tuning_time,
                                       max_models = max_models,
-                                      weights_column = if (is.null(bhex)) NULL else "mlim_bootstrap_weights_column_", #adjusted_weight_column[which(!y.na)],
+                                      weights_column = if (is.null(bhex)) NULL else "mlim_bootstrap_weights_column_", #adjusted_weight_column[which(!v.na)],
                                       keep_cross_validation_predictions = keep_cv,
                                       #verbosity = if (debug) "debug" else NULL,
                                       seed = seed
@@ -175,16 +173,16 @@ iterate <- function(procedure,
 
       #???
       #if (validation > 0) {
-      #  nonMissingObs <- which(!y.na)
+      #  nonMissingObs <- which(!v.na)
       #  vdFrame <- sort(sample(nonMissingObs,
       #                    round(validation * length(nonMissingObs) )))
-      #  trainingsample <- sort(setdiff(which(!y.na), vdFrame))
+      #  trainingsample <- sort(setdiff(which(!v.na), vdFrame))
       #}
 
       tryCatch(fit <- h2o::h2o.automl(x = setdiff(X, Y), y = Y,
                                       balance_classes = balance_classes,
                                       sort_metric = sort_metric,
-                                      training_frame = if (is.null(bhex)) hex[which(!y.na), ] else bhex[which(!y.na), ],
+                                      training_frame = if (is.null(bhex)) hex[which(!v.na), ] else bhex[which(!b.na), ],
                                       #validation_frame = bhex[vdFrame, ],
                                       project_name = "mlim",
                                       include_algos = usedalgorithms,
@@ -192,7 +190,7 @@ iterate <- function(procedure,
                                       exploitation_ratio = 0.1,
                                       max_runtime_secs = tuning_time,
                                       max_models = max_models,
-                                      weights_column = if (!balance_classes) {if (is.null(bhex)) NULL else "mlim_bootstrap_weights_column_"} else NULL, #adjusted_weight_column[which(!y.na)],
+                                      weights_column = if (!balance_classes) {if (is.null(bhex)) NULL else "mlim_bootstrap_weights_column_"} else NULL, #adjusted_weight_column[which(!v.na)],
                                       keep_cross_validation_predictions = keep_cv,
                                       #verbosity = if (debug) "debug" else NULL,
                                       seed = seed
@@ -213,7 +211,7 @@ iterate <- function(procedure,
       #   tryCatch(fit <- h2o::h2o.automl(x = setdiff(X, Y), y = Y,
       #                                   balance_classes = balance_classes,
       #                                   sort_metric = sort_metric,
-      #                                   training_frame = if (is.null(bhex)) hex[which(!y.na), ] else bhex[which(!y.na), ],
+      #                                   training_frame = if (is.null(bhex)) hex[which(!v.na), ] else bhex[which(!v.na), ],
       #                                   #validation_frame = bhex[vdFrame, ],
       #                                   project_name = "mlim",
       #                                   include_algos = "DRF",
@@ -221,7 +219,7 @@ iterate <- function(procedure,
       #                                   exploitation_ratio = 0.1,
       #                                   max_runtime_secs = tuning_time,
       #                                   max_models = max_models,
-      #                                   weights_column = if (!balance_classes) {if (is.null(bhex)) NULL else "mlim_bootstrap_weights_column_"} else NULL, #adjusted_weight_column[which(!y.na)],
+      #                                   weights_column = if (!balance_classes) {if (is.null(bhex)) NULL else "mlim_bootstrap_weights_column_"} else NULL, #adjusted_weight_column[which(!v.na)],
       #                                   keep_cross_validation_predictions = keep_cv,
       #                                   verbosity = if (debug) "debug" else NULL,
       #                                   seed = seed
@@ -290,18 +288,18 @@ iterate <- function(procedure,
       # also update the bootstraped data
       # ------------------------------------------------------------
       if (boot) {
-        tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = bhex[which(y.na), X])[,1],
+        tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = bhex[which(b.na), X])[,1],
                  error = function(cond) {
                    message("\nGenerating the predictions on bootstrap data failed...\nSee the server's error:");
                    return(stop(cond))})
 
-        tryCatch(bdata[which(y.na), Y] <- as.vector(pred[,1]),
+        tryCatch(bdata[which(b.na), Y] <- as.vector(pred[,1]),
                  error = function(cond) {
                    message("data could not be updated with the new predictions...\n see the error below:");
                    return(stop(cond))})
 
         if (!flush) {
-          tryCatch(bhex[which(y.na), Y] <- pred,
+          tryCatch(bhex[which(b.na), Y] <- pred,
                    error = function(cond) {
                      message("\nUpdating the server's bootstrap data failed...\nSee the server's error:");
                      return(stop(cond))})
@@ -379,7 +377,7 @@ iterate <- function(procedure,
         Sys.sleep(sleep)
 
         if (!flush) {
-          tryCatch(hex[which(y.na), Y] <- pred, #h2o requires numeric subsetting
+          tryCatch(hex[which(v.na), Y] <- pred, #h2o requires numeric subsetting
                    error = function(cond) {
                      message("\nServer's data could not be updated with the new predictions...\n see the error below:");
                      return(stop(cond))})
@@ -389,20 +387,20 @@ iterate <- function(procedure,
 
         # also update the bootstraped data
         if (boot) {
-          tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = bhex[which(y.na), X])[,1],
+          tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = bhex[which(b.na), X])[,1],
                    error = function(cond) {
                      message("predictions could not be generated from the model...\nsee the server's error below:");
                      return(stop(cond))})
 
           # UPDATE THE DATAFRAME
-          tryCatch(bdata[which(y.na), Y] <- as.vector(pred[,1]),
+          tryCatch(bdata[which(b.na), Y] <- as.vector(pred[,1]),
                    error = function(cond) {
                      message("data could not be updated with the new predictions...\n see the error below:");
                      return(stop(cond))})
           Sys.sleep(sleep)
 
           if (!flush) {
-            tryCatch(bhex[which(y.na), Y] <- pred,
+            tryCatch(bhex[which(b.na), Y] <- pred,
                      error = function(cond) {
                        message("Server's data could not be updated with the new predictions...\n see the error below:");
                        return(stop(cond))})
