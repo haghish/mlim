@@ -29,7 +29,7 @@
 #' @export
 
 mlim.mids <- function (mlim, incomplete) {
-    if (any(c("MIMCA", "MIPCA", "mlim.mi") %in% class(mlim))) {
+    if (any(c("MIMCA", "MIFAMD", "MIPCA", "mlim.mi") %in% class(mlim))) {
       longformat <- rbind(incomplete, do.call(rbind, mlim))
       longformat <- cbind(.imp = rep(0:length(mlim), each = nrow(incomplete)),
                           .id = rep(1:nrow(incomplete), (length(mlim) + 1)), longformat)
@@ -37,7 +37,7 @@ mlim.mids <- function (mlim, incomplete) {
       mids <- as.mids(longformat)
     }
     else {
-      stop("Objects of class mlim.mi, MIPCA, or MIMCA are required.")
+      stop("Objects of class mlim.mi, MIPCA, MIFAMD, or MIMCA are required.")
     }
 
     return(mids)
