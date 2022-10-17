@@ -347,7 +347,7 @@ mlim <- function(data = NULL,
 
   # check the ... arguments
   # ============================================================
-  hidden_args <- c("superdebug", "init", "ignore.rank", "sleep")
+  hidden_args <- c("superdebug", "init", "ignore.rank", "sleep", "stochastic")
   stopifnot(
     "incompatible '...' arguments" = (names(list(...)) %in% hidden_args)
   )
@@ -373,7 +373,9 @@ mlim <- function(data = NULL,
   ignore.rank <- threeDots(name = "ignore.rank", ..., default = FALSE)  #EXPERIMENTAL
   sleep       <- threeDots(name = "sleep", ..., default = .25)
   superdebug  <- threeDots(name = "superdebug", ..., default = FALSE)
-  set.seed(seed)
+  stochastic  <- threeDots(name = "stochastic", ..., default = FALSE)
+
+
 
   # ============================================================
   # ============================================================
@@ -456,6 +458,8 @@ mlim <- function(data = NULL,
   # ============================================================
   # ============================================================
   else {
+    set.seed(seed) # avoid setting seed by default if it is a continuation
+
     alg <- algoSelector(algos, postimpute)
     # preimpute <- "RF" #alg$preimpute ## for now, make this global
     impute <- alg$impute
@@ -520,7 +524,7 @@ mlim <- function(data = NULL,
   # ============================================================
   if (is.null(load)) {
     VARS <- selectVariables(data, ignore, verbose, report)
-# EEE<<- VARS
+
     dataNA <- VARS$dataNA # the missing data placeholder
     allPredictors <- VARS$allPredictors
     vars2impute <- VARS$vars2impute
@@ -585,7 +589,7 @@ mlim <- function(data = NULL,
     # PREIMPUTATION: replace data with preimputed data
     # .........................................................
     if (preimpute != "iterate" & is.null(preimputed.data)) {
-      data <- mlim.preimpute(data=data, preimpute=preimpute, seed = seed)
+      data <- mlim.preimpute(data=data, preimpute=preimpute, seed = NULL) # DO NOT RESET THE SEED!
       # reset the relevant predictors
       X <- allPredictors
     }
@@ -649,7 +653,8 @@ mlim <- function(data = NULL,
                                miniter, matching, ignore.rank,
                                verbosity, error, cpu, max_ram=max_ram, min_ram=min_ram,
                                #??? shutdown has to be fixed in future updates
-                               shutdown=FALSE, clean = TRUE)
+                               shutdown=FALSE, clean = TRUE,
+                               stochastic=stochastic)
 
     if (m > 1) MI[[m.it]] <- dataLast
     else MI <- dataLast
