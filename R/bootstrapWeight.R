@@ -4,12 +4,12 @@
 #'              as additional weights. this weight column should be
 #'              added to the weight_column given by the user.
 #' @author E. F. Haghish
-#' @return numeric matrix including 'rows' and 'weight'. rows is the row number
+#' @return numeric data.frame including 'rows' and 'weight'. rows is the row number
 #'         of the observation and weight is the number of duplications.
 #' @keywords Internal
 #' @noRd
 bootstrapWeight <- function(index) {
   weight <- table(index)
   rows <- as.numeric(names(weight))
-  return(cbind(rows, weight))
+  return(as.data.frame(cbind(rows, weight)))
 }
