@@ -28,21 +28,42 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
                     # saving settings
                     mem, orderedCols, ignore, maxiter,
                     miniter, matching, ignore.rank,
-                    verbosity, error, cpu, max_ram, min_ram, shutdown, clean) {
+                    verbosity, error, cpu, max_ram, min_ram, shutdown, clean,
+                    stochastic) {
 
   # ------------------------------------------------------------
   # bootrtap
-  # ============================================================
+  #
+  # Bootstrap from the original dataset, hold the original NA values,
+  # and then use the preimputed dataset, and then gradually improve it
+  #
   #### PROBLEM
+  ############
   #### drop the duplicates because they screw up the k-fold cross-validation.
   #### multiple identical observations might go to train and test datasets.
+  #### here I suggest several 'work-in-progress' solutions
+  # ============================================================
+
+  ####### ===============================================
+  ####### BOOTSTRAP AND BALANCING DRAMA
+  ####### ===============================================
+  #??? THIS NEEDS FURTHER UPDATE IF 'autobalance' IS ACTIVATED
+  # THE SOlUTION WOULD BE TO CALCULATE BALANCING WEIGHTS FOR
+  # EACH OBSERVATION AND THEN MULTIPLY IT BY THE WEIGHTS_COLUMN.
+  # OR CARRY OUT BALANCED STRATIFIED SAMPLING FOR CATEGORICAL
+  # VARIABLES...
 
   if (boot) {
     rownames(data) <- 1:nrow(data) #remember the rows that are missing
-    sampling_index <- sample.int(nrow(data), nrow(data), replace=TRUE)
+    sampling_index <- sample(x = nrow(data), size = nrow(data), replace=TRUE)
+
+
 
     ## SOLUTION 1: DROP THE DUPLICATES AND DO UNDERSAMPLING
     ## ----------------------------------------------------
+    # bdata <- data[sampling_index, ]
+    # bdataNA <- is.na(bdata[, vars2impute, drop = FALSE])
+    # bdata <- mlim.preimpute(data=bdata, preimpute=preimpute, seed = NULL)
     # sampling_index <- sampling_index[!duplicated(sampling_index)]
     # bdata <- data[sampling_index, ]
     # bdata[, "mlim_bootstrap_weights_column_"] <- 1
@@ -52,19 +73,21 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
     ## ----------------------------------------------------
     dups <- bootstrapWeight(sampling_index)
     bdata <- data[1:nrow(data) %in% dups[,1], ]
-    # calculate bootstrap weight
-    bdata[, "mlim_bootstrap_weights_column_"] <- 1 # dups[,2] OR ALTERNATIVELY #dups[,2] / sum(dups[,2])
     bdataNA <- is.na(bdata[, vars2impute, drop = FALSE])
-    #b <<- bdata
+    bdata <- mlim.preimpute(data=bdata, preimpute=preimpute, seed = NULL)
+    bdata[, "mlim_bootstrap_weights_column_"] <- dups[,2] #OR ALTERNATIVELY #dups[,2] / sum(dups[,2])
 
-    ####### ===============================================
-    ####### BOOTSTRAP AND BALANCING DRAMA
-    ####### ===============================================
-    #??? THIS NEEDS FURTHER UPDATE IF 'autobalance' IS ACTIVATED
-    # THE SOlUTION WOULD BE TO CALCULATE BALANCING WEIGHTS FOR
-    # EACH OBSERVATION AND THEN MULTIPLY IT BY THE WEIGHTS_COLUMN.
-    # OR CARRY OUT BALANCED STRATIFIED SAMPLING FOR CATEGORICAL
-    # VARIABLES...
+    ## SOLUTION 3: Assign CV folding manually instead of weight_column
+    ## ----------------------------------------------------
+    # bdata <- data[sampling_index, ]
+    # bdataNA <- is.na(bdata[, vars2impute, drop = FALSE])
+    # bdata <- mlim.preimpute(data=bdata, preimpute=preimpute, seed = NULL)
+    # bdata[, "mlim_bootstrap_fold_assignment_"] <- 0
+    # folds <- bootstrapCV(index = sampling_index, cv = cv)
+    # for (i in 1:cv) {
+    #   indexcv <- sampling_index %in% folds[,i]
+    #   bdata[indexcv, "mlim_bootstrap_fold_assignment_"] <- i
+    # }
   }
 
   # update the fresh data
@@ -158,7 +181,7 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
             # saving settings
             mem, orderedCols, ignore, maxiter,
             miniter, matching, ignore.rank,
-            verbosity, error, cpu, max_ram, min_ram)
+            verbosity, error, cpu, max_ram, min_ram, stochastic)
           , file = report, append = TRUE)
         , error = function(cond) {
         message(paste0("\nReimputing '", Y, "' with the current specified algorithms failed and this variable will be skipped! \nSee Java server's error below:"));
