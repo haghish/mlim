@@ -289,10 +289,12 @@ iterate <- function(procedure,
                  return(stop(cond))})
 
       if (stochastic) {
-        data[which(v.na), Y] <- rnorm(
-          n = length(VEK),
-          mean = VEK,
-          sd = iterationMetric[, "RMSE"])
+        if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer' || FAMILY[z] == 'quasibinomial') {
+          data[which(v.na), Y] <- rnorm(
+            n = length(VEK),
+            mean = VEK,
+            sd = iterationMetric[, "RMSE"])
+        }
       }
 
       if (!flush) {
@@ -316,10 +318,12 @@ iterate <- function(procedure,
                    return(stop(cond))})
 
         if (stochastic) {
-          bdata[which(b.na), Y] <- rnorm(
-            n = length(BEK),
-            mean = BEK,
-            sd = iterationMetric[, "RMSE"])
+          if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer' || FAMILY[z] == 'quasibinomial') {
+            bdata[which(b.na), Y] <- rnorm(
+              n = length(BEK),
+              mean = BEK,
+              sd = iterationMetric[, "RMSE"])
+          }
         } else {
           tryCatch(bdata[which(b.na), Y] <- BEK,
                    error = function(cond) {
@@ -411,10 +415,12 @@ iterate <- function(procedure,
         # I can alternatively, draw values from a normal distributions centered on the
         # predicted values by the model:
         if (stochastic) {
-          data[which(v.na), Y] <- rnorm(
-            n = length(VEK),
-            mean = VEK,
-            sd = iterationMetric[, "RMSE"])
+          if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer' || FAMILY[z] == 'quasibinomial') {
+            data[which(v.na), Y] <- rnorm(
+              n = length(VEK),
+              mean = VEK,
+              sd = iterationMetric[, "RMSE"])
+          }
         }
 
         if (!flush) {
@@ -443,14 +449,13 @@ iterate <- function(procedure,
 
 
           if (stochastic) {
-            # print("STOCHASTIC TIME")
-            # print(iterationMetric)
-            # print(iterationMetric[, "RMSE"])
-            # print(BEK)
-            bdata[which(b.na), Y] <- rnorm(
-              n = length(BEK),
-              mean = BEK,
-              sd = iterationMetric[, "RMSE"])
+            if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer' || FAMILY[z] == 'quasibinomial') {
+              bdata[which(b.na), Y] <- rnorm(
+                n = length(BEK),
+                mean = BEK,
+                sd = iterationMetric[, "RMSE"])
+            }
+
           } else {
             tryCatch(bdata[which(b.na), Y] <- BEK,
                      error = function(cond) {
