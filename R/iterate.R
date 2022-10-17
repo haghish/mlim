@@ -36,7 +36,8 @@ iterate <- function(procedure,
                     # saving settings
                     mem, orderedCols, ignore, maxiter,
                     miniter, matching, ignore.rank,
-                    verbosity, error, cpu, max_ram, min_ram
+                    verbosity, error, cpu, max_ram, min_ram,
+                    stochastic
                     ) {
 
   # Update the report
@@ -71,6 +72,8 @@ iterate <- function(procedure,
 
   if (boot) {
     b.na <- bdataNA[, Y] #rownames(bdata) %in% which(v.na)
+
+    # update bootstrap data
   }
 
   # ============================================================
@@ -136,6 +139,7 @@ iterate <- function(procedure,
                                       max_runtime_secs = tuning_time,
                                       max_models = max_models,
                                       weights_column = if (is.null(bhex)) NULL else "mlim_bootstrap_weights_column_", #adjusted_weight_column[which(!v.na)],
+                                      #fold_column = if (is.null(bhex)) NULL else "mlim_bootstrap_fold_assignment_",
                                       keep_cross_validation_predictions = keep_cv,
                                       #verbosity = if (debug) "debug" else NULL,
                                       seed = seed
@@ -191,6 +195,7 @@ iterate <- function(procedure,
                                       max_runtime_secs = tuning_time,
                                       max_models = max_models,
                                       weights_column = if (!balance_classes) {if (is.null(bhex)) NULL else "mlim_bootstrap_weights_column_"} else NULL, #adjusted_weight_column[which(!v.na)],
+                                      #fold_column = if (is.null(bhex)) NULL else "mlim_bootstrap_fold_assignment_",
                                       keep_cross_validation_predictions = keep_cv,
                                       #verbosity = if (debug) "debug" else NULL,
                                       seed = seed
@@ -273,10 +278,22 @@ iterate <- function(procedure,
       Sys.sleep(sleep)
       if (debug) md.log("predictions were generated", date=debug, time=debug, trace=FALSE)
 
-      tryCatch(data[which(v.na), Y] <- as.vector(pred[,1]),
+      tryCatch(VEK <- as.vector(pred[,1]),
                error = function(cond) {
                  message("\ndata could not be updated with the new predictions...\n see the error below:");
                  return(stop(cond))})
+
+      tryCatch(data[which(v.na), Y] <- VEK,
+               error = function(cond) {
+                 message("\ndata could not be updated with the new predictions...\n see the error below:");
+                 return(stop(cond))})
+
+      if (stochastic) {
+        data[which(v.na), Y] <- rnorm(
+          n = length(VEK),
+          mean = VEK,
+          sd = iterationMetric[, "RMSE"])
+      }
 
       if (!flush) {
         tryCatch(hex[which(v.na), Y] <- pred,
@@ -293,10 +310,22 @@ iterate <- function(procedure,
                    message("\nGenerating the predictions on bootstrap data failed...\nSee the server's error:");
                    return(stop(cond))})
 
-        tryCatch(bdata[which(b.na), Y] <- as.vector(pred[,1]),
+        tryCatch(BEK <- as.vector(pred[,1]),
                  error = function(cond) {
-                   message("data could not be updated with the new predictions...\n see the error below:");
+                   message("\ndata predictions could not be converted to a vector...\n see the error below:");
                    return(stop(cond))})
+
+        if (stochastic) {
+          bdata[which(b.na), Y] <- rnorm(
+            n = length(BEK),
+            mean = BEK,
+            sd = iterationMetric[, "RMSE"])
+        } else {
+          tryCatch(bdata[which(b.na), Y] <- BEK,
+                   error = function(cond) {
+                     message("data could not be updated with the new predictions...\n see the error below:");
+                     return(stop(cond))})
+        }
 
         if (!flush) {
           tryCatch(bhex[which(b.na), Y] <- pred,
@@ -328,8 +357,6 @@ iterate <- function(procedure,
       # update the metrics
       # ------------------------------------------------------------
       metrics <- rbind(metrics, iterationMetric)
-      # print(metrics)
-      # M <<- metrics
     }
     else {
 
@@ -369,12 +396,26 @@ iterate <- function(procedure,
         Sys.sleep(sleep)
         if (debug) md.log("predictions were generated", date=debug, time=debug, trace=FALSE)
 
+        tryCatch(VEK <- as.vector(pred[,1]),
+                 error = function(cond) {
+                   message("\ndata could not be updated with the new predictions...\n see the error below:");
+                   return(stop(cond))})
+
         # update the dataset
-        tryCatch(data[which(v.na), Y] <- as.vector(pred[,1]),
+        tryCatch(data[which(v.na), Y] <- VEK,
                  error = function(cond) {
                    message("\ndata could not be updated with the new predictions...\n see the error below:");
                    return(stop(cond))})
         Sys.sleep(sleep)
+
+        # I can alternatively, draw values from a normal distributions centered on the
+        # predicted values by the model:
+        if (stochastic) {
+          data[which(v.na), Y] <- rnorm(
+            n = length(VEK),
+            mean = VEK,
+            sd = iterationMetric[, "RMSE"])
+        }
 
         if (!flush) {
           tryCatch(hex[which(v.na), Y] <- pred, #h2o requires numeric subsetting
@@ -386,6 +427,7 @@ iterate <- function(procedure,
         }
 
         # also update the bootstraped data
+        # ================================
         if (boot) {
           tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = bhex[which(b.na), X])[,1],
                    error = function(cond) {
@@ -393,11 +435,28 @@ iterate <- function(procedure,
                      return(stop(cond))})
 
           # UPDATE THE DATAFRAME
-          tryCatch(bdata[which(b.na), Y] <- as.vector(pred[,1]),
+          tryCatch(BEK <- as.vector(pred[,1]),
                    error = function(cond) {
-                     message("data could not be updated with the new predictions...\n see the error below:");
+                     message("\ndata predictions could not be converted to a vector...\n see the error below:");
                      return(stop(cond))})
-          Sys.sleep(sleep)
+
+
+
+          if (stochastic) {
+            # print("STOCHASTIC TIME")
+            # print(iterationMetric)
+            # print(iterationMetric[, "RMSE"])
+            # print(BEK)
+            bdata[which(b.na), Y] <- rnorm(
+              n = length(BEK),
+              mean = BEK,
+              sd = iterationMetric[, "RMSE"])
+          } else {
+            tryCatch(bdata[which(b.na), Y] <- BEK,
+                     error = function(cond) {
+                       message("data could not be updated with the new predictions...\n see the error below:");
+                       return(stop(cond))})
+          }
 
           if (!flush) {
             tryCatch(bhex[which(b.na), Y] <- pred,
@@ -428,7 +487,6 @@ iterate <- function(procedure,
 
         # update the metrics
         metrics <- rbind(metrics, iterationMetric)
-        #M <<- metrics
       }
 
       # ------------------------------------------------------------
@@ -758,9 +816,6 @@ iterate <- function(procedure,
 
   if (debug) md.log("flushing done! return to the loop", date=debug, time=debug, trace=FALSE)
 
-# print(metrics)
-# print(h2o.dim(hex))
-# print(h2o.getId(hex))
   return(list(X=X,
               metrics = metrics,
               iterationvars=ITERATIONVARS,
