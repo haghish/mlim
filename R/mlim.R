@@ -458,7 +458,7 @@ mlim <- function(data = NULL,
   # ============================================================
   # ============================================================
   else {
-    set.seed(seed) # avoid setting seed by default if it is a continuation
+    if (!is.null(seed)) set.seed(seed) # avoid setting seed by default if it is a continuation
 
     alg <- algoSelector(algos, postimpute)
     # preimpute <- "RF" #alg$preimpute ## for now, make this global
