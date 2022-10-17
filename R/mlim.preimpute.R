@@ -10,8 +10,9 @@
 # @importFrom missForest missForest
 #' @param data data.frame with missing values
 #' @param preimpute character. specify the algorithm for preimputation. the
-#'                  supported options are "RF" (Random Forest) and "mm"
-#'                  (mean-mode replacement). the default is "RF", which carries
+#'                  supported options are "RF" (Random Forest), "mm"
+#'                  (mean-mode replacement), and "random" (random sampling from available data).
+#'                  the default is "RF", which carries
 #'                  a parallel random forest imputation, using all the CPUs available.
 #'                  the other alternative is "mm" which performs mean/mode
 #'                  imputation.
@@ -55,6 +56,16 @@ mlim.preimpute <- function(data, preimpute = "RF", seed = NULL) {
     data <- meanmode(data)
     setTxtProgressBar(pb, 1)
     #if (!is.null(report)) md.log("Mean/Mode preimputation is done", date=debug, time=debug, trace=FALSE)
+  }
+  else if (tolower(preimpute) == "sample") {
+    message("\nPreimputation: Random Sampling")
+    if (!is.null(seed)) set.seed(seed)
+    rsample <- function(x) replace(x, is.na(x), sample(x[!is.na(x)],sum(is.na(x))))
+    pb <- txtProgressBar(0, 1, style = 3)
+    for (i in colnames(data)) {
+      if (sum(is.na(data[,i])) > 0) data[,i] <- rsample(data[,i])
+    }
+    setTxtProgressBar(pb, 1)
   }
   else stop(paste(preimpute, "is not recognized preimputation argument"))
 

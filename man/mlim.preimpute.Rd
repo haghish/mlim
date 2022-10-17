@@ -10,8 +10,9 @@ mlim.preimpute(data, preimpute = "RF", seed = NULL)
 \item{data}{data.frame with missing values}
 
 \item{preimpute}{character. specify the algorithm for preimputation. the
-supported options are "RF" (Random Forest) and "mm"
-(mean-mode replacement). the default is "RF", which carries
+supported options are "RF" (Random Forest), "mm"
+(mean-mode replacement), and "random" (random sampling from available data).
+the default is "RF", which carries
 a parallel random forest imputation, using all the CPUs available.
 the other alternative is "mm" which performs mean/mode
 imputation.}
