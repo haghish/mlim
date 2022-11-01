@@ -10,7 +10,7 @@
 #'             h2o.removeAll h2o.rm h2o.shutdown h2o.load_frame h2o.save_frame
 #' @importFrom md.log md.log
 #' @importFrom memuse Sys.meminfo
-#' @importFrom stats var setNames na.omit
+#' @importFrom stats var setNames na.omit rnorm
 #' @return list
 #' @author E. F. Haghish
 #' @keywords Internal
@@ -288,14 +288,14 @@ iterate <- function(procedure,
                  message("\ndata could not be updated with the new predictions...\n see the error below:");
                  return(stop(cond))})
 
-      if (stochastic) {
-        if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer' || FAMILY[z] == 'quasibinomial') {
-          data[which(v.na), Y] <- rnorm(
-            n = length(VEK),
-            mean = VEK,
-            sd = iterationMetric[, "RMSE"])
-        }
-      }
+      # if (stochastic) {
+      #   if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer' || FAMILY[z] == 'quasibinomial') {
+      #     data[which(v.na), Y] <- rnorm(
+      #       n = length(VEK),
+      #       mean = VEK,
+      #       sd = iterationMetric[, "RMSE"])
+      #   }
+      # }
 
       if (!flush) {
         tryCatch(hex[which(v.na), Y] <- pred,
@@ -317,19 +317,20 @@ iterate <- function(procedure,
                    message("\ndata predictions could not be converted to a vector...\n see the error below:");
                    return(stop(cond))})
 
-        if (stochastic) {
-          if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer' || FAMILY[z] == 'quasibinomial') {
-            bdata[which(b.na), Y] <- rnorm(
-              n = length(BEK),
-              mean = BEK,
-              sd = iterationMetric[, "RMSE"])
-          }
-        } else {
-          tryCatch(bdata[which(b.na), Y] <- BEK,
-                   error = function(cond) {
-                     message("data could not be updated with the new predictions...\n see the error below:");
-                     return(stop(cond))})
-        }
+        tryCatch(bdata[which(b.na), Y] <- BEK,
+                 error = function(cond) {
+                   message("data could not be updated with the new predictions...\n see the error below:");
+                   return(stop(cond))})
+
+        # if (stochastic) {
+        #   if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer' || FAMILY[z] == 'quasibinomial') {
+        #     bdata[which(b.na), Y] <- rnorm(
+        #       n = length(BEK),
+        #       mean = BEK,
+        #       sd = iterationMetric[, "RMSE"])
+        #   }
+        # }
+
 
         if (!flush) {
           tryCatch(bhex[which(b.na), Y] <- pred,
@@ -414,14 +415,14 @@ iterate <- function(procedure,
 
         # I can alternatively, draw values from a normal distributions centered on the
         # predicted values by the model:
-        if (stochastic) {
-          if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer' || FAMILY[z] == 'quasibinomial') {
-            data[which(v.na), Y] <- rnorm(
-              n = length(VEK),
-              mean = VEK,
-              sd = iterationMetric[, "RMSE"])
-          }
-        }
+        # if (stochastic) {
+        #   if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer' || FAMILY[z] == 'quasibinomial') {
+        #     data[which(v.na), Y] <- rnorm(
+        #       n = length(VEK),
+        #       mean = VEK,
+        #       sd = iterationMetric[, "RMSE"])
+        #   }
+        # }
 
         if (!flush) {
           tryCatch(hex[which(v.na), Y] <- pred, #h2o requires numeric subsetting
@@ -446,22 +447,19 @@ iterate <- function(procedure,
                      message("\ndata predictions could not be converted to a vector...\n see the error below:");
                      return(stop(cond))})
 
+          tryCatch(bdata[which(b.na), Y] <- BEK,
+                   error = function(cond) {
+                     message("data could not be updated with the new predictions...\n see the error below:");
+                     return(stop(cond))})
 
-
-          if (stochastic) {
-            if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer' || FAMILY[z] == 'quasibinomial') {
-              bdata[which(b.na), Y] <- rnorm(
-                n = length(BEK),
-                mean = BEK,
-                sd = iterationMetric[, "RMSE"])
-            }
-
-          } else {
-            tryCatch(bdata[which(b.na), Y] <- BEK,
-                     error = function(cond) {
-                       message("data could not be updated with the new predictions...\n see the error below:");
-                       return(stop(cond))})
-          }
+          # if (stochastic) {
+          #   if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer' || FAMILY[z] == 'quasibinomial') {
+          #     bdata[which(b.na), Y] <- rnorm(
+          #       n = length(BEK),
+          #       mean = BEK,
+          #       sd = iterationMetric[, "RMSE"])
+          #   }
+          # }
 
           if (!flush) {
             tryCatch(bhex[which(b.na), Y] <- pred,
@@ -502,11 +500,62 @@ iterate <- function(procedure,
         if (debug) md.log(paste(round(percentImprove, 6), ">", - (if (is.null(tolerance)) 0.001 else tolerance)),
                           date=debug, time=debug, trace=FALSE)
         #if (debug) message(paste("INCREASED", errImprovement, percentImprove, -(if (is.null(tolerance)) 0.001 else tolerance)))
-        iterationMetric[, error_metric] <- NA
+
+        # IF STOCHASTIC IS ACTIVATED, AVOID EARLY STOPPING
+        # ------------------------------------------------------------
+        # if (!stochastic) {
+          iterationMetric[, error_metric] <- NA
+          if (!doublecheck) {
+            ITERATIONVARS <- setdiff(ITERATIONVARS, Y)
+          }
+        # }
         metrics <- rbind(metrics, iterationMetric)
-        if (!doublecheck) {
-          ITERATIONVARS <- setdiff(ITERATIONVARS, Y)
-        }
+
+        # ONCE THE MODEL IS OPTIMIZED...
+        # ------------------------------------------------------------
+        # if (stochastic) {
+        #   print("FINAL STOCKASTIC TIME")
+        #   if (boot) {
+        #     tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = bhex[which(b.na), X])[,1],
+        #              error = function(cond) {
+        #                message("predictions could not be generated from the model...\nsee the server's error below:");
+        #                return(stop(cond))})
+        #
+        #     # UPDATE THE DATAFRAME
+        #     tryCatch(BEK <- as.vector(pred[,1]),
+        #              error = function(cond) {
+        #                message("\ndata predictions could not be converted to a vector...\n see the error below:");
+        #                return(stop(cond))})
+        #
+        #     if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer' || FAMILY[z] == 'quasibinomial') {
+        #       bdata[which(b.na), Y] <- rnorm(
+        #         n = length(BEK),
+        #         mean = BEK,
+        #         sd = iterationMetric[, "RMSE"])
+        #     }
+        #   }
+        #   else {
+        #     tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = hex[which(v.na), X])[,1],
+        #              error = function(cond) {
+        #                message("\ngenerating the missing data predictions failed... see the Java server error below:\n");
+        #                return(stop(cond))})
+        #     Sys.sleep(sleep)
+        #     if (debug) md.log("predictions were generated", date=debug, time=debug, trace=FALSE)
+        #
+        #     tryCatch(VEK <- as.vector(pred[,1]),
+        #              error = function(cond) {
+        #                message("\ndata could not be updated with the new predictions...\n see the error below:");
+        #                return(stop(cond))})
+        #
+        #     if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer' || FAMILY[z] == 'quasibinomial') {
+        #       data[which(v.na), Y] <- rnorm(
+        #         n = length(VEK),
+        #         mean = VEK,
+        #         sd = iterationMetric[, "RMSE"])
+        #     }
+        #   }
+        #
+        # }
 
         # clean the model & predictions
         # ------------------------------------------------------------

@@ -5,7 +5,7 @@
 #'             h2o.removeAll h2o.rm h2o.shutdown h2o.get_automl
 #' @importFrom md.log md.log
 #' @importFrom memuse Sys.meminfo
-#' @importFrom stats var setNames na.omit
+#' @importFrom stats var setNames na.omit rnorm
 #' @return list
 #' @author E. F. Haghish
 #' @keywords Internal
@@ -301,6 +301,22 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
                message("trying to connect to JAVA server...\n");
                return(warning("Java server has crashed (low RAM?)"))})
     Sys.sleep(sleep)
+  }
+
+  # ------------------------------------------------------------
+  # Adding stochastic variation
+  # ============================================================
+  if (stochastic) {
+    md.log("STOCHASTIC TIMES", section="paragraph", trace=FALSE)
+    for (Y in vars2impute) {
+      v.na <- dataNA[, Y]
+      RMSE <- min(metrics[metrics$variable == Y, "RMSE"], na.rm = TRUE)
+      VEK <- data[which(v.na), Y]
+      data[which(v.na), Y] <- rnorm(
+              n = length(VEK),
+              mean = VEK,
+              sd = RMSE)
+    }
   }
 
   # ------------------------------------------------------------
