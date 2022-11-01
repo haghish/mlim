@@ -70,7 +70,9 @@
 #'                   is encouraged when other algorithms are used. However, for general users
 #'                   unspecialized in machine learning, postimpute is NOT recommended because this
 #'                   feature is currently experimental, prone to over-fitting, and highly computationally extensive.
-# @param min_ram character. specifies the minimum size.
+#' @param stochastic logical. by default it is set to TRUE for multiple imputation and FALSE for
+#'                   single imputation. stochastic argument is currently under testing and is intended to
+#'                   avoid inflating the correlation between imputed valuables.
 #' @param ignore character vector of column names or index of columns that should
 #'               should be ignored in the process of imputation.
 #' @param tuning_time integer. maximum runtime (in seconds) for fine-tuning the
@@ -284,6 +286,7 @@ mlim <- function(data = NULL,
                  m = 1,
                  algos = c("ELNET"), #impute, postimpute
                  postimpute = FALSE,
+                 stochastic = m > 1,
                  ignore = NULL,
 
                  # computational resources
@@ -373,7 +376,7 @@ mlim <- function(data = NULL,
   ignore.rank <- threeDots(name = "ignore.rank", ..., default = FALSE)  #EXPERIMENTAL
   sleep       <- threeDots(name = "sleep", ..., default = .25)
   superdebug  <- threeDots(name = "superdebug", ..., default = FALSE)
-  stochastic  <- threeDots(name = "stochastic", ..., default = FALSE)
+  #stochastic  <- threeDots(name = "stochastic", ..., default = FALSE)
 
 
 
