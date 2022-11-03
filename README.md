@@ -1,5 +1,5 @@
 
-> **NOTE**: Prior to version 3.0 (only available on GitHub), `mlim` did not use a stochastic procedure and thus, the multiple imputation algorithm was inflating the relationships between the imputed variables. A solution is implemented in version 3.0, which is activated for multiple imputation and is currently under testing. You can investigate the code for `stochastic = TRUE` argument to see how this procedure is implemented... 
+> **NOTE**: Prior to version 0.3.0 (only available on GitHub), `mlim` did not use a stochastic procedure and thus, the multiple imputation algorithm was inflating the relationships between the imputed variables. A solution is implemented in version 0.3.0, which is activated for multiple imputation and is currently under testing. You can investigate the code for `stochastic = TRUE` argument to see how this procedure is implemented... 
 
 <a href="https://github.com/haghish/mlim"><img src='man/figures/mlim.png' align="right" height="200" /></a>
 
