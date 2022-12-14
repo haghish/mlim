@@ -206,6 +206,7 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
       # If there was no error, update the variables
       # else make sure the model is cleared
       # --------------------------------------------------------------
+#IT <<- it
       if (!is.null(it)) {
         X             <- it$X
         ITERATIONVARS <- it$iterationvars
@@ -218,7 +219,12 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
         # if 'factorPred' is not NULL, update the list:
         if (!is.null(it$factorPred)) {
           #remove the 'predict' column, which is the first column in predict dataframe
-          FACTORPREDCTIONS <- list(FACTORPREDCTIONS, Y = it$factorPred[,2:ncol(it$factorPred)])
+          #Ok <<- it$factorPred[,2:ncol(it$factorPred)]
+          if (length(FACTORPREDCTIONS) > 0) FACTORPREDCTIONS <- list(FACTORPREDCTIONS, Y = it$factorPred[,2:ncol(it$factorPred)])
+          else FACTORPREDCTIONS <- list(Y = it$factorPred[,2:ncol(it$factorPred)])
+
+          # update the name of the new item
+          names(FACTORPREDCTIONS)[length(FACTORPREDCTIONS)] <- Y
         }
       }
 
@@ -345,7 +351,9 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
       else if (FAMILY[which(ITERATIONVARS == Y)] == 'binomial' ||
                FAMILY[which(ITERATIONVARS == Y)] == 'multinomial') {
 
-        stochFactors <- stochasticFactorImpute(levels = ncol(pred),
+#NOK <<- FACTORPREDCTIONS
+        #> #column names represent the estimated levels' probabilities
+        stochFactors <- stochasticFactorImpute(levels = colnames(FACTORPREDCTIONS[[Y]]),
                                                probMat = as.matrix(FACTORPREDCTIONS[[Y]]))
 
         # replace the missing observations with the stochastic data

@@ -14,7 +14,7 @@ stochasticFactorImpute <- function(levels, probMat)
 {
   do.call("c", lapply(seq(nrow(probMat)), function(i)
   {
-    sample(1:levels, 1, replace = TRUE, prob = probMat[i])
+    sample(x = levels, size = 1, replace = TRUE, prob = probMat[i,])
   }))
 }
 
