@@ -1,6 +1,6 @@
 Package: mlim
 Type: Package
-Title: Multiple Imputation with Automated Machine Learning
+Title: Single and Multiple Imputation with Automated Machine Learning
 Version: 0.3.0
 Authors@R: 
     person("E. F. Haghish",
