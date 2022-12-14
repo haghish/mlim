@@ -231,7 +231,7 @@ imputes data.frame with mixed variable types using automated
 }
 \examples{
 
-\donttest{
+\dontrun{
 data(iris)
 
 

@@ -17,7 +17,7 @@ provides information about estimated accuracy of the imputation as well
              as the overall procedure of the imputation.
 }
 \examples{
-\donttest{
+\dontrun{
 data(iris)
 
 # add 10\% stratified missing values to one factor variable

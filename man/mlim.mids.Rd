@@ -21,7 +21,7 @@ takes "mlim" object and prepares a "mids" class for data analysis with
 }
 \examples{
 
-\donttest{
+\dontrun{
 data(iris)
 require(mice)
 irisNA <- mlim.na(iris, p = 0.1, seed = 2022)

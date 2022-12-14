@@ -30,7 +30,7 @@ instead of replacing missing data with mean and mode, a smarter
              resources.
 }
 \examples{
-\donttest{
+\dontrun{
 data(iris)
 
 # add 10\% stratified missing values to one factor variable
