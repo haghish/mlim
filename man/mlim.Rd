@@ -234,7 +234,6 @@ imputes data.frame with mixed variable types using automated
 \dontrun{
 data(iris)
 
-
 # add stratified missing observations to the data. to make the example run
 # faster, I add NAs only to a single variable.
 dfNA <- iris
