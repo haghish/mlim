@@ -279,22 +279,12 @@ iterate <- function(procedure,
     # ============================================================
     # ============================================================
     if (k == 1) {
-      tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = hex[which(v.na), X])[,1],
+      tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = hex[which(v.na), X]),
                error = function(cond) {
                  message("\ngenerating the missing data predictions failed... see the Java server error below:\n");
                  return(stop(cond))})
       Sys.sleep(sleep)
       if (debug) md.log("predictions were generated", date=debug, time=debug, trace=FALSE)
-
-      tryCatch(VEK <- as.vector(pred[,1]),
-               error = function(cond) {
-                 message("\ndata could not be updated with the new predictions...\n see the error below:");
-                 return(stop(cond))})
-
-      tryCatch(data[which(v.na), Y] <- VEK,
-               error = function(cond) {
-                 message("\ndata could not be updated with the new predictions...\n see the error below:");
-                 return(stop(cond))})
 
       # if the variable is a factor and stochastic process is activated, store the predictions
       if (stochastic) {
@@ -306,8 +296,23 @@ iterate <- function(procedure,
         }
       }
 
+      # THEN, MAKE SURE 'pred' is only including the actual predictions
+      pred <- pred[,1]
+
+      tryCatch(VEK <- as.vector(pred[,1]),
+               error = function(cond) {
+                 message("\ndata could not be updated with the new predictions...\n see the error below:");
+                 return(stop(cond))})
+
+      tryCatch(data[which(v.na), Y] <- VEK,
+               error = function(cond) {
+                 message("\ndata could not be updated with the new predictions...\n see the error below:");
+                 return(stop(cond))})
+
+
+
       if (!flush) {
-        tryCatch(hex[which(v.na), Y] <- pred,
+        tryCatch(hex[which(v.na), Y] <- pred[,1],
                  error = function(cond) {
                    message("\nupdating the data on the java server failed...\nSee the error below:");
                    return(stop(cond))})
@@ -342,7 +347,7 @@ iterate <- function(procedure,
 
 
         if (!flush) {
-          tryCatch(bhex[which(b.na), Y] <- pred,
+          tryCatch(bhex[which(b.na), Y] <- pred[,1],
                    error = function(cond) {
                      message("\nUpdating the server's bootstrap data failed...\nSee the server's error:");
                      return(stop(cond))})
@@ -402,13 +407,27 @@ iterate <- function(procedure,
         if (debug) md.log("imputation was improved, new values are replaced", date=debug, time=debug, trace=FALSE)
         if (debug) md.log(paste(round(percentImprove, 6), "<", - (if (is.null(tolerance)) 0.001 else tolerance)),
                           date=debug, time=debug, trace=FALSE)
+
         ## do not convert pred to a vector. let it be "H2OFrame"
-        tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = hex[which(v.na), X])[,1],
+        tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = hex[which(v.na), X]),
                  error = function(cond) {
                    message("\npredictions could not be generated from the model...\nsee the server's error below:");
                    return(stop(cond))})
         Sys.sleep(sleep)
         if (debug) md.log("predictions were generated", date=debug, time=debug, trace=FALSE)
+
+        # if the variable is a factor and stochastic process is activated, store the predictions
+        if (stochastic) {
+          if (FAMILY[z] == 'binomial' || FAMILY[z] == 'multinomial') {
+            tryCatch(factorPred <- as.data.frame(pred),
+                     error = function(cond) {
+                       message("\npredictions could not be converted to dataframe...\n see the error below:");
+                       return(stop(cond))})
+          }
+        }
+
+        # THEN, MAKE SURE 'pred' is only including the actual predictions
+        pred <- pred[,1]
 
         tryCatch(VEK <- as.vector(pred[,1]),
                  error = function(cond) {
