@@ -7,7 +7,7 @@
 #' @author E. F. Haghish, based on code from 'prelim' frunction in missMDA R package
 #' @examples
 #'
-#' \donttest{
+#' \dontrun{
 #' data(iris)
 #' require(mice)
 #' irisNA <- mlim.na(iris, p = 0.1, seed = 2022)

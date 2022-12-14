@@ -14,7 +14,7 @@
 #' @param ... arguments to be passed to mlim
 #' @return imputed data.frame
 #' @examples
-#' \donttest{
+#' \dontrun{
 #' data(iris)
 #'
 #' # add 10% stratified missing values to one factor variable

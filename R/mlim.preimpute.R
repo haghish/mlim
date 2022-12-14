@@ -20,7 +20,7 @@
 #' @return imputed data.frame
 #' @author E. F. Haghish
 #' @examples
-#' \donttest{
+#' \dontrun{
 #' data(iris)
 #'
 #' # add 10% stratified missing values to one factor variable

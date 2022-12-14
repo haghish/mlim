@@ -24,8 +24,10 @@
 #' @importFrom stats rnorm
 #' @return list, including multiple imputed datasets
 #' @author E. F. Haghish
-#' @export
-#'
+#' @keywords Internal
+#' @noRd
+
+
 mlim.shuffle <- function(df, imputed, m, report = NULL) {
   MI    <- NULL
   if (!is.null(report)) md.log("Stochastic Shuffling", section="paragraph", trace=FALSE)

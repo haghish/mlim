@@ -243,7 +243,7 @@
 #'
 #' @examples
 #'
-#' \donttest{
+#' \dontrun{
 #' data(iris)
 #'
 #'

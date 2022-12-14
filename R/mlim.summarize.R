@@ -7,7 +7,7 @@
 #               arguments are "scaled" nad "normalize".
 #' @return estimated imputation accuracy via cross-valdiation procedure
 #' @examples
-#' \donttest{
+#' \dontrun{
 #' data(iris)
 #'
 #' # add 10% stratified missing values to one factor variable
