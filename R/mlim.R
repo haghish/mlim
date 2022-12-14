@@ -246,7 +246,6 @@
 #' \dontrun{
 #' data(iris)
 #'
-#'
 #' # add stratified missing observations to the data. to make the example run
 #' # faster, I add NAs only to a single variable.
 #' dfNA <- iris
@@ -272,12 +271,12 @@
 #
 # ### run GBM, RF, ELNET, and Ensemble algos and allow 60 minutes of tuning for each variable
 # ### this requires a lot of RAM on your machine and a lot of time!
-# # MLIM <- mlim(dfNA, algos = c("GBM", "RF","ELNET","Ensemble"), tuning_time=60*60)
-# # mlim.error(MLIM, dfNA, iris)
+# MLIM <- mlim(dfNA, algos = c("GBM", "RF","ELNET","Ensemble"), tuning_time=60*60)
+# mlim.error(MLIM, dfNA, iris)
 #
 # ### if you have a larger data, there is a few things you can set to make the
 # ### algorithm faster, yet, having only a marginal accuracy reduction as a trade-off
-# # MLIM <- mlim(dfNA, algos = 'ELNET', tolerance = 1e-3, doublecheck = FALSE)
+# MLIM <- mlim(dfNA, algos = 'ELNET', tolerance = 1e-3, doublecheck = FALSE)
 #' }
 #' @export
 
