@@ -16,6 +16,10 @@
 #' @keywords Internal
 #' @noRd
 
+
+
+# NOTE 1: stochastic is disabled in this function and i
+
 iterate <- function(procedure,
                     MI, dataNA, bdataNA,
                     preimputed.data, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
@@ -75,6 +79,10 @@ iterate <- function(procedure,
 
     # update bootstrap data
   }
+
+  # Do you need to generate stochastic binomial/multinomial predictions?
+  # ============================================================
+  factorPred <- NULL                   # default is NULL for all
 
   # ============================================================
   # If predictors are NULL, randomly fill the missing values
@@ -288,14 +296,15 @@ iterate <- function(procedure,
                  message("\ndata could not be updated with the new predictions...\n see the error below:");
                  return(stop(cond))})
 
-      # if (stochastic) {
-      #   if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer' || FAMILY[z] == 'quasibinomial') {
-      #     data[which(v.na), Y] <- rnorm(
-      #       n = length(VEK),
-      #       mean = VEK,
-      #       sd = iterationMetric[, "RMSE"])
-      #   }
-      # }
+      # if the variable is a factor and stochastic process is activated, store the predictions
+      if (stochastic) {
+        if (FAMILY[z] == 'binomial' || FAMILY[z] == 'multinomial') {
+          tryCatch(factorPred <- as.data.frame(pred),
+                   error = function(cond) {
+                     message("\npredictions could not be converted to dataframe...\n see the error below:");
+                     return(stop(cond))})
+        }
+      }
 
       if (!flush) {
         tryCatch(hex[which(v.na), Y] <- pred,
@@ -876,5 +885,6 @@ iterate <- function(procedure,
               hex = hex,
               bhex = bhex,
               data = data,
-              bdata = bdata))
+              bdata = bdata,
+              factorPred = factorPred))
 }

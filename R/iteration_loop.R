@@ -31,6 +31,8 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
                     verbosity, error, cpu, max_ram, min_ram, shutdown, clean,
                     stochastic) {
 
+  FACTORPREDCTIONS <- NULL
+
   # ------------------------------------------------------------
   # bootrtap
   #
@@ -74,6 +76,7 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
     dups <- bootstrapWeight(sampling_index)
     bdata <- data[1:nrow(data) %in% dups[,1], ]
     bdataNA <- is.na(bdata[, vars2impute, drop = FALSE])
+    message("\n")
     bdata <- mlim.preimpute(data=bdata, preimpute=preimpute, seed = NULL)
     bdata[, "mlim_bootstrap_weights_column_"] <- dups[,2] #OR ALTERNATIVELY #dups[,2] / sum(dups[,2])
 
@@ -211,7 +214,14 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
         bdata         <- it$bdata
         hex           <- it$hex
         bhex          <- it$bhex
+
+        # if 'factorPred' is not NULL, update the list:
+        if (!is.null(it$factorPred)) {
+          #remove the 'predict' column, which is the first column in predict dataframe
+          FACTORPREDCTIONS <- list(FACTORPREDCTIONS, Y = it$factorPred[,2:ncol(it$factorPred)])
+        }
       }
+
       else tryCatch(h2o::h2o.rm(h2o::h2o.get_automl("mlim")),
                     error = function(cond) {
                       return(NULL)})
@@ -305,17 +315,43 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
 
   # ------------------------------------------------------------
   # Adding stochastic variation
+  #
+  # Note: for continuous variables, RMSE is used as indication of
+  #       standard deviation. However, for binomial and multinomial
+  #       variables, the estimated probability of each level for
+  #       each missing observation is needed and thus, the predictions
+  #       of these variables should be stored and used in this section.
   # ============================================================
   if (stochastic) {
     md.log("STOCHASTIC TIMES", section="paragraph", trace=FALSE)
+
+    # evaluate each variable and add stochastic variation based on variable types
+    # ---------------------------------------------------------------------------
     for (Y in vars2impute) {
       v.na <- dataNA[, Y]
-      RMSE <- min(metrics[metrics$variable == Y, "RMSE"], na.rm = TRUE)
       VEK <- data[which(v.na), Y]
-      data[which(v.na), Y] <- rnorm(
-              n = length(VEK),
-              mean = VEK,
-              sd = RMSE)
+
+      if (FAMILY[which(ITERATIONVARS == Y)] == 'gaussian' ||
+          FAMILY[which(ITERATIONVARS == Y)] == 'gaussian_integer'
+          || FAMILY[which(ITERATIONVARS == Y)] == 'quasibinomial' ) {
+
+        RMSE <- min(metrics[metrics$variable == Y, "RMSE"], na.rm = TRUE)
+        data[which(v.na), Y] <- rnorm(
+          n = length(VEK),
+          mean = VEK,
+          sd = RMSE)
+      }
+
+      else if (FAMILY[which(ITERATIONVARS == Y)] == 'binomial' ||
+               FAMILY[which(ITERATIONVARS == Y)] == 'multinomial') {
+
+        stochFactors <- stochasticFactorImpute(levels = ncol(pred),
+                                               probMat = as.matrix(FACTORPREDCTIONS[[Y]]))
+
+        # replace the missing observations with the stochastic data
+        data[which(v.na), Y] <- stochFactors
+      }
+
     }
   }
 

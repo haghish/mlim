@@ -592,7 +592,13 @@ mlim <- function(data = NULL,
     # PREIMPUTATION: replace data with preimputed data
     # .........................................................
     if (preimpute != "iterate" & is.null(preimputed.data)) {
-      data <- mlim.preimpute(data=data, preimpute=preimpute, seed = NULL) # DO NOT RESET THE SEED!
+
+      # preimpute in single imputation ONLY. for multiple imputation, each
+      # bootstrap dataset is imputed seperately
+      if (m == 1) {
+        data <- mlim.preimpute(data=data, preimpute=preimpute, seed = NULL) # DO NOT RESET THE SEED!
+      }
+
       # reset the relevant predictors
       X <- allPredictors
     }
