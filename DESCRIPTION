@@ -15,7 +15,7 @@ Description: Machine learning algorithms have been used for performing
     single and multiple imputation. Automated machine learning is a procedure for 
     fine-tuning the model automatic, performing a random search for a model that 
     results in less error, without overfitting the data. The main idea is 
-    to allow the model to set its own parameters for imputing each variable seperately 
+    to allow the model to set its own parameters for imputing each variable separately 
     instead of setting fixed predefined parameters to impute all variables 
     of the dataset.
     Using automated machine learning, the package fine-tunes an Elastic 
