@@ -39,11 +39,11 @@ init <- function(nthreads, min_mem_size, max_mem_size, ignore_config = TRUE,
     }
     else {
       test <- test + 1
-      message("Java server could not be ignitiated. will try again in 3 secs...\n")
+      message("The Java server could not be initiated. It will retry in 3 seconds...\n")
       Sys.sleep(3)
     }
 
-    if (test > 10) stop("gave up trying. there is a problem on your system \nthat does not allow h2o server to be started...\n")
+    if (test > 10) stop("The attempt to start the H2O server was unsuccessful \ndue to an issue within your system...\n")
 
   }
 
