@@ -44,5 +44,5 @@ Imports:
     md.log (>= 0.2.0)
 RoxygenNote: 7.2.1
 LazyData: true
-URL: https://github.com/haghish/mlim, https://www.sv.uio.no/psi/english/people/aca/haghish/
+URL: https://github.com/haghish/mlim, https://www.sv.uio.no/psi/english/people/academic/haghish/
 BugReports: https://github.com/haghish/mlim/issues
