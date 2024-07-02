@@ -55,7 +55,7 @@ imputed. if \code{'load'} argument is provided, this argument will be ignored.}
              algorithms (and possibly add "Ensemble" as well, to make the most out
              of tuning the models).
 
-             Note that code{"XGB"} is only available in Mac OS and Linux. moreover,
+             Note that "XGB" is only available in Mac OS and Linux. moreover,
              "GBM", "DL" and "XGB" take the full given "tuning_time" (see below) to
              tune the best model for imputing he given variable, whereas "ELNET"
              will produce only one fine-tuned model, often at less time than

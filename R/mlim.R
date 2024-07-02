@@ -3,10 +3,10 @@
 #'              machine learning (AutoML)
 # @param impute character. specify a vector of algorithms to be used
 #        in the process of auto-tuning. the supported main algorithms are
-#        \code{"ELNET"}, \code{"RF"},
-#        \code{"GBM"}, \code{"DL"}, \code{"XGB"} (available for Mac and Linux), and \code{"Ensemble"}.
+#        "ELNET", "RF",
+#        "GBM", "DL", "XGB" (available for Mac and Linux), and "Ensemble".
 #
-#        the default is \code{"AUTO"}, which is mostly based on "ELNET", but also
+#        the default is "AUTO", which is mostly based on "ELNET", but also
 #        uses Extremely Randomized Forests, in addition to Random Forest, before
 #        concluding the imputation, when "ELNET" stops improving. This procedure is
 #        relatively fast and yields charming results, often equal to specifying "impute = c('ELNET', 'RF')",
@@ -42,7 +42,7 @@
 #'              algorithms (and possibly add "Ensemble" as well, to make the most out
 #'              of tuning the models).
 #'
-#'              Note that code{"XGB"} is only available in Mac OS and Linux. moreover,
+#'              Note that "XGB" is only available in Mac OS and Linux. moreover,
 #'              "GBM", "DL" and "XGB" take the full given "tuning_time" (see below) to
 #'              tune the best model for imputing he given variable, whereas "ELNET"
 #'              will produce only one fine-tuned model, often at less time than
