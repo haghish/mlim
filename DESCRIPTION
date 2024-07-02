@@ -1,11 +1,11 @@
 Package: mlim
 Type: Package
 Title: Single and Multiple Imputation with Automated Machine Learning
-Version: 0.3.0
+Version: 0.4.0
 Authors@R: 
     person("E. F. Haghish",
            role = c("aut", "cre", "cph"),
-           email = "haghish@uio.no")
+           email = "haghish@hotmail.com")
 Depends: 
     R (>= 3.5.0)
 Description: Machine learning algorithms have been used for performing 
@@ -42,7 +42,7 @@ Imports:
     missRanger,
     memuse,
     md.log (>= 0.2.0)
-RoxygenNote: 7.2.1
+RoxygenNote: 7.3.1
 LazyData: true
 URL: https://github.com/haghish/mlim, https://www.sv.uio.no/psi/english/people/academic/haghish/
 BugReports: https://github.com/haghish/mlim/issues
