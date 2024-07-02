@@ -1,7 +1,7 @@
 #' @title iteration_loop
 #' @description runs imputation iteration loop to fully impute a dataframe
 #' @importFrom utils setTxtProgressBar txtProgressBar capture.output packageVersion
-#' @importFrom h2o h2o.init as.h2o h2o.automl h2o.predict h2o.ls
+#' @importFrom h2o h2o.init as.h2o h2o.predict h2o.ls
 #'             h2o.removeAll h2o.rm h2o.shutdown h2o.get_automl
 #' @importFrom md.log md.log
 #' @importFrom memuse Sys.meminfo
