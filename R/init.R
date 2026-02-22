@@ -1,5 +1,5 @@
-#' @title extractMetrics
-#' @description extracts performance metrics from cross-validation
+#' @title init
+#' @description initiates h2o server
 #' @author E. F. Haghish
 #' @return connection object
 #' @keywords Internal
