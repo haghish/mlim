@@ -26,45 +26,45 @@ algoSelector <- function(algos, postimpute) {
                     "DL","DeepLearning",
                     "Ensemble","StackedEnsemble"))) > 0) stop("some of the 'algos' are not recognised")
 
-  if (postimpute) {
-    # impute (by default both GLM and DRF are used for imputing)
-    # ------------------------------------------------------------
-    if ("ELNET" %in% algos) impute <- c("GLM")
-    else if ("GLM" %in% algos) impute <- c("GLM")
-
-    if ("RF" %in% algos) impute <- c(impute, "DRF")
-    else if ("DRF" %in% algos) impute <- c(impute, "DRF")
-
-    # postimpute (start with GBM, then XGB, then DL, then Ensemble)
-    # ------------------------------------------------------------
-    if ("GBM" %in% algos) {
-      if (is.null(impute)) impute <- "GBM"
-      else postimputealgos <- c(postimputealgos, "GBM")
-    }
-    if ("XGB" %in% algos) {
-      if (Sys.info()["sysname"] == "Windows") {
-        stop("XGB is not available in Windows")
-      }
-      if (is.null(impute)) impute <- "XGBoost"
-      else postimputealgos <- c(postimputealgos, "XGBoost")
-    }
-    if ("DL" %in% algos) {
-      if (is.null(impute)) impute <- "DeepLearning"
-      else postimputealgos <- c(postimputealgos, "DeepLearning")
-    }
-
-    # if Ensemble is specified, include the 'impute' algorithms
-    if ("Ensemble" %in% algos) {
-      if (is.null(impute)) stop("Ensemble is a meta learner and requires other algorithms. ")
-      else postimputealgos <- c(impute, postimputealgos, "StackedEnsemble")
-    }
-  }
-
-  # use all algorithms for imputation
-  else {
-    impute <- algos
-  }
-
+  # if (postimpute) {
+  #   # impute (by default both GLM and DRF are used for imputing)
+  #   # ------------------------------------------------------------
+  #   if ("ELNET" %in% algos) impute <- c("GLM")
+  #   else if ("GLM" %in% algos) impute <- c("GLM")
+  #
+  #   if ("RF" %in% algos) impute <- c(impute, "DRF")
+  #   else if ("DRF" %in% algos) impute <- c(impute, "DRF")
+  #
+  #   # postimpute (start with GBM, then XGB, then DL, then Ensemble)
+  #   # ------------------------------------------------------------
+  #   if ("GBM" %in% algos) {
+  #     if (is.null(impute)) impute <- "GBM"
+  #     else postimputealgos <- c(postimputealgos, "GBM")
+  #   }
+  #   if ("XGB" %in% algos) {
+  #     if (Sys.info()["sysname"] == "Windows") {
+  #       stop("XGB is not available in Windows")
+  #     }
+  #     if (is.null(impute)) impute <- "XGBoost"
+  #     else postimputealgos <- c(postimputealgos, "XGBoost")
+  #   }
+  #   if ("DL" %in% algos) {
+  #     if (is.null(impute)) impute <- "DeepLearning"
+  #     else postimputealgos <- c(postimputealgos, "DeepLearning")
+  #   }
+  #
+  #   # if Ensemble is specified, include the 'impute' algorithms
+  #   if ("Ensemble" %in% algos) {
+  #     if (is.null(impute)) stop("Ensemble is a meta learner and requires other algorithms. ")
+  #     else postimputealgos <- c(impute, postimputealgos, "StackedEnsemble")
+  #   }
+  # }
+  #
+  # # use all algorithms for imputation
+  # else {
+  #   impute <- algos
+  # }
+  impute <- algos
 
   return(list(impute=impute, postimpute=postimputealgos))
 }

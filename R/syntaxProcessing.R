@@ -23,6 +23,20 @@ syntaxProcessing <- function(data, preimpute, impute, ram,
   min_ram <- NULL
   max_ram <- NULL
 
+  # Check for fully missing variables
+  fully_missing <- names(data)[vapply(
+    data,
+    function(x) all(is.na(x)),
+    logical(1)
+  )]
+
+  if (length(fully_missing)) {
+    stop(
+      "Completely missing variables cannot be used by mlim: ",
+      paste(fully_missing, collapse = ", ")
+    )
+  }
+
   stopifnot(
     #"'data' is not a data.frame" = is.data.frame(data) | inherits(data, "mlim"),
     #"'data' has no observations" = dim(data) >= 1, #not applicable to mlim object

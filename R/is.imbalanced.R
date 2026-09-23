@@ -17,7 +17,7 @@ is.imbalanced <- function(x) {
   # define a criteria for imbalance, to prefer AUCPR to AUC.
   # Here I select any difference more than 0.3 (e.g. 70% - 30%) as
   # imbalanced and prefer AUPRC for tuning
-  if (diff >= 0.3) imbalanced <- TRUE
+  if (diff <= 0.3) imbalanced <- TRUE
 
   return(imbalanced)
 }
