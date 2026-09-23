@@ -23,7 +23,7 @@ mlim(
   report = NULL,
   tolerance = 0.001,
   doublecheck = TRUE,
-  preimpute = "RF",
+  preimpute = "mm",
   cpu = -1,
   ram = NULL,
   flush = FALSE,
@@ -100,7 +100,7 @@ the imputed values are expected to be}
 but it can be reduced to \code{3} (not recommended, see below).}
 
 \item{cv}{logical. specify number of k-fold Cross-Validation (CV). values of
-10 or higher are recommended. default is 10.}
+5 or higher are required. default is 10.}
 
 \item{matching}{logical. if \code{TRUE}, imputed values are coerced to the
 closest value to the non-missing values of the variable.
