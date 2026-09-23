@@ -5,35 +5,44 @@ export(mlim.error)
 export(mlim.mids)
 export(mlim.na)
 export(mlim.preimpute)
+export(mlim.stata)
 export(mlim.summarize)
 importFrom(curl,curl)
-importFrom(h2o,as.h2o)
-importFrom(h2o,h2o.automl)
-importFrom(h2o,h2o.clusterIsUp)
-importFrom(h2o,h2o.clusterStatus)
-importFrom(h2o,h2o.getId)
-importFrom(h2o,h2o.get_automl)
-importFrom(h2o,h2o.init)
-importFrom(h2o,h2o.load_frame)
-importFrom(h2o,h2o.ls)
-importFrom(h2o,h2o.no_progress)
-importFrom(h2o,h2o.predict)
-importFrom(h2o,h2o.removeAll)
-importFrom(h2o,h2o.rm)
-importFrom(h2o,h2o.save_frame)
-importFrom(h2o,h2o.shutdown)
+importFrom(h2o,
+  as.h2o,
+  h2o.automl,
+  h2o.clusterIsUp,
+  h2o.clusterStatus,
+  h2o.getId,
+  h2o.get_automl,
+  h2o.init,
+  h2o.load_frame,
+  h2o.ls,
+  h2o.no_progress,
+  h2o.predict,
+  h2o.removeAll,
+  h2o.rm,
+  h2o.save_frame,
+  h2o.shutdown
+)
 importFrom(md.log,md.log)
 importFrom(memuse,Sys.meminfo)
 importFrom(mice,as.mids)
-importFrom(missRanger,imputeUnivariate)
-importFrom(missRanger,missRanger)
-importFrom(stats,median)
-importFrom(stats,na.omit)
-importFrom(stats,rnorm)
-importFrom(stats,setNames)
-importFrom(stats,var)
+importFrom(missRanger,
+  imputeUnivariate,
+  missRanger
+)
+importFrom(stats,
+  median,
+  na.omit,
+  rnorm,
+  setNames,
+  var
+)
 importFrom(tools,file_ext)
-importFrom(utils,capture.output)
-importFrom(utils,packageVersion)
-importFrom(utils,setTxtProgressBar)
-importFrom(utils,txtProgressBar)
+importFrom(utils,
+  capture.output,
+  packageVersion,
+  setTxtProgressBar,
+  txtProgressBar
+)
