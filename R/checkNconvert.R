@@ -29,17 +29,18 @@
 
 checkNconvert <- function(data, vars2impute, ignore,
                           ignore.rank=FALSE, report=NULL) {
-  
-  # CHECK THAT 'data' is a data.frame
-  
+
   mem <- NULL
   orderedIndex <- 0
 
-  ncl <- ncol(data)
+  COLNAMES <- colnames(data)
+  COLNAMES <- COLNAMES[!COLNAMES %in% ignore]
+
+  ncl <- length(COLNAMES)
   features <- character(ncl)
   family <- character(ncl)
-  classes <- lapply(data, class)
-  COLNAMES <- colnames(data)
+  classes <- lapply(data[, COLNAMES, drop = FALSE], class)
+
 
   # get the vartype of the variables that should be imputed
   # convert incompatible variable types
@@ -122,7 +123,11 @@ checkNconvert <- function(data, vars2impute, ignore,
               COLNAMES = COLNAMES[index],
               data = data,
               mem = mem,
-              orderedCols = which(features == "ordered")))
+              orderedCols = match(
+                COLNAMES[features == "ordered"],
+                colnames(data))
+              )
+         )
 }
 
 
