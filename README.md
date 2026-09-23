@@ -92,10 +92,10 @@ Below are some comparisons between different R packages for carrying out multipl
 
 
 
-Installation
-------------
+R Installation
+--------------
 
-**`mlim`** is under fast development. The package receive monthly updates on CRAN. Therefore, it is recommended that you install the GitHub version until version 0.1 is released. To install the latest development version from GitHub:
+To install the latest development version from GitHub:
 
 ``` r
 library(devtools)
@@ -105,6 +105,23 @@ install_github("haghish/mlim")
 Or alternatively, install the latest stable version from CRAN:
 ``` r
 install.packages("mlim")
+```
+
+Stata Installation
+------------------
+
+__`mlim`__ is also available in Stata. The [__`github package`__](https://github.com/haghish/github) is the only recommended way for installing **`mlim`**. Once [__`github`__](https://github.com/haghish/github) is installed, you can install either the development version or the stable version of the package. 
+
+if you like to help testing the newst development, install the development vesion:
+
+```js
+github install haghish/mlim
+```
+
+Otherwise, install the latest stable release (recommended for general users)
+
+```js
+github install haghish/mlim, stable
 ```
 
 Supported algorithms
