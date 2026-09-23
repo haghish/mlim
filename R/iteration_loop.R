@@ -22,7 +22,8 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
                     error_metric, FAMILY, cv, tuning_time,
                     max_models,
                     keep_cv,
-                    autobalance, balance, seed, save, flush,
+                    autobalance, #balance,
+                    seed, save, flush,
                     verbose, debug, report, sleep,
 
                     # saving settings
@@ -48,6 +49,8 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
 
   ####### ===============================================
   ####### BOOTSTRAP AND BALANCING DRAMA
+  ####### BALANCING IS NOT YET IMPLEMENTED FOR MULTIPLE IMPUTATION BECAUSE
+  ####### THIS ISSUE SHOULD BE ADDRESSED IN FUTURE UPDATES
   ####### ===============================================
   #??? THIS NEEDS FURTHER UPDATE IF 'autobalance' IS ACTIVATED
   # THE SOlUTION WOULD BE TO CALCULATE BALANCING WEIGHTS FOR
@@ -179,7 +182,8 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
             error_metric, FAMILY=FAMILY, cv, tuning_time,
             max_models,
             keep_cv,
-            autobalance, balance, seed, save, flush,
+            autobalance, #balance,
+            seed, save, flush,
             verbose, debug, report, sleep,
             # saving settings
             mem, orderedCols, ignore, maxiter,
