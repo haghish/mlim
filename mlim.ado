@@ -12,7 +12,7 @@ Syntax
 > __mlim__ [, _m(#)_ _algos(string)_ _stochastic_ _nostochastic_
 _ignore(varlist)_ _tuningtime(#)_ _maxmodels(#)_ _maxiter(#)_
 _cv(#)_ _matching_ _noautobalance_ _balance(varlist)_ _seed(#)_
-_verbosity(string)_ _report(string)_ _tolerance(#)_ _nodoublecheck_
+_verbosity(string)_ _report(string)_ _tolerance(#)_ 
 _preimpute(string)_ _cpu(#)_ _ram(#)_ _flush_ _save(string)_
 _load(string)_ _java(string)_ _filename(string)_
 _debug_ ]
@@ -69,7 +69,6 @@ Options
 | __verbosity(string)__ | Passes __verbosity__ to R. |
 | __report(string)__    | Passes a report path or report specification to R. |
 | __tolerance(#)__    | Passes the convergence __tolerance__ to R. |
-| __nodoublecheck__   | Passes __doublecheck = FALSE__ to R. Experimental in this source. |
 | __preimpute(string)__ | Passes __preimpute__ to R. |
 | __cpu(#)__ | Passes the requested number of CPUs to R. |
 | __ram(#)__ | Passes the requested RAM value to R. |
@@ -208,8 +207,7 @@ License
 
 _MIT License_
 
-Generating the help file
-------------------------
+- - -
 
 This documentation is written in Markdown inside a MarkDoc documentation block.
 After saving the program as __mlim.ado__, generate the Stata help file with:
@@ -219,7 +217,7 @@ After saving the program as __mlim.ado__, generate the Stata help file with:
 ***/
 
 
-capture program drop mlim
+*capture program drop mlim
 program define mlim
     version 14
 
@@ -238,7 +236,6 @@ program define mlim
 		VERBOSITY(string)                                   ///
 		REPORT(string)                                      ///
 		TOLERANCE(numlist max=1)                            ///
-		NODOUBLECHECK                                       /// UNDER TESTING
 		PREIMPUTE(string)                                   ///
 		CPU(numlist integer max=1)                          ///
 		RAM(numlist max=1)                                  ///
@@ -393,9 +390,6 @@ program define mlim
 
     // convergence tolerance
     if "`tolerance'" != "" local rargs `"`rargs', tolerance = `tolerance'"'
-
-    // double checking
-    if "`nodoublecheck'" != "" local rargs `"`rargs', doublecheck = FALSE"'
 
     // preimputation
     if `"`preimpute'"' != "" local rargs `"`rargs', preimpute = "`preimpute'""'
