@@ -11,8 +11,8 @@ make mlim, replace toc pkg  version(0.1)                                     ///
      url("https://github.com/haghish/mlim")                                  ///
      title("Single and Multiple Imputation with Automated Machine Learning") ///
      description("")                                                         ///
-     install("mlim.do;mlim.do;mlim.sthlp;mlim.sthlp;mlim.do")                ///
-     iancillary("")                                                         
+     install("mlim.ado;mlim.sthlp;")                                         ///
+     ancillary("")                                                         
 
 // Generate the MarkDoc documentation
 markdoc "mlim.ado", mini export(sthlp) replace
