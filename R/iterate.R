@@ -33,7 +33,8 @@ iterate <- function(procedure,
                     error_metric, FAMILY, cv, tuning_time,
                     max_models,
                     keep_cv,
-                    autobalance, balance, seed, save, flush,
+                    autobalance, #balance,
+                    seed, save, flush,
 
                     verbose, debug, report, sleep,
 
@@ -170,9 +171,10 @@ iterate <- function(procedure,
       balance_classes <- FALSE
       #sort_metric <- "mean_per_class_error" #"RMSE" #this is the default metric, not mean_per_class
 
-      if (Y %in% balance | autobalance) {
-        balance_classes <- TRUE
-      }
+      # if (Y %in% balance | autobalance) {
+      #   balance_classes <- TRUE
+      # }
+      if (autobalance) balance_classes <- TRUE
 
       ## SHOULD MLIM INCLUDE DIFFERENT MODEL EVALUATION METRICS BASED ON VARTYPE?
       ## FOR NOW, KEEP IT TO THE DEFAULT
@@ -654,7 +656,7 @@ iterate <- function(procedure,
       postimputealgos=postimputealgos,
       ignore=ignore,
       autobalance = autobalance,
-      balance = balance,
+      #balance = balance,
       save = save,
       maxiter = maxiter,
       miniter = miniter,
