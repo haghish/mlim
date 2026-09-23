@@ -94,19 +94,18 @@
 #'                   as a result, the better tuned the model, the more accurate
 #'                   the imputed values are expected to be
 #' @param autobalance logical. if TRUE (default), binary and multinomial factor variables
-#'                    will be balanced before the imputation to obtain fairer
-#'                    and less-biased imputations, which are typically in favor
-#'                    of the majority class.
-#'                    if FALSE, imputation fairness will be sacrificed for overall accuracy, which
-#'                    is not recommended, although it is commonly practiced in other missing data
-#'                    imputation software. MLIM is highly concerned with imputation fairness for
-#'                    factor variables and autobalancing is generally recommended.
-#'                    in fact, higher overall accuracy does not mean a better imputation as
-#'                    long as minority classes are neglected, which increases the bias in favor of the
-#'                    majority class. if you do not wish to autobalance all the
-#'                    factor variables, you can manually specify the variables
-#'                    that should be balanced using the 'balance' argument (see below).
-#'
+#'                    will be balanced before single imputation. This argument
+#'                    is currently only implemented for single imputation.
+#                    if FALSE, imputation fairness will be sacrificed for overall accuracy, which
+#                    is not recommended, although it is commonly practiced in other missing data
+#                    imputation software. MLIM is highly concerned with imputation fairness for
+#                    factor variables and autobalancing is generally recommended.
+#                    in fact, higher overall accuracy does not mean a better imputation as
+#                    long as minority classes are neglected, which increases the bias in favor of the
+#                    majority class. if you do not wish to autobalance all the
+#                    factor variables, you can manually specify the variables
+#                    that should be balanced using the 'balance' argument (see below).
+#
 #                    NOTE: when a variable is balanced prior to the imputation, a different
 #                    bootstrap sampling procedure will be used. in doing so, instead of
 #                    carrying out bootstrap subsamples with replacement and adding the
@@ -114,12 +113,12 @@
 #                    bootstrap procedure without replacement is performed because the weights
 #                    of the artificially balanced data will conflicts the weights of the
 #                    bootstrap data.
-#' @param balance character vector, specifying variable names that should be
-#'                balanced before imputation. balancing the prevalence might
-#'                decrease the overall accuracy of the imputation, because it
-#'                attempts to ensure the representation of the rare outcome.
-#'                this argument is optional and intended for advanced users that
-#'                impute a severely imbalance categorical (nominal) variable.
+# @param balance character vector, specifying variable names that should be
+#                balanced before imputation. balancing the prevalence might
+#                decrease the overall accuracy of the imputation, because it
+#                attempts to ensure the representation of the rare outcome.
+#                this argument is optional and intended for advanced users that
+#                impute a severely imbalance categorical (nominal) variable.
 #' @param matching logical. if \code{TRUE}, imputed values are coerced to the
 #'                 closest value to the non-missing values of the variable.
 #'                 if set to "AUTO", 'mlim' decides whether to match
@@ -298,7 +297,7 @@ mlim <- function(data = NULL,
 
                  matching = "AUTO",    #EXPERIMENTAL
                  autobalance = TRUE,
-                 balance = NULL,       #EXPERIMENTAL
+                 #balance = NULL,       #EXPERIMENTAL
                  #ignore.rank = FALSE, #to ignore it, they should make it unordered!
                  # weights_column = NULL,
 
@@ -353,6 +352,8 @@ mlim <- function(data = NULL,
   stopifnot(
     "incompatible '...' arguments" = (names(list(...)) %in% hidden_args)
   )
+
+  if (m > 1) autobalance <- FALSE # set autobalance to FALSE for multiple imputation
 
   # Simplify the syntax by taking arguments that are less relevant to the majority
   # of the users out
@@ -416,8 +417,8 @@ mlim <- function(data = NULL,
     ITERATIONVARS  <- load$ITERATIONVARS# variables to be imputed
     impute         <- load$impute       # reimputation algorithm(s)
     postimputealgos<- load$postimputealgos
-    autobalance    <- load$autobalance
-    balance        <- load$balance
+    autobalance    <- load$autobalance #EXPERIMENTAL
+    #balance        <- load$balance #EXPERIMENTAL
     ignore         <- load$ignore
     save           <- load$save
     maxiter        <- load$maxiter
@@ -654,7 +655,8 @@ mlim <- function(data = NULL,
                                error_metric, FAMILY=FAMILY, cv, tuning_time,
                                max_models,
                                keep_cv,
-                               autobalance, balance, seed, save, flush,
+                               autobalance, #balance,
+                               seed, save, flush,
                                verbose, debug, report, sleep,
                                # saving settings
                                mem, orderedCols, ignore, maxiter,
