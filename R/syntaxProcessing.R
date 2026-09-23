@@ -71,7 +71,7 @@ syntaxProcessing <- function(data, preimpute, impute, ram,
     max_ram <- NULL
   }
 
-  if ("StackEnsemble" %in% impute) {
+  if ("StackedEnsemble" %in% impute) {
     keep_cross_validation_predictions <- TRUE
   }
   else {
