@@ -32,7 +32,8 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
                     verbosity, error, cpu, max_ram, min_ram, shutdown, clean,
                     stochastic) {
 
-  FACTORPREDCTIONS <- NULL
+  #FACTORPREDCTIONS <- NULL
+  FACTORPREDCTIONS <- list()
 
   # ------------------------------------------------------------
   # bootrtap
@@ -217,15 +218,19 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
         hex           <- it$hex
         bhex          <- it$bhex
 
-        # if 'factorPred' is not NULL, update the list:
+        ## if 'factorPred' is not NULL, update the list:
+        # if (!is.null(it$factorPred)) {
+        #   #remove the 'predict' column, which is the first column in predict dataframe
+        #   #Ok <<- it$factorPred[,2:ncol(it$factorPred)]
+        #   if (length(FACTORPREDCTIONS) > 0) FACTORPREDCTIONS <- list(FACTORPREDCTIONS, Y = it$factorPred[,2:ncol(it$factorPred)])
+        #   else FACTORPREDCTIONS <- list(Y = it$factorPred[,2:ncol(it$factorPred)])
+        #
+        #   # update the name of the new item
+        #   names(FACTORPREDCTIONS)[length(FACTORPREDCTIONS)] <- Y
+        # }
         if (!is.null(it$factorPred)) {
-          #remove the 'predict' column, which is the first column in predict dataframe
-          #Ok <<- it$factorPred[,2:ncol(it$factorPred)]
-          if (length(FACTORPREDCTIONS) > 0) FACTORPREDCTIONS <- list(FACTORPREDCTIONS, Y = it$factorPred[,2:ncol(it$factorPred)])
-          else FACTORPREDCTIONS <- list(Y = it$factorPred[,2:ncol(it$factorPred)])
-
-          # update the name of the new item
-          names(FACTORPREDCTIONS)[length(FACTORPREDCTIONS)] <- Y
+          FACTORPREDCTIONS[[Y]] <-
+            it$factorPred[, 2:ncol(it$factorPred), drop = FALSE]
         }
       }
 
@@ -241,8 +246,6 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
 
       # update the statusbar
       if (verbose==0) setTxtProgressBar(pb, (which(ITERATIONVARS == Y)))
-
-
     }
 
     # CHECK CRITERIA FOR RUNNING THE NEXT ITERATION
@@ -302,7 +305,6 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
   #   md.log("return previous iteration's data", date=debug, time=debug, trace=FALSE)
   # }
 
-
   if (clean) {
     tryCatch(h2o::h2o.removeAll(),
              error = function(cond) {
@@ -343,6 +345,7 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
           || FAMILY[which(ITERATIONVARS == Y)] == 'quasibinomial' ) {
 
         RMSE <- min(metrics[metrics$variable == Y, "RMSE"], na.rm = TRUE)
+
         data[which(v.na), Y] <- rnorm(
           n = length(VEK),
           mean = VEK,
@@ -396,6 +399,5 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
   }
 
   class(data) <- c("mlim", "data.frame")
-
   return(dataLast=data)
 }
