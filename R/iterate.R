@@ -16,13 +16,10 @@
 #' @keywords Internal
 #' @noRd
 
-
-
 # NOTE 1: stochastic is disabled in this function and i
-
 iterate <- function(procedure,
                     MI, dataNA, bdataNA,
-                    preimputed.data, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
+                    preimputed.data, data, bdata, boot, hex, bhex, metrics, tolerance,
                     m, k, X, Y, z, m.it,
 
                     # loop data
@@ -35,7 +32,6 @@ iterate <- function(procedure,
                     keep_cv,
                     autobalance, #balance,
                     seed, save, flush,
-
                     verbose, debug, report, sleep,
 
                     # saving settings
@@ -535,9 +531,6 @@ iterate <- function(procedure,
         # ------------------------------------------------------------
         # if (!stochastic) {
           iterationMetric[, error_metric] <- NA
-          if (!doublecheck) {
-            ITERATIONVARS <- setdiff(ITERATIONVARS, Y)
-          }
         # }
         metrics <- rbind(metrics, iterationMetric)
 

@@ -64,12 +64,12 @@
 #                  another alternative is "iterate", which instead of filling the missing observations with mean and mode, it
 #                  gradually adds the imputed variables to the vector of predictors, as it carries out the
 #                  first iteration.
-#' @param postimpute (EXPERIMENTAL FEATURE) logical. if TRUE, mlim uses algorithms rather than 'ELNET' for carrying out
-#'                   postimputation optimization. however, if FALSE, all specified algorihms will
-#'                   be used in the process of 'reimputation' together. the 'Ensemble' algorithm
-#'                   is encouraged when other algorithms are used. However, for general users
-#'                   unspecialized in machine learning, postimpute is NOT recommended because this
-#'                   feature is currently experimental, prone to over-fitting, and highly computationally extensive.
+# @param postimpute (EXPERIMENTAL FEATURE) logical. if TRUE, mlim uses algorithms rather than 'ELNET' for carrying out
+#                   postimputation optimization. however, if FALSE, all specified algorihms will
+#                   be used in the process of 'reimputation' together. the 'Ensemble' algorithm
+#                   is encouraged when other algorithms are used. However, for general users
+#                   unspecialized in machine learning, postimpute is NOT recommended because this
+#                   feature is currently experimental, prone to over-fitting, and highly computationally extensive.
 #' @param stochastic logical. by default it is set to TRUE for multiple imputation and FALSE for
 #'                   single imputation. stochastic argument is currently under testing and is intended to
 #'                   avoid inflating the correlation between imputed valuables.
@@ -159,16 +159,6 @@
 #'                  of required iterations at a marginal increase of imputation error.
 #'                  for larger datasets, value of "1e-3" is recommended to reduce number
 #'                  of iterations. the default value is '1e-3'.
-#' @param doublecheck logical. default is TRUE (which is conservative). if FALSE, if the estimated
-#'                    imputation error of a variable does not improve, the variable
-#'                    will be not reimputed in the following iterations. in general,
-#'                    deactivating this argument will slightly reduce the imputation
-#'                    accuracy, however, it significantly reduces the computation time.
-#'                    if your dataset is large, you are advised to set this argument to
-#'                    FALSE. (EXPERIMENTAL: consider that by avoiding several iterations
-#'                    that marginally improve the imputation accuracy, you might gain
-#'                    higher accuracy by investing your computational resources in fine-tuning
-#'                    better algorithms such as "GBM")
 #'
 # @param stopping_metric character.
 # @param stopping_rounds integer.
@@ -275,7 +265,7 @@
 #
 # ### if you have a larger data, there is a few things you can set to make the
 # ### algorithm faster, yet, having only a marginal accuracy reduction as a trade-off
-# MLIM <- mlim(dfNA, algos = 'ELNET', tolerance = 1e-3, doublecheck = FALSE)
+# MLIM <- mlim(dfNA, algos = 'ELNET', tolerance = 1e-3)
 #' }
 #' @export
 
@@ -283,7 +273,7 @@
 mlim <- function(data = NULL,
                  m = 1,
                  algos = c("ELNET"), #impute, postimpute
-                 postimpute = FALSE,
+                 #postimpute = FALSE, Experimental feature
                  stochastic = m > 1,
                  ignore = NULL,
 
@@ -308,12 +298,10 @@ mlim <- function(data = NULL,
 
                  # stopping criteria
                  tolerance = 1e-3,
-                 doublecheck = TRUE,
 
                  ## simplify the settings by taking these arguments out
                  preimpute = "mm",
                  #impute = "AUTO",
-                 #postimpute = "AUTO",
                  #error_metric  = "RMSE", #??? mormalize it
                  #stopping_metric = "AUTO",
                  #stopping_rounds = 3,
@@ -323,7 +311,6 @@ mlim <- function(data = NULL,
                  cpu = -1,
                  ram = NULL,
                  flush = FALSE,
-
 
                  # NOT YET IMPLEMENTED
                  preimputed.data = NULL,
@@ -335,6 +322,12 @@ mlim <- function(data = NULL,
                  #force.load = TRUE,
                  ...
                  ) {
+
+  # CHANGE IN SYNTAX
+  ##################
+
+  if (m > 1) autobalance <- FALSE # balancing for multiple imputation is not yet implemented
+  postimpute <- FALSE # should be removed in the next update
 
   # improvements for the next release
   # ============================================================
@@ -349,11 +342,7 @@ mlim <- function(data = NULL,
   # check the ... arguments
   # ============================================================
   hidden_args <- c("superdebug", "init", "ignore.rank", "sleep", "stochastic")
-  stopifnot(
-    "incompatible '...' arguments" = (names(list(...)) %in% hidden_args)
-  )
-
-  if (m > 1) autobalance <- FALSE # set autobalance to FALSE for multiple imputation
+  stopifnot("incompatible '...' arguments" = (names(list(...)) %in% hidden_args))
 
   # Simplify the syntax by taking arguments that are less relevant to the majority
   # of the users out
@@ -646,7 +635,7 @@ mlim <- function(data = NULL,
     #it is always NULL. It doesn't have to be saved
     bdata <- NULL
     dataLast <- iteration_loop(MI, dataNA, preimputed.data, data, bdata, boot=m>1,
-                               metrics, tolerance, doublecheck,
+                               metrics, tolerance,
                                m, k, X, Y, z, m.it,
                                # loop data
                                vars2impute, vars2postimpute, storeVars2impute,

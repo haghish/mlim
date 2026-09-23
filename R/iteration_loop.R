@@ -11,7 +11,7 @@
 #' @keywords Internal
 #' @noRd
 
-iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metrics, tolerance, doublecheck,
+iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metrics, tolerance,
                     m, k, X, Y, z, m.it,
 
                     # loop data
@@ -104,9 +104,6 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
   if (debug) md.log("data was sent to h2o cloud", date=debug, time=debug, trace=FALSE)
 
   # define iteration var. this is a vector of varnames that should be imputed
-  # if 'doublecheck' argument is FALSE, everytime a variable stops improving,
-  # remove it from ITERATIONVARS. When you get to postimputation, reset the
-  # ITERATIONVARS.
   ITERATIONVARS <- vars2impute
 
   # ------------------------------------------------------------
@@ -173,7 +170,7 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
           it <- iterate(
             procedure = procedure,
             MI, dataNA, bdataNA,
-            preimputed.data, data, bdata, boot, hex, bhex, metrics, tolerance, doublecheck,
+            preimputed.data, data, bdata, boot, hex, bhex, metrics, tolerance,
             m, k, X, Y, z=which(ITERATIONVARS == Y), m.it,
             # loop data
             ITERATIONVARS, vars2impute,

@@ -13,7 +13,7 @@
 {p 8 8 2} {bf:mlim} [, {it:m(#)} {it:algos(string)} {it:stochastic} {it:nostochastic}
 {it:ignore(varlist)} {it:tuningtime(#)} {it:maxmodels(#)} {it:maxiter(#)}
 {it:cv(#)} {it:matching} {it:noautobalance} {it:balance(varlist)} {it:seed(#)}
-{it:verbosity(string)} {it:report(string)} {it:tolerance(#)} {it:nodoublecheck}
+{it:verbosity(string)} {it:report(string)} {it:tolerance(#)} 
 {it:preimpute(string)} {it:cpu(#)} {it:ram(#)} {it:flush} {it:save(string)}
 {it:load(string)} {it:java(string)} {it:filename(string)}
 {it:debug} ]
@@ -69,13 +69,12 @@ R and Java Runtime should also be accessible via path environment.
 {col 5}{bf:maxiter(#)}{col 26}Passes {bf:maxiter = #} to R.
 {col 5}{bf:cv(#)}{col 26}Passes {bf:cv = #} to R.
 {col 5}{bf:matching}{col 26}Experimental option related to predictive matching. See Remarks below.
-{col 5}{bf:noautobalance}{col 26}Passes {bf:autobalance = FALSE} to R. Experimental in this source.
+{col 5}{bf:noautobalance}{col 26}Turns off class imbalance correction in single imputation
 {col 5}{bf:balance(varlist)}{col 26}Passes the listed variables to R as {bf:balance}. Experimental in this source.
 {col 5}{bf:seed(#)}{col 26}Passes the integer random-number seed to R.
 {col 5}{bf:verbosity(string)}{col 26}Passes {bf:verbosity} to R.
 {col 5}{bf:report(string)}{col 26}Passes a report path or report specification to R.
 {col 5}{bf:tolerance(#)}{col 26}Passes the convergence {bf:tolerance} to R.
-{col 5}{bf:nodoublecheck}{col 26}Passes {bf:doublecheck = FALSE} to R. Experimental in this source.
 {col 5}{bf:preimpute(string)}{col 26}Passes {bf:preimpute} to R.
 {col 5}{bf:cpu(#)}{col 26}Passes the requested number of CPUs to R.
 {col 5}{bf:ram(#)}{col 26}Passes the requested RAM value to R.
@@ -237,8 +236,7 @@ Package Updates on  {browse "http://www.x.com/Haghish":X}    {break}
 {p 4 4 2}
 {it:MIT License}
 
-
-{title:Generating the help file}
+{space 4}{hline}
 
 {p 4 4 2}
 This documentation is written in Markdown inside a MarkDoc documentation block.
