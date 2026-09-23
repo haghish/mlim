@@ -1,0 +1,7 @@
+v 0.1
+d Materials by E. F. Haghish
+d Department of Psychological Sciences, University of Bergen
+d haghish@uib.no
+d https://github.com/haghish/mlim
+
+p mlim
