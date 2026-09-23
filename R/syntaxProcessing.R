@@ -30,7 +30,7 @@ syntaxProcessing <- function(data, preimpute, impute, ram,
     #length(formula <- as.character(formula)) == 3L,
     #"'max_models' must be a positive integer equal or more than 1" = max_models >= 1,
     #"'tuning_time' must be a positive integer" = tuning_time >= 2,
-    "'cv' must be a positive integer equal or more than 10" = cv >= 10,
+    "'cv' must be a positive integer equal or more than 5" = cv >= 5,
     "'save' argument must have '*.mlim' file extension" = tools::file_ext(save) == "mlim"
   )
 
