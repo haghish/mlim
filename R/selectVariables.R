@@ -1,4 +1,3 @@
-
 #' @title select imputation variables
 #' @description selects variables relevant to the imputation process
 #' @importFrom md.log md.log
@@ -17,17 +16,6 @@ selectVariables <- function(data, ignore=NULL, verbose=FALSE, report=NULL) {
 
   # make sure that these variables were not meant to be ignored
   if (!is.null(ignore)) vars2impute[colnames(data)[vars2impute] %in% ignore] <- FALSE
-
-
-
-  #data[, vars2impute] <- converted$X
-
-  #if (verbose) {
-  #  message("\n  Variables to impute:\t\t")
-  #  message(colnames(data)[vars2impute], sep = ", ")
-  #  message("\n")
-  #
-  #}
 
   if (!is.null(report)) {
     md.log(paste("Variables to impute:", paste(colnames(data)[vars2impute],
