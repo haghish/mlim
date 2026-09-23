@@ -143,7 +143,7 @@
 #'              currently set to FALSE by default, but it is recommended if you
 #'              have limited amount of RAM or large datasets.
 #' @param cv logical. specify number of k-fold Cross-Validation (CV). values of
-#'               10 or higher are recommended. default is 10.
+#'               5 or higher are required. default is 10.
 # @param error_metric character. specify the minimum improvement
 #                                  in the estimated error to proceed to the
 #                                  following iteration or stop the imputation.
@@ -312,7 +312,7 @@ mlim <- function(data = NULL,
                  doublecheck = TRUE,
 
                  ## simplify the settings by taking these arguments out
-                 preimpute = "RF",
+                 preimpute = "mm",
                  #impute = "AUTO",
                  #postimpute = "AUTO",
                  #error_metric  = "RMSE", #??? mormalize it
