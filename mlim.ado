@@ -63,7 +63,7 @@ Options
 | __maxiter(#)__      | Passes __maxiter = #__ to R. |
 | __cv(#)__           | Passes __cv = #__ to R. |
 | __matching__        | Experimental option related to predictive matching. See Remarks below. |
-| __noautobalance__   | Passes __autobalance = FALSE__ to R. Experimental in this source. |
+| __noautobalance__   | Turns off class imbalance correction in single imputation |
 | __balance(varlist)__ | Passes the listed variables to R as __balance__. Experimental in this source. |
 | __seed(#)__         | Passes the integer random-number seed to R. |
 | __verbosity(string)__ | Passes __verbosity__ to R. |
@@ -234,7 +234,6 @@ program define mlim
 		CV(numlist integer max=1)                           ///
 		MATCHING                                            /// UNDER TESTING
 		NOAUTOBALANCE                                       /// UNDER TESTING
-		BALANCE(varlist)                                    /// UNDER TESTING
 		SEED(numlist integer max=1)                         ///
 		VERBOSITY(string)                                   ///
 		REPORT(string)                                      ///
@@ -254,6 +253,7 @@ program define mlim
 		///POSTIMPUTE                                          ///
 		///PREIMPUTED(string asis)                             ///
 		///NOSHUTDOWN                                          /// NOT APPLICABLE
+		///BALANCE(varlist)                                    /// UNDER TESTING
 
     // SYntax check
     // ============================================================
@@ -377,7 +377,7 @@ program define mlim
     if "`noautobalance'" != "" local rargs `"`rargs', autobalance = FALSE"'
 	
     // variables to balance
-    if "`balance'" != "" local rargs `"`rargs', balance = scan(text = "`balance'", what = character(), quiet = TRUE)"'
+    //if "`balance'" != "" local rargs `"`rargs', balance = scan(text = "`balance'", what = character(), quiet = TRUE)"'
 
     // random seed
     if "`seed'" != "" local rargs `"`rargs', seed = `seed'"'
