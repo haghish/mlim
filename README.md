@@ -110,19 +110,19 @@ install.packages("mlim")
 Stata Installation
 ------------------
 
-__`mlim`__ is also available in Stata. The [__`github package`__](https://github.com/haghish/github) is the only recommended way for installing **`mlim`**. Once [__`github`__](https://github.com/haghish/github) is installed, you can install either the development version or the stable version of the package. 
-
-if you like to help testing the newst development, install the development vesion:
+__`mlim`__ is also available in Stata. The [__`github package`__](https://github.com/haghish/github) is the only recommended way for installing **`mlim`**. Once [__`github`__](https://github.com/haghish/github) is installed, you can install the package with the following command:
 
 ```js
 github install haghish/mlim
 ```
 
+<!--
 Otherwise, install the latest stable release (recommended for general users)
 
 ```js
 github install haghish/mlim, stable
 ```
+-->
 
 Supported algorithms
 --------------------
