@@ -8,7 +8,6 @@ mlim(
   data = NULL,
   m = 1,
   algos = c("ELNET"),
-  postimpute = FALSE,
   stochastic = m > 1,
   ignore = NULL,
   tuning_time = 900,
@@ -17,12 +16,10 @@ mlim(
   cv = 10L,
   matching = "AUTO",
   autobalance = TRUE,
-  balance = NULL,
   seed = NULL,
   verbosity = NULL,
   report = NULL,
   tolerance = 0.001,
-  doublecheck = TRUE,
   preimpute = "mm",
   cpu = -1,
   ram = NULL,
@@ -61,13 +58,6 @@ imputed. if \code{'load'} argument is provided, this argument will be ignored.}
              will produce only one fine-tuned model, often at less time than
              other algorithms need for developing a single model, which is why "ELNET"
              is work horse of the mlim imputation package.}
-
-\item{postimpute}{(EXPERIMENTAL FEATURE) logical. if TRUE, mlim uses algorithms rather than 'ELNET' for carrying out
-postimputation optimization. however, if FALSE, all specified algorihms will
-be used in the process of 'reimputation' together. the 'Ensemble' algorithm
-is encouraged when other algorithms are used. However, for general users
-unspecialized in machine learning, postimpute is NOT recommended because this
-feature is currently experimental, prone to over-fitting, and highly computationally extensive.}
 
 \item{stochastic}{logical. by default it is set to TRUE for multiple imputation and FALSE for
 single imputation. stochastic argument is currently under testing and is intended to
@@ -108,25 +98,8 @@ if set to "AUTO", 'mlim' decides whether to match
 or not, based on the variable classes. the default is "AUTO".}
 
 \item{autobalance}{logical. if TRUE (default), binary and multinomial factor variables
-will be balanced before the imputation to obtain fairer
-and less-biased imputations, which are typically in favor
-of the majority class.
-if FALSE, imputation fairness will be sacrificed for overall accuracy, which
-is not recommended, although it is commonly practiced in other missing data
-imputation software. MLIM is highly concerned with imputation fairness for
-factor variables and autobalancing is generally recommended.
-in fact, higher overall accuracy does not mean a better imputation as
-long as minority classes are neglected, which increases the bias in favor of the
-majority class. if you do not wish to autobalance all the
-factor variables, you can manually specify the variables
-that should be balanced using the 'balance' argument (see below).}
-
-\item{balance}{character vector, specifying variable names that should be
-balanced before imputation. balancing the prevalence might
-decrease the overall accuracy of the imputation, because it
-attempts to ensure the representation of the rare outcome.
-this argument is optional and intended for advanced users that
-impute a severely imbalance categorical (nominal) variable.}
+will be balanced before single imputation. This argument
+is currently only implemented for single imputation.}
 
 \item{seed}{integer. specify the random generator seed}
 
@@ -150,17 +123,6 @@ is desirable.  however, specifying values above 0 can reduce the number
 of required iterations at a marginal increase of imputation error.
 for larger datasets, value of "1e-3" is recommended to reduce number
 of iterations. the default value is '1e-3'.}
-
-\item{doublecheck}{logical. default is TRUE (which is conservative). if FALSE, if the estimated
-imputation error of a variable does not improve, the variable
-will be not reimputed in the following iterations. in general,
-deactivating this argument will slightly reduce the imputation
-accuracy, however, it significantly reduces the computation time.
-if your dataset is large, you are advised to set this argument to
-FALSE. (EXPERIMENTAL: consider that by avoiding several iterations
-that marginally improve the imputation accuracy, you might gain
-higher accuracy by investing your computational resources in fine-tuning
-better algorithms such as "GBM")}
 
 \item{preimpute}{character. specifies the 'primary' procedure of handling the missing
 data. before 'mlim' begins imputing the missing observations, they should

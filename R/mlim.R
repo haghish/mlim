@@ -56,12 +56,12 @@
 #'                  data with parallel Random Forest model. this is a very fast procedure,
 #'                  which later on, will be replaced within the "reimputation" procedure (see below).
 #'                  possible other alternative is \code{"mm"},
-#'                  which carries out mean/mode replacement, as practiced by most imputation algorithms.
+#'                  which carries out median/mode replacement, as practiced by most imputation algorithms.
 #'                  "mm" is much faster than "RF". if your dataset is very
 #'                  large, consider pre-imputing it before hand using 'mlim.preimpute()'
 #'                  function and passing the preimputed dataset to mlim (see "preimputed.data" argument).
 #
-#                  another alternative is "iterate", which instead of filling the missing observations with mean and mode, it
+#                  another alternative is "iterate", which instead of filling the missing observations with median and mode, it
 #                  gradually adds the imputed variables to the vector of predictors, as it carries out the
 #                  first iteration.
 # @param postimpute (EXPERIMENTAL FEATURE) logical. if TRUE, mlim uses algorithms rather than 'ELNET' for carrying out
@@ -545,7 +545,6 @@ mlim <- function(data = NULL,
       # announced feature and thus, just take the first dataset as preimputation
       if (inherits(preimputed.data, "mlim.mi")) {
         #preimputed.data <- preimputed.data[[1]]
-        #stop("use 'mlim.postimpute' function for postimputing multiple imputation datasets\n")
         stop("multiple imputation datasets cannot be used as 'preimputed.data'\n")
       }
 
