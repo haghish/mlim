@@ -1,61 +1,56 @@
 #' @title init
-#' @description initiates h2o server
+#' @description Initiates the H2O server.
 #' @author E. F. Haghish
-#' @return connection object
+#' @return H2O connection object.
 #' @keywords Internal
 #' @noRd
 
-init <- function(nthreads, min_mem_size, max_mem_size, ignore_config = TRUE,
-                 java = NULL, report, debug) {
+init <- function(nthreads,
+                 min_mem_size,
+                 max_mem_size,
+                 ignore_config = TRUE,
+                 java = NULL,
+                 debug = FALSE,
+                 port = 54321) {
 
   if (!is.null(java)) {
     Sys.setenv(JAVA_HOME = java)
   }
-  # Run H2O on the statistics server
-  # ============================================================
-  #try(h2o.shutdown(FALSE), silent = TRUE)
-  keepTrying <- TRUE
+
   connection <- NULL
-  test       <- 1
-  while (keepTrying) {
-    # h2o.init(jvm_custom_args = c("-help"))
-    # h2o.init(jvm_custom_args = c("-session_timeout=100"))
-    # bind_to_localhost = FALSE
-    # h2o.init(jvm_custom_args=c("-Dsys.ai.h2o.heartbeat.benchmark.enabled=true"))
-    tryCatch(connection <- h2o::h2o.init(nthreads = nthreads,
-                                         #name = "mlim_connection",
-                                         min_mem_size = min_mem_size,
-                                         max_mem_size = max_mem_size,
-                                         ignore_config = ignore_config,
-                                         insecure = TRUE,
-                                         https = FALSE,
-                                         log_level = if (debug) "DEBUG" else "FATA",
-                                         bind_to_localhost = FALSE),
-             error = function(cond) {
-               #message("connection to JAVA server failed...\n");
-               return()})
+
+  for (attempt in seq_len(10L)) {
+
+    connection <- tryCatch(
+      h2o::h2o.init(
+        nthreads = nthreads,
+        min_mem_size = min_mem_size,
+        max_mem_size = max_mem_size,
+        ignore_config = ignore_config,
+        port = port,
+        insecure = TRUE,
+        https = FALSE,
+        log_level = if (debug) "DEBUG" else "FATA",
+        bind_to_localhost = TRUE
+      ),
+      error = function(cond) NULL
+    )
+
     if (!is.null(connection)) {
-      keepTrying <- FALSE
+      return(connection)
     }
-    else {
-      test <- test + 1
-      message("The Java server could not be initiated. It will retry in 3 seconds...\n")
+
+    if (attempt < 10L) {
+      message(
+        "The H2O server could not be initiated. ",
+        "Retrying in 3 seconds...\n"
+      )
       Sys.sleep(3)
     }
-
-    if (test > 10) stop("The attempt to start the H2O server was unsuccessful \ndue to an issue within your system...\n")
-
   }
 
-  #if (!is.null(report)) {
-  #  if (!is.null(connection)) {
-  #    if (attributes(connection)$ip == "localhost") {
-  #      md.log("h2o.cluster was initialized", section="subsection")
-  #      md.log(paste("IP:",attributes(connection)$ip,
-  #                   "   port:",attributes(connection)$port))
-  #    }
-  #  }
-  #}
-
-  return(connection)
+  stop(
+    "The attempt to start the H2O server was unsuccessful ",
+    "due to an issue within your system."
+  )
 }
