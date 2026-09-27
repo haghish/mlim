@@ -2,7 +2,7 @@
 % Please edit documentation in R/mlim.error.R
 \name{mlim.error}
 \alias{mlim.error}
-\title{imputation error}
+\title{Evaluate imputation error}
 \usage{
 mlim.error(
   imputed,
@@ -15,71 +15,59 @@ mlim.error(
 )
 }
 \arguments{
-\item{imputed}{the imputed dataframe}
+\item{imputed}{Imputed data frame, \code{mlim} object,
+\code{mlim.mi} object, list of completed data frames,
+or \code{mids} object.}
 
-\item{incomplete}{the dataframe with missing values}
+\item{incomplete}{Original incomplete data frame.}
 
-\item{complete}{the original dataframe with no missing values}
+\item{complete}{Original complete data frame used as
+the reference.}
 
-\item{transform}{character. it can be either "standardize", which standardizes the
-numeric variables before evaluating the imputation error, or
-"normalize", which change the scale of continuous variables to
-range from 0 to 1. the default is NULL.}
+\item{transform}{Optional transformation for numeric
+variables. Supported values are \code{"standardize"}
+and \code{"normalize"}. The same transformation,
+estimated from \code{complete}, is applied to all
+three datasets.}
 
-\item{varwise}{logical, default is FALSE. if TRUE, in addition to
-mean accuracy for each variable type, the algorithm's
-performance for each variable (column) of the datast is
-also returned. if TRUE, instead of a numeric vector, a
-list is retuned.}
+\item{varwise}{Logical. If \code{TRUE}, variable-wise
+error estimates are returned in addition to overall
+estimates.}
 
-\item{ignore.missclass}{logical. the default is TRUE. if FALSE, the overall
-missclassification rate for imputed unordered factors will be
-returned. in general, missclassification is not recommended,
-particularly for multinomial factors because it is not robust
-to imbalanced data. in other words, an imputation might show
-a very high accuracy, because it is biased towards the majority
-class, ignoring the minority levels. to avoid this error,
-Mean Per Class Error (MPCE) is returned, which is the average
-missclassification of each class and thus, it is a fairer
-criteria for evaluating multinomial classes.}
+\item{ignore.missclass}{Logical. If \code{FALSE},
+ordinary misclassification error is also returned for
+unordered factors. The default is \code{TRUE}.}
 
-\item{ignore.rank}{logical (default is FALSE, which is recommended). if TRUE,
-the accuracy of imputation of ordered factors (ordinal variables)
-will be evaluated based on 'missclassification rate' instead of
-normalized euclidean distance. this practice is not recommended
-because higher classification rate for ordinal variables does not
-guarantee lower distances between the imputed levels, despite the
-popularity of evaluating ordinal variables based on missclassification
-rate. in other words, assume an ordinal variable has 5 levels (1. strongly
-disagree, 2. disagree, 3. uncertain, 4. agree, 5.strongly agree). in this
-example, if "ignore.rank = TRUE", then an imputation that imputes level
-"5" as "4" is equally inaccurate as other algorithm that imputes level "5"
-as "1". therefore, if you have ordinal variables in your dataset, make sure
-you declare them as "ordered" factors to get the best imputation accuracy.}
+\item{ignore.rank}{Logical. If \code{FALSE}, ordered
+factors are evaluated using normalized rank distance.
+If \code{TRUE}, they are treated as unordered factors.}
 }
 \value{
-numeric vector
+A named numeric vector, or a list when
+\code{varwise = TRUE}. For multiple imputations,
+returns a matrix or a list of variable-wise results.
 }
 \description{
-calculates NRMSE, missclassification rate, and miss-ranking
-             absolute mean distance, scaled between 0 to 1, where 1 means
-             maximum distance between the actual rank of a level and the
-             imputed level.
+Calculates normalized RMSE for numeric
+variables, mean per-class error for unordered factors,
+and normalized rank error for ordered factors.
 }
 \examples{
-
 \dontrun{
 data(iris)
+irisNA <- mlim.na(
+  iris, p = 0.1,
+  stratify = TRUE,
+  seed = 2022
+)
 
-# add 10\% missing values, ensure missingness is stratified for factors
-irisNA <- mlim.na(iris, p = 0.1, stratify = TRUE, seed = 2022)
+imp <- mlim(irisNA)
+mlim.error(imp, irisNA, iris)
 
-# run the default imputation
-MLIM <- mlim(irisNA)
-mlim.error(MLIM, irisNA, iris)
-
-# get error estimations for each variable
-mlim.error(MLIM, irisNA, iris, varwise = TRUE)
+mlim.error(
+  imp, irisNA, iris,
+  varwise = TRUE
+)
 }
 }
 \author{
