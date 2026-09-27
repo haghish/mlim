@@ -1,22 +1,37 @@
 #' @title add NA in a vector
-#' @description generates NA and replaces the actual values of a vector
-#'              with NA
+#' @description generates NA and replaces observed values
+#'              of a vector with NA
 #' @author E. F. Haghish
 #' @keywords Internal
 #' @noRd
-addNA <- function(x, p, stratify=FALSE) {
 
-  if (stratify & "factor" %in% class(x)) {
+addNA <- function(x, p, stratify = FALSE) {
+
+  if (stratify && "factor" %in% class(x)) {
+
     levs <- levels(x)
+
     for (l in levs) {
-      index <- which(x == l)
+
+      index <- which(!is.na(x) & x == l)
       len <- length(index)
-      x[index][sample(len, round(p * len))] <- NA
+      nmiss <- round(p * len)
+
+      if (nmiss > 0L) {
+        x[sample(index, nmiss)] <- NA
+      }
     }
   }
   else {
-    len <- length(x)
-    x[sample(len, round(p * len))] <- NA  # sample without replacement
+
+    index <- which(!is.na(x))
+    len <- length(index)
+    nmiss <- round(p * len)
+
+    if (nmiss > 0L) {
+      x[sample(index, nmiss)] <- NA
+    }
   }
+
   return(x)
 }
