@@ -1,3 +1,4 @@
+> __mlim is being updated to v. 1.0.0, with a major improvement in multiple imputation__
 
 <a href="https://github.com/haghish/mlim"><img src='man/figures/mlim.png' align="right" height="200" /></a>
 
