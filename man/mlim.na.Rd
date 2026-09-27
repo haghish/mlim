@@ -10,9 +10,9 @@ mlim.na(x, p = 0.1, stratify = FALSE, classes = NULL, seed = NULL)
 \item{x}{data.frame. x must be strictly a data.frame and any other
 data.table classes will be rejected}
 
-\item{p}{percentage of missingness to be added to the data}
+\item{p}{proportion of missingness to be added to the data}
 
-\item{stratify}{logical. if TRUE (default), stratified sampling will be
+\item{stratify}{logical. if TRUE, stratified sampling will be
 carried out, when adding NA values to 'factor' variables
 (either ordered or unordered). this feature makes evaluation
 of missing data imputation algorithms more fair, especially
