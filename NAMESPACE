@@ -11,8 +11,6 @@ importFrom(curl,curl)
 importFrom(h2o,
   as.h2o,
   h2o.automl,
-  h2o.clusterIsUp,
-  h2o.clusterStatus,
   h2o.getId,
   h2o.get_automl,
   h2o.init,
@@ -32,6 +30,7 @@ importFrom(missRanger,
   imputeUnivariate,
   missRanger
 )
+importFrom(readstata13,save.dta13)
 importFrom(stats,
   median,
   na.omit,
