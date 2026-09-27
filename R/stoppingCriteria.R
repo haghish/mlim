@@ -2,123 +2,67 @@
 #' @description evaluates the stopping criteria
 #' @param metrics estimated error from CV
 #' @param k iteration round
+#' @param maxiter maximum number of iterations
 #' @param error_metric character. stopping metric for the iteration. default is "RMSE"
-#' @return logical. if TRUE, the imputation goes on to the next iteration
+#' @return list containing the running status and current best error
 #' @author E. F. Haghish
 #' @keywords Internal
 #' @noRd
 
-stoppingCriteria <- function(method = "iteration_RMSE",
-                             miniter, maxiter,
-                             metrics, k, vars2impute,
-                             error_metric,
-                             tolerance,
-                             postimpute, runpostimpute,
-                             md.log) {
+stoppingCriteria <- function(metrics, k, maxiter, error_metric) {
 
-  # keep running unless...
-  running <- TRUE
-  error <- NA
-  errImprovement <- NA
-
-  # ............................................................
-  # as long as there is a variable that has been improving,
-  # keep iterating. however, if "double.check = FALSE", ignore
-  # variables that do not improve in any iteration throughout
-  # the rest of the iterations
-  # ............................................................
-  if (method == "varwise_NA") {
-    # as long as there is a variable that it's RMSE is not NA, keep going!
-    if (running) {
-      error <- mean(metrics[metrics$iteration == k,
-                            error_metric], na.rm = TRUE)
-
-      if (is.na(error)) {
-
-        # if all values were NA, well, stop then, if there is no postimpute!
-        if (is.null(postimpute)) {
-          if (is.na(error)) running <- FALSE
-        }
-        else {
-          if (!runpostimpute) {
-            runpostimpute <- TRUE
-            vars2impute <- NULL #avoid the loops on the base imputer
-          }
-          else {
-            running <- FALSE
-            runpostimpute <- FALSE
-          }
-        }
-      }
-
-
-
-    }
-  }
-
-  # ............................................................
-  # Decide the stopping criteria based on average improvement of
-  # RMSE per iteration
-  #
-  # ............................................................
-  if (method == "iteration_RMSE") {
-    # there has been no (or too little) improvement, stop!
-    if (running) {
-      error <- mean(metrics[metrics$iteration == k,
-                            error_metric], na.rm = TRUE)
-
-      if (k == 1) message("\n   ",error_metric,
-                      " = ", round(error,4), "\n", sep = "")
-
-      if (k >= 2) {
-        # get the rmse's that made NA, because of saturation
-        available <- !is.na(metrics[metrics$iteration == k, error_metric])
-        errPrevious <- mean(metrics[metrics$iteration == k-1 & available,
-                                    error_metric],
-                            na.rm = TRUE)
-
-        errImprovement <- error - errPrevious
-        if (!is.na(error) & !is.na(errImprovement)) {
-          percentImprove <- (errImprovement / errPrevious)
-        }
-
-        if (!is.na(errImprovement)) {
-          if (percentImprove < 0) {
-            message("\n   ",error_metric,
-                " = ", round(error,4), " (improved by ",
-                round(-percentImprove*100, 3),"%)", "\n", sep = "")
-          }
-          else {
-            message("\n   ",error_metric,
-                " = ", round(error,4), " (increased by ",
-                round(percentImprove*100, 3),"%)", "\n", sep = "")
-          }
-
-          #message(paste0(error_metric,
-          #            " improved by: ", round(-percentImprove*100,4),"%"))
-          #running <- errImprovement < (-tolerance)
-          running <- percentImprove < (-tolerance)
-        }
-      }
-    }
-  }
-
-
-  # if maximum iteration has been reached and still is running...
   # ------------------------------------------------------------
-  if (k == maxiter & running) {
+  # Identify accepted variable updates in the current iteration
+  #
+  # iterate() sets the error metric to NA when a newly fitted model
+  # does not improve the best previous model beyond the tolerance.
+  # Therefore, the imputation should continue as long as at least
+  # one variable was improved in the current iteration.
+  # ============================================================
+  current <- metrics[metrics$iteration == k, error_metric]
+  improved <- any(!is.na(current))
+
+
+  # ------------------------------------------------------------
+  # Calculate the error of the current best imputed dataset
+  #
+  # Rejected models are stored with NA for the stopping metric.
+  # The current imputed dataset therefore corresponds to the best
+  # accepted model reached for each variable across the iterations.
+  # ============================================================
+  variables <- unique(metrics$variable)
+  best_error <- vapply(variables, function(i) {
+    x <- metrics[metrics$variable == i, error_metric]
+    x <- x[!is.na(x)]
+
+    if (length(x) == 0L) NA_real_
+    else min(x)
+  }, numeric(1))
+
+  if (all(is.na(best_error))) {
+    error <- NA_real_
+  }
+  else {
+    error <- mean(best_error, na.rm = TRUE)
+  }
+
+
+  # ------------------------------------------------------------
+  # Continue only if at least one variable improved and the maximum
+  # number of iterations has not been reached.
+  # ============================================================
+  running <- improved && k < maxiter
+
+
+  # ------------------------------------------------------------
+  # Warn when the maximum number of iterations is reached while at
+  # least one variable is still improving.
+  # ============================================================
+  if (k >= maxiter && improved) {
     warning("the imputation could be further improved by increasing number of iterations")
   }
 
-  # maximum iteration has been reached
-  # ------------------------------------------------------------
-  if (k == maxiter) running <- FALSE
-
-  if (!running) runpostimpute <- FALSE
 
   return(list(running = running,
-              error = error,
-              vars2impute = vars2impute,
-              improvement = errImprovement,
-              runpostimpute = runpostimpute))
+              error = error))
 }
