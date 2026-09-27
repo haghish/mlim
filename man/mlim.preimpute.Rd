@@ -2,32 +2,35 @@
 % Please edit documentation in R/mlim.preimpute.R
 \name{mlim.preimpute}
 \alias{mlim.preimpute}
-\title{carries out preimputation}
+\title{Preimputation of missing values}
 \usage{
-mlim.preimpute(data, preimpute = "RF", seed = NULL)
+mlim.preimpute(data, preimpute = "mm", seed = NULL)
 }
 \arguments{
-\item{data}{data.frame with missing values}
+\item{data}{data.frame containing missing values}
 
-\item{preimpute}{character. specify the algorithm for preimputation. the
-supported options are "RF" (Random Forest), "mm"
-(mean-mode replacement), and "random" (random sampling from available data).
-the default is "RF", which carries
-a parallel random forest imputation, using all the CPUs available.
-the other alternative is "mm" which performs mean/mode
-imputation.}
+\item{preimpute}{character. Specify the algorithm for preimputation.
+Supported options are "mm" (median/mode replacement),
+"random" for random sampling from available data.}
 
-\item{seed}{integer. specify the random generator seed}
+\item{seed}{integer. Random-number seed used by Random Forest or random
+sampling. The default is \code{NULL}.}
 }
 \value{
 imputed data.frame
 }
 \description{
-instead of replacing missing data with mean and mode, a smarter
-             start-point would be to use fast imputation algorithms and then
-             optimize the imputed dataset with mlim. this procedure usually
-             requires less iterations and will savea lot of computation
-             resources.
+Initializes missing values before the iterative mlim imputation procedure.
+Missing values can be initialized using median/mode, random sampling,
+from the observed values of each variable, or Random Forest imputation (experimental).
+}
+\details{
+NOTE:
+====
+
+This file includes "RF" for randomforest preimputation. Such an approach can
+inflate relationships between the features and thus, this method is not documented
+and is not recommended. It is maintained in the code for research purpose only.
 }
 \examples{
 \dontrun{
@@ -37,9 +40,12 @@ data(iris)
 irisNA <- iris
 irisNA$Species <- mlim.na(irisNA$Species, p = 0.1, stratify = TRUE, seed = 2022)
 
-# run the default random forest preimputation
-MLIM <- mlim.preimpute(irisNA)
-mlim.error(MLIM, irisNA, iris)
+# run the default Median/Model preimputation
+MLIM <- mlim.preimpute(irisNA, preimpute = "mm")
+mlim.error(MLIM, irisNA, iris) #check the preimputation error
+
+# Random-sampling preimputation
+RANDOM <- mlim.preimpute(irisNA, preimpute = "random", seed = 2022)
 }
 }
 \author{
