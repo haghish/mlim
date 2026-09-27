@@ -84,7 +84,7 @@ At the end of the test users were asked if their answers were accurate and
 could be used for research, 76% said yes and have been published on
 \url{https://openpsychometrics.org/}.
 
-#' items 1 to 50 were rated 1=True and 2=False. gender, chosen from
+items 1 to 50 were rated 1=True and 2=False. gender, chosen from
 a drop down menu (1=male, 2=female, 3=other) and age was
 entered as a free response (ages<14 have been removed)
 }
