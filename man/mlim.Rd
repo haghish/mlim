@@ -2,12 +2,13 @@
 % Please edit documentation in R/mlim.R
 \name{mlim}
 \alias{mlim}
-\title{missing data imputation with automated machine learning}
+\title{Missing data imputation with automated machine learning}
 \usage{
 mlim(
   data = NULL,
   m = 1,
   algos = c("ELNET"),
+  preimpute = "mm",
   stochastic = m > 1,
   ignore = NULL,
   tuning_time = 900,
@@ -20,10 +21,10 @@ mlim(
   verbosity = NULL,
   report = NULL,
   tolerance = 0.001,
-  preimpute = "mm",
   cpu = -1,
   ram = NULL,
   flush = FALSE,
+  port = 54321,
   preimputed.data = NULL,
   save = NULL,
   load = NULL,
@@ -33,190 +34,144 @@ mlim(
 )
 }
 \arguments{
-\item{data}{a \code{data.frame} (strictly) with missing data to be
-imputed. if \code{'load'} argument is provided, this argument will be ignored.}
+\item{data}{A \code{data.frame} containing missing values to be imputed. If
+\code{load} is provided, the data stored in the saved \code{mlim} object are used
+instead.}
 
-\item{m}{integer, specifying number of multiple imputations. the default value is
-1, carrying out a single imputation.}
+\item{m}{Integer specifying the number of imputations. The default is \code{1},
+which performs single imputation. Values greater than \code{1} perform multiple
+imputation and return \code{m} completed datasets.}
 
-\item{algos}{character vector, specifying algorithms to be used for missing data
-             imputation. supported algorithms are "ELNET", "RF", "GBM", "DL",
-             "XGB", and "Ensemble". if more than one algorithm is specified,
-             mlim changes behavior to save on runtime. for example,
-             the default is "ELNET", which fine-tunes an Elastic Net model.
-             In general, "ELNET" is expected to
-             be the best algorithm because it fine-tunes very fast, it is
-             very robust to over-fitting, and hence, it generalizes very well.
-             However, if your data has many factor variables, each with several
-             levels, it is recommended to have c("ELNET", "RF") as your imputation
-             algorithms (and possibly add "Ensemble" as well, to make the most out
-             of tuning the models).
+\item{algos}{Character vector specifying the machine-learning algorithms used for
+imputation. Supported names are \code{"ELNET"}, \code{"RF"}, \code{"GBM"},
+\code{"DL"}, \code{"XGB"}, and \code{"Ensemble"}. The default is
+\code{"ELNET"}. More than one algorithm can be supplied, in which case H2O
+AutoML selects the best-performing model from the fitted candidates for each
+imputed variable and iteration.}
 
-             Note that "XGB" is only available in Mac OS and Linux. moreover,
-             "GBM", "DL" and "XGB" take the full given "tuning_time" (see below) to
-             tune the best model for imputing he given variable, whereas "ELNET"
-             will produce only one fine-tuned model, often at less time than
-             other algorithms need for developing a single model, which is why "ELNET"
-             is work horse of the mlim imputation package.}
+\item{preimpute}{Character specifying the initial treatment of missing values before
+iterative model-based imputation. The default is \code{"mm"}, which performs
+median/mode preimputation. Random sampling from the observed values of each
+variable can be requested with \code{"random"}.}
 
-\item{stochastic}{logical. by default it is set to TRUE for multiple imputation and FALSE for
-single imputation. stochastic argument is currently under testing and is intended to
-avoid inflating the correlation between imputed valuables.}
+\item{stochastic}{Logical. If \code{TRUE}, stochastic variation is added after each
+accepted variable-specific imputation update. For continuous variables, values
+are drawn from a normal distribution centered on the model prediction with the
+current cross-validation RMSE as the standard deviation. For categorical
+variables, values are sampled from the predicted class probabilities. The
+default is \code{FALSE} for single imputation and \code{TRUE} for multiple
+imputation.}
 
-\item{ignore}{character vector of column names or index of columns that should
-should be ignored in the process of imputation.}
+\item{ignore}{Character vector of column names or numeric indices identifying
+variables that should be retained in the data but excluded from the imputation
+models.}
 
-\item{tuning_time}{integer. maximum runtime (in seconds) for fine-tuning the
-imputation model for each variable in each iteration. the default
-time is 900 seconds but for a large dataset, you
-might need to provide a larger model development
-time. this argument also influences \code{max_models},
-see below. If you are using 'ELNET' algorithm (default),
-you can be generous with the 'tuning_time' argument because
-'ELNET' tunes much faster than the rest and will only
-produce one model.}
+\item{tuning_time}{Numeric. Maximum runtime in seconds for AutoML tuning of each
+variable in each iteration. The default is \code{900} seconds.
+this argument also influences \code{max_models}, see below.}
 
-\item{max_models}{integer. maximum number of models that can be generated in
-the proecess of fine-tuning the parameters. this value
-default to 100, meaning that for imputing each variable in
-each iteration, up to 100 models can be fine-tuned. increasing
-this value should be consistent with increasing
-\code{max_model_runtime_secs}, allowing the model to spend
-more time in the process of individualized fine-tuning.
-as a result, the better tuned the model, the more accurate
-the imputed values are expected to be}
+\item{max_models}{Integer or \code{NULL}. Maximum number of models that AutoML may
+fit for each variable and iteration. If \code{NULL}, no explicit model-count
+limit is supplied by \code{mlim}.}
 
-\item{maxiter}{integer. maximum number of iterations. the default value is \code{15},
-but it can be reduced to \code{3} (not recommended, see below).}
+\item{maxiter}{Integer specifying the maximum number of global imputation
+iterations. The default is \code{10}.}
 
-\item{cv}{logical. specify number of k-fold Cross-Validation (CV). values of
-5 or higher are required. default is 10.}
+\item{cv}{Integer specifying the number of cross-validation folds. Values of
+at least \code{5} are required; the default is \code{10}.}
 
-\item{matching}{logical. if \code{TRUE}, imputed values are coerced to the
-closest value to the non-missing values of the variable.
-if set to "AUTO", 'mlim' decides whether to match
-or not, based on the variable classes. the default is "AUTO".}
+\item{matching}{Either \code{"AUTO"} or \code{FALSE}. With \code{"AUTO"},
+integer-like imputed values are matched to the nearest observed value when
+appropriate. Set to \code{FALSE} to disable matching. The default is
+\code{"AUTO"}.}
 
-\item{autobalance}{logical. if TRUE (default), binary and multinomial factor variables
-will be balanced before single imputation. This argument
-is currently only implemented for single imputation.}
+\item{autobalance}{Logical. If \code{TRUE}, H2O automatic class balancing is used
+for binomial and multinomial targets during single imputation. During multiple
+imputation, target-specific balancing weights are combined with the bootstrap
+multiplicity weights for binomial, multinomial, and ordered-factor targets.
+The default is \code{TRUE}.}
 
-\item{seed}{integer. specify the random generator seed}
+\item{seed}{Integer or \code{NULL}. Random-number seed used for reproducibility.}
 
-\item{verbosity}{character. controls how much information is printed to console.
-     the value can be "warn" (default), "info", "debug", or NULL.
-to FALSE.}
+\item{verbosity}{Character or \code{NULL}. Controls console output. Supported
+values are \code{"warn"}, \code{"info"}, and \code{"debug"}; the default is
+\code{NULL}.}
 
-\item{report}{filename. if a filename is specified (e.g. report = "mlim.md"), the \code{"md.log"} R
-package is used to generate a Markdown progress report for the
-imputation. the format of the report is adopted based on the
-\code{'verbosity'} argument. the higher the verbosity, the more
-technical the report becomes. if verbosity equals "debug", then
-a log file is generated, which includes time stamp and shows
-the function that has generated the message. otherwise, a
-reduced markdown-like report is generated. default is NULL.}
+\item{report}{Character or \code{NULL}. Optional filename for a Markdown progress
+report produced during imputation.}
 
-\item{tolerance}{numeric. the minimum rate of improvement in estimated error metric
-of a variable to qualify the imputation for another round of iteration,
-if the \code{maxiter} is not yet reached. any improvement of imputation
-is desirable.  however, specifying values above 0 can reduce the number
-of required iterations at a marginal increase of imputation error.
-for larger datasets, value of "1e-3" is recommended to reduce number
-of iterations. the default value is '1e-3'.}
+\item{tolerance}{Numeric. Minimum relative reduction in cross-validation RMSE
+required for a newly fitted model to replace the current imputation of a
+variable after the first iteration. The default is \code{1e-3}.}
 
-\item{preimpute}{character. specifies the 'primary' procedure of handling the missing
-data. before 'mlim' begins imputing the missing observations, they should
-be prepared for the imputation algorithms and thus, they should be replaced
-with some values.
-the default procedure is a quick "RF", which models the missing
-data with parallel Random Forest model. this is a very fast procedure,
-which later on, will be replaced within the "reimputation" procedure (see below).
-possible other alternative is \code{"mm"},
-which carries out mean/mode replacement, as practiced by most imputation algorithms.
-"mm" is much faster than "RF". if your dataset is very
-large, consider pre-imputing it before hand using 'mlim.preimpute()'
-function and passing the preimputed dataset to mlim (see "preimputed.data" argument).}
+\item{cpu}{Integer specifying the number of CPU threads available to H2O. The
+default, \code{-1}, uses all available threads.}
 
-\item{cpu}{integer. number of CPUs to be dedicated for the imputation.
-the default takes all of the available CPUs.}
+\item{ram}{Numeric or \code{NULL}. Maximum memory, in gigabytes, allocated to the
+H2O Java server. If \code{NULL}, H2O's default memory allocation is used.}
 
-\item{ram}{integer. specifies the maximum size, in Gigabytes, of the
-memory allocation. by default, all the available memory is
-used for the imputation.
-large memory size is particularly advised, especially
-for multicore processes. the more you give the more you get!}
+\item{flush}{Logical. If \code{TRUE}, H2O objects are removed after each
+variable-specific imputation to reduce memory use. This can increase runtime
+because the working data must be uploaded again. The default is \code{FALSE}.}
 
-\item{flush}{logical (experimental). if TRUE, after each model, the server is
-cleaned to retrieve RAM. this feature is in testing mode and is
-currently set to FALSE by default, but it is recommended if you
-have limited amount of RAM or large datasets.}
+\item{port}{Object of class numeric representing the port number of the H2O server. The default is 54321.}
 
-\item{preimputed.data}{data.frame. if you have used another software for missing
-data imputation, you can still optimize the imputation
-by handing the data.frame to this argument, which will
-bypass the "preimpute" procedure.}
+\item{preimputed.data}{Optional preimputed \code{data.frame}. When supplied, it is
+used as the starting working dataset and the \code{preimpute} step is bypassed.}
 
-\item{save}{filename (with .mlim extension). if a filename is specified, an \code{mlim} object is
-saved after the end of each variable imputation. this object not only
-includes the imputed dataframe and estimated cross-validation error, but also
-includes the information needed for continuing the imputation,
-which is very useful feature for imputing large datasets, with a
-long runtime. this argument is activated by default and an
-mlim object is stored in the local directory named \code{"mlim.rds"}.}
+\item{save}{Character or \code{NULL}. Optional filename with extension
+\code{.mlim}. When provided, the current imputation state is saved after each
+variable-specific update so the procedure can later be resumed.}
 
-\item{load}{filename (with .mlim extension). an object of class "mlim", which includes the data, arguments,
-and settings for re-running the imputation, from where it was
-previously stopped. the "mlim" object saves the current state of
-the imputation and is particularly recommended for large datasets
-or when the user specifies a computationally extensive settings
-(e.g. specifying several algorithms, increasing tuning time, etc.).}
+\item{load}{Character, an object of class \code{mlim}, or \code{NULL}. A saved
+imputation state to resume. If a filename is supplied, it is read with
+\code{readRDS()}.}
 
-\item{shutdown}{logical. if TRUE, h2o server is closed after the imputation.
-the default is TRUE}
+\item{shutdown}{Logical. If \code{TRUE}, the H2O server is shut down after
+imputation. The default is \code{TRUE}.}
 
-\item{java}{character, specifying path to the executable 64bit Java JDK on the
-Microsoft Windows machines, if JDK is installed but the path environment
-variable is not set.}
+\item{java}{Character or \code{NULL}. Optional path to a 64-bit Java executable,
+primarily for systems where Java is installed but is not available on the system
+path.}
 
-\item{...}{arguments that are used internally between 'mlim' and 'mlim.postimpute'.
-these arguments are not documented in the help file and are not
-intended to be used by end user.}
+\item{...}{Internal arguments used by \code{mlim}; these are not intended for
+regular use.}
 }
 \value{
-a \code{data.frame}, showing the
-        estimated imputation error from the cross validation within the data.frame's
-        attribution
+For \code{m = 1}, a completed \code{data.frame} with classes
+  \code{"mlim"} and \code{"data.frame"}. For \code{m > 1}, a list of \code{m}
+  completed datasets with class \code{"mlim.mi"}.
 }
 \description{
-imputes data.frame with mixed variable types using automated
-             machine learning (AutoML)
+Imputes missing values in data frames containing mixed variable types
+using automated machine learning (AutoML). The function supports both single and
+multiple imputation.
 }
 \examples{
 
 \dontrun{
 data(iris)
 
-# add stratified missing observations to the data. to make the example run
-# faster, I add NAs only to a single variable.
+# Add stratified missing observations. To make the example run
+# faster, add NAs only to a single variable.
 dfNA <- iris
 dfNA$Species <- mlim.na(dfNA$Species, p = 0.1, stratify = TRUE, seed = 2022)
 
-# run the ELNET single imputation (fastest imputation via 'mlim')
+# Run ELNET single imputation
 MLIM <- mlim(dfNA, shutdown = FALSE)
 
-# in single imputation, you can estimate the imputation accuracy via cross validation RMSE
+# Inspect the stored cross-validation error
 mlim.summarize(MLIM)
 
-### or if you want to carry out ELNET multiple imputation with 5 datasets.
-### next, to carry out analysis on the multiple imputation, use the 'mlim.mids' function
-### minimum of 5 datasets
+# Run ELNET multiple imputation with five datasets
+# Convert the result to a mice::mids object for pooled analysis
 MLIM2 <- mlim(dfNA, m = 5)
 mids <- mlim.mids(MLIM2, dfNA)
-fit <- with(data=mids, exp=glm(Species ~ Sepal.Length, family = "binomial"))
+fit <- with(data = mids, exp = lm(Sepal.Length ~ Species + Petal.Length))
 res <- mice::pool(fit)
 summary(res)
 
-# you can check the accuracy of the imputation, if you have the original dataset
+# If the complete data are known, evaluate imputation error
 mlim.error(MLIM2, dfNA, iris)
 }
 }
