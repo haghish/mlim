@@ -11,7 +11,7 @@ selectVariables <- function(data, ignore=NULL, verbose=FALSE, report=NULL) {
   suppressPackageStartupMessages({requireNamespace("md.log")})
 
   # select the variables with missing, excluding fully missing vars
-  vars2impute <- vapply(data[, , drop = FALSE], FUN.VALUE = TRUE,
+  vars2impute <- vapply(data, FUN.VALUE = TRUE,
                         function(z) anyNA(z) && !all(is.na(z)))
 
   # make sure that these variables were not meant to be ignored
@@ -40,5 +40,56 @@ selectVariables <- function(data, ignore=NULL, verbose=FALSE, report=NULL) {
     X = X))
 }
 
+selectVariables <- function(
+    data, ignore = NULL,
+    verbose = FALSE, report = NULL) {
 
+  vars2impute <- vapply(
+    data,
+    function(z) anyNA(z) && !all(is.na(z)),
+    logical(1)
+  )
+
+  if (!is.null(ignore)) {
+    vars2impute[
+      names(data)[vars2impute] %in% ignore
+    ] <- FALSE
+  }
+
+  if (!is.null(report)) {
+    md.log(
+      paste(
+        "Variables to impute:",
+        paste(
+          names(data)[vars2impute],
+          collapse = ", "
+        )
+      )
+    )
+  }
+
+  dataNA <- is.na(
+    data[, vars2impute, drop = FALSE]
+  )
+
+  vars2impute <- names(
+    sort(colSums(dataNA))
+  )
+
+  allPredictors <- names(data)[
+    !names(data) %in% ignore
+  ]
+
+  X <- setdiff(
+    allPredictors,
+    vars2impute
+  )
+
+  return(list(
+    dataNA = dataNA,
+    allPredictors = allPredictors,
+    vars2impute = vars2impute,
+    X = X
+  ))
+}
 
