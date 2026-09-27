@@ -8,8 +8,8 @@
 #'              rate than others.
 #' @param x data.frame. x must be strictly a data.frame and any other
 #'          data.table classes will be rejected
-#' @param p percentage of missingness to be added to the data
-#' @param stratify logical. if TRUE (default), stratified sampling will be
+#' @param p proportion of missingness to be added to the data
+#' @param stratify logical. if TRUE, stratified sampling will be
 #'                 carried out, when adding NA values to 'factor' variables
 #'                 (either ordered or unordered). this feature makes evaluation
 #'                 of missing data imputation algorithms more fair, especially
@@ -50,7 +50,7 @@ mlim.na <- function(x, p = 0.1, stratify=FALSE, classes=NULL, seed = NULL) {
   stopifnot(
     "'p' should be between 0 and 1" = p >= 0 & p <= 1,
     "'x' type is not recognized" = is.atomic(x) || is.data.frame(x),
-    "clas of 'x' must be strictly data.frame" = ! class(x) %in% c("tbl", "tbl_df")
+    "class of 'x' must be strictly data.frame" = ! class(x) %in% c("tbl", "tbl_df")
   )
 
   # set the seed for reproducibility
