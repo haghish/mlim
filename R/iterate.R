@@ -209,19 +209,39 @@ iterate <- function(MI, dataNA, bdataNA,
     pred <- NULL
     bpred <- NULL
 
-    # If an error interrupts this variable-specific step, remove any H2O
-    # objects that were already created by the current AutoML run.
+    # If an error interrupts this variable-specific step, remove H2O
+    # objects created by the interrupted run. With flush = TRUE the whole
+    # H2O workspace is disposable, so clear it before a retry can begin.
     on.exit({
-      if (!flush) cleanupAutoML(fit = fit, pred = pred, bpred = bpred)
+      if (flush) {
+        try(h2o::h2o.removeAll(), silent = TRUE)
+      } else {
+        cleanupAutoML(fit = fit, pred = pred, bpred = bpred)
+      }
     }, add = TRUE)
 
-    # Each variable-specific model is a separate AutoML problem. The
-    # working H2O frame changes as imputations are updated, so reusing a
-    # single AutoML project name across variables/iterations is invalid.
+    # Each variable-specific model is a separate AutoML problem.
+    # Use a globally unique project name for every call to iterate().
+    # This prevents a persistent H2O cluster from reusing an older
+    # AutoML leaderboard whose models may already have been removed.
+    project_token <- gsub(
+      "[^A-Za-z0-9_]",
+      "_",
+      basename(tempfile(pattern = "mlim_automl_"))
+    )
+
     project_name <- paste0(
-      "mlim_", m.it, "_", k, "_", z, "_",
+      project_token, "_",
+      m.it, "_", k, "_", z, "_",
       gsub("[^A-Za-z0-9_]", "_", Y)
     )
+
+    if (debug) {
+      md.log(
+        paste("AutoML project:", project_name),
+        date = debug, time = debug, trace = FALSE
+      )
+    }
 
     # Prepare bootstrap and balancing weights
     # ============================================================
