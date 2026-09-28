@@ -2,7 +2,7 @@
 #' @description runs imputation iteration loop to fully impute a dataframe
 #' @importFrom utils setTxtProgressBar txtProgressBar capture.output packageVersion
 #' @importFrom h2o h2o.init as.h2o h2o.predict h2o.ls
-#'             h2o.removeAll h2o.rm h2o.shutdown h2o.get_automl
+#'             h2o.removeAll h2o.rm h2o.shutdown h2o.get_automl h2o.getId
 #' @importFrom md.log md.log
 #' @importFrom memuse Sys.meminfo
 #' @importFrom stats var setNames na.omit rnorm
@@ -18,6 +18,7 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
                            # loop data
                            vars2impute,
                            allPredictors, preimpute, impute,
+                           hierarchy = NULL,
 
                            # settings
                            error_metric, FAMILY, cv, tuning_time,
@@ -68,6 +69,62 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
 
   ITERATIONVARS <- vars2impute
 
+  # Keep the original variable and predictor sets. Multilevel summary
+  # variables are regenerated at the start of each global iteration.
+  basePredictors <- allPredictors
+  baseX <- X
+  multilevel_variables <- character(0)
+
+  if (!is.null(hierarchy)) {
+    multilevel_source_variables <- setdiff(
+      names(data),
+      c(
+        hierarchy,
+        "mlim_bootstrap_weights_column_",
+        "mlim_model_weights_column_"
+      )
+    )
+  }
+  else {
+    multilevel_source_variables <- character(0)
+  }
+
+  # Update or add one column in an existing H2O working frame.
+  syncH2OColumn <- function(frame, source, variable) {
+    if (is.null(frame)) return(NULL)
+
+    updateFrame <- tryCatch(
+      h2o::as.h2o(source[, variable, drop = FALSE]),
+      error = function(cond) {
+        message(
+          paste0(
+            "Variable '", variable,
+            "' could not be uploaded to the Java server.\n"
+          )
+        )
+        stop(cond)
+      }
+    )
+
+    frame <- tryCatch({
+      frame[, variable] <- updateFrame[, 1]
+      h2o::h2o.getId(frame)
+      frame
+    }, error = function(cond) {
+      message(
+        paste0(
+          "Variable '", variable,
+          "' could not be updated on the Java server.\n"
+        )
+      )
+      stop(cond)
+    })
+
+    try(h2o::h2o.rm(updateFrame), silent = TRUE)
+
+    frame
+  }
+
   # ------------------------------------------------------------
   # Generate H2O datasets if flushing is disabled
   # ============================================================
@@ -98,6 +155,91 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
   # Global iteration loop
   # ============================================================
   while (running) {
+
+    # ----------------------------------------------------------
+    # Regenerate multilevel summary variables
+    # ----------------------------------------------------------
+    if (!is.null(hierarchy)) {
+
+      # Remove summaries generated in the previous global iteration.
+      old_multilevel <- attr(data, "mlim.multilevel.variables")
+      if (!is.null(old_multilevel) && length(old_multilevel) > 0L) {
+        data <- data[
+          , setdiff(names(data), old_multilevel),
+          drop = FALSE
+        ]
+      }
+
+      attr(data, "mlim.hierarchy") <- NULL
+      attr(data, "mlim.original.variables") <- NULL
+      attr(data, "mlim.multilevel.variables") <- NULL
+
+      data <- mlim.multilevel.R(
+        data = data,
+        hierarchy = hierarchy,
+        variables = multilevel_source_variables
+      )
+
+      multilevel_variables <-
+        attr(data, "mlim.multilevel.variables")
+
+      # Multiple imputation uses a separate bootstrap working dataset.
+      if (!is.null(bdata)) {
+
+        old_b_multilevel <- attr(
+          bdata,
+          "mlim.multilevel.variables"
+        )
+
+        if (!is.null(old_b_multilevel) &&
+            length(old_b_multilevel) > 0L) {
+          bdata <- bdata[
+            , setdiff(names(bdata), old_b_multilevel),
+            drop = FALSE
+          ]
+        }
+
+        attr(bdata, "mlim.hierarchy") <- NULL
+        attr(bdata, "mlim.original.variables") <- NULL
+        attr(bdata, "mlim.multilevel.variables") <- NULL
+
+        bdata <- mlim.multilevel.R(
+          data = bdata,
+          hierarchy = hierarchy,
+          variables = intersect(
+            multilevel_source_variables,
+            names(bdata)
+          )
+        )
+      }
+
+      # Make the generated summaries available to every imputation model.
+      allPredictors <- unique(
+        c(basePredictors, multilevel_variables)
+      )
+
+      X <- unique(
+        c(baseX, multilevel_variables)
+      )
+
+      # With flush = FALSE, keep the existing H2O frames and update
+      # only the regenerated summary columns.
+      if (!flush && length(multilevel_variables) > 0L) {
+
+        for (v in multilevel_variables) {
+          hex <- syncH2OColumn(hex, data, v)
+        }
+
+        if (!is.null(bdata)) {
+          b_multilevel_variables <-
+            attr(bdata, "mlim.multilevel.variables")
+
+          for (v in b_multilevel_variables) {
+            bhex <- syncH2OColumn(bhex, bdata, v)
+          }
+        }
+      }
+    }
 
     message(paste0("\ndata ", m.it, ", iteration ", k,
                    " (RAM = ", memuse::Sys.meminfo()$freeram, "):"))
@@ -223,9 +365,6 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
   md.log("", section = "paragraph", trace = FALSE)
 
   # Always return the final working data.
-  attr(data, "metrics") <- metrics
-  attr(data, error_metric) <- error
-
   if (clean) {
     tryCatch(h2o::h2o.removeAll(),
              error = function(cond) {
@@ -279,6 +418,29 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
   if (!ignore.rank) {
     data[, orderedCols] <- revert(data[, orderedCols, drop = FALSE], mem)
   }
+
+  # Remove derived multilevel predictors before returning the completed data.
+  if (!is.null(hierarchy)) {
+    multilevel_variables <- attr(
+      data,
+      "mlim.multilevel.variables"
+    )
+
+    if (!is.null(multilevel_variables) &&
+        length(multilevel_variables) > 0L) {
+      data <- data[
+        , setdiff(names(data), multilevel_variables),
+        drop = FALSE
+      ]
+    }
+
+    attr(data, "mlim.hierarchy") <- NULL
+    attr(data, "mlim.original.variables") <- NULL
+    attr(data, "mlim.multilevel.variables") <- NULL
+  }
+
+  attr(data, "metrics") <- metrics
+  attr(data, error_metric) <- error
 
   class(data) <- c("mlim", "data.frame")
   return(dataLast = data)
