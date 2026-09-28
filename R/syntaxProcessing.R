@@ -8,7 +8,7 @@
 #' @noRd
 
 syntaxProcessing <- function(
-    data, preimpute, impute, ram, matching,
+    data, hierarchy, preimpute, impute, ram, matching,
     maxiter, max_models, tuning_time, cv,
     verbosity, report, save) {
 
@@ -38,6 +38,40 @@ syntaxProcessing <- function(
   }
   if (anyDuplicated(names(data))) {
     fail("Column names must be unique.")
+  }
+
+  # Validate hierarchy
+  if (!is.null(hierarchy)) {
+    valid_hierarchy <- is.character(hierarchy) &&
+      length(hierarchy) > 0L && !anyNA(hierarchy) &&
+      all(nzchar(hierarchy))
+
+    if (!valid_hierarchy) {
+      fail("'hierarchy' must be NULL or a character vector of column names.")
+    }
+
+    if (anyDuplicated(hierarchy)) {
+      fail("'hierarchy' must not contain duplicate column names.")
+    }
+
+    missing_hierarchy <- setdiff(hierarchy, names(data))
+    if (length(missing_hierarchy) > 0L) {
+      fail(
+        "Hierarchy variables not found in 'data': ",
+        paste(missing_hierarchy, collapse = ", "), "."
+      )
+    }
+
+    hierarchy_with_na <- hierarchy[vapply(
+      data[hierarchy], anyNA, logical(1)
+    )]
+
+    if (length(hierarchy_with_na) > 0L) {
+      fail(
+        "Hierarchy variables cannot contain missing values: ",
+        paste(hierarchy_with_na, collapse = ", "), "."
+      )
+    }
   }
 
   fully_missing <- names(data)[vapply(
