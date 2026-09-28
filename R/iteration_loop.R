@@ -343,6 +343,21 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
             ),
             error = function(cond) {
               last_error <<- cond
+
+              md.log(
+                paste0(
+                  "Reimputing ", Y,
+                  " failed on attempt ", attempt,
+                  " of ", max_attempts,
+                  " while rebuilding the H2O working data: ",
+                  conditionMessage(cond)
+                ),
+                date = TRUE,
+                time = TRUE,
+                print = FALSE,
+                trace = FALSE
+              )
+
               NULL
             }
           )
@@ -412,6 +427,19 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
           error = function(cond) {
             last_error <<- cond
             it <<- NULL
+
+            md.log(
+              paste0(
+                "Reimputing ", Y,
+                " failed on attempt ", attempt,
+                " of ", max_attempts,
+                ": ", conditionMessage(cond)
+              ),
+              date = TRUE,
+              time = TRUE,
+              print = FALSE,
+              trace = FALSE
+            )
           }
         )
 
@@ -423,6 +451,19 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
                 "\nReimputing '", Y, "' succeeded on attempt ",
                 attempt, " of ", max_attempts, "."
               )
+            )
+
+            md.log(
+              paste0(
+                "Reimputing ", Y,
+                " succeeded on attempt ", attempt,
+                " of ", max_attempts,
+                " after an earlier failure."
+              ),
+              date = TRUE,
+              time = TRUE,
+              print = FALSE,
+              trace = FALSE
             )
           }
           break
@@ -492,11 +533,20 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
         )
 
         md.log(
-          paste(
-            "Reimputing", Y, "failed after", max_attempts,
-            "attempts and the variable will be skipped!"
+          paste0(
+            "Reimputing ", Y,
+            " failed after ", max_attempts,
+            " attempts and the variable will be skipped!",
+            if (!is.null(last_error)) {
+              paste0(" Last error: ", conditionMessage(last_error))
+            } else {
+              ""
+            }
           ),
-          date = TRUE, time = TRUE, print = TRUE, trace = FALSE
+          date = TRUE,
+          time = TRUE,
+          print = TRUE,
+          trace = FALSE
         )
 
         if (!is.null(last_error)) {
