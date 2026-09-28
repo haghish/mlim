@@ -151,7 +151,19 @@ iterate <- function(MI, dataNA, bdataNA,
 
     # The temporary source frame is safe to remove only after the
     # replacement expression above has been evaluated.
-    try(h2o::h2o.rm(updateFrame), silent = TRUE)
+    tryCatch(
+      h2o::h2o.rm(updateFrame),
+      error = function(cond) {
+        message(
+          paste0(
+            "H2O cleanup failed while removing the temporary update frame for variable '",
+            variable, "'.\n",
+            "Error: ", conditionMessage(cond)
+          )
+        )
+        NULL
+      }
+    )
 
     return(frame)
   }
@@ -161,8 +173,37 @@ iterate <- function(MI, dataNA, bdataNA,
   cleanupAutoML <- function(fit = NULL, pred = NULL, bpred = NULL) {
 
     # Prediction frames are no longer needed once values have been copied to R.
-    if (!is.null(pred)) try(h2o::h2o.rm(pred), silent = TRUE)
-    if (!is.null(bpred)) try(h2o::h2o.rm(bpred), silent = TRUE)
+    if (!is.null(pred)) {
+      tryCatch(
+        h2o::h2o.rm(pred),
+        error = function(cond) {
+          message(
+            paste0(
+              "H2O cleanup failed while removing the prediction frame for variable '",
+              Y, "'.\n",
+              "Error: ", conditionMessage(cond)
+            )
+          )
+          NULL
+        }
+      )
+    }
+
+    if (!is.null(bpred)) {
+      tryCatch(
+        h2o::h2o.rm(bpred),
+        error = function(cond) {
+          message(
+            paste0(
+              "H2O cleanup failed while removing the bootstrap prediction frame for variable '",
+              Y, "'.\n",
+              "Error: ", conditionMessage(cond)
+            )
+          )
+          NULL
+        }
+      )
+    }
 
     if (!is.null(fit)) {
       # Remove every model created by this AutoML run, including dependencies
@@ -173,12 +214,49 @@ iterate <- function(MI, dataNA, bdataNA,
       )
 
       if (length(model_ids) > 0L) {
-        try(h2o::h2o.rm(model_ids, cascade = TRUE), silent = TRUE)
+        tryCatch(
+          h2o::h2o.rm(model_ids, cascade = TRUE),
+          error = function(cond) {
+            message(
+              paste0(
+                "H2O cleanup failed while removing AutoML models for variable '",
+                Y, "'.\n",
+                "Error: ", conditionMessage(cond)
+              )
+            )
+            NULL
+          }
+        )
       }
 
       # Remove AutoML metadata frames after their model IDs have been extracted.
-      try(h2o::h2o.rm(fit@leaderboard), silent = TRUE)
-      try(h2o::h2o.rm(fit@event_log), silent = TRUE)
+      tryCatch(
+        h2o::h2o.rm(fit@leaderboard),
+        error = function(cond) {
+          message(
+            paste0(
+              "H2O cleanup failed while removing the AutoML leaderboard for variable '",
+              Y, "'.\n",
+              "Error: ", conditionMessage(cond)
+            )
+          )
+          NULL
+        }
+      )
+
+      tryCatch(
+        h2o::h2o.rm(fit@event_log),
+        error = function(cond) {
+          message(
+            paste0(
+              "H2O cleanup failed while removing the AutoML event log for variable '",
+              Y, "'.\n",
+              "Error: ", conditionMessage(cond)
+            )
+          )
+          NULL
+        }
+      )
     }
 
     invisible(NULL)
@@ -214,7 +292,19 @@ iterate <- function(MI, dataNA, bdataNA,
     # H2O workspace is disposable, so clear it before a retry can begin.
     on.exit({
       if (flush) {
-        try(h2o::h2o.removeAll(), silent = TRUE)
+        tryCatch(
+          h2o::h2o.removeAll(),
+          error = function(cond) {
+            message(
+              paste0(
+                "H2O cleanup failed in on.exit() while flushing the server after variable '",
+                Y, "'.\n",
+                "Error: ", conditionMessage(cond)
+              )
+            )
+            NULL
+          }
+        )
       } else {
         cleanupAutoML(fit = fit, pred = pred, bpred = bpred)
       }
