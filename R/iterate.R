@@ -466,24 +466,82 @@ iterate <- function(MI, dataNA, bdataNA,
     # Decide whether the current model should update the imputations
     # ============================================================
     accepted <- TRUE
+    percentImprove <- NA_real_
+    errPrevious <- NA_real_
 
     if (k > 1L) {
-      errPrevious <- min(metrics[metrics$variable == Y, error_metric], na.rm = TRUE)
-      checkMetric <- iterationMetric[iterationMetric$variable == Y, error_metric]
 
-      percentImprove <- (checkMetric - errPrevious) / errPrevious
-      accepted <- is.finite(percentImprove) && percentImprove < -tolerance
+      # Use only previously valid model-performance estimates for this
+      # variable. A variable may have no valid previous metric when an
+      # earlier variable-specific model failed and was skipped.
+      previous <- metrics[
+        metrics$variable == Y,
+        error_metric
+      ]
 
-      if (debug && accepted) {
-        md.log("imputation was improved, new values are replaced",
-               date = debug, time = debug, trace = FALSE)
-        md.log(paste(round(percentImprove, 6), "<", -tolerance),
-               date = debug, time = debug, trace = FALSE)
-      } else if (debug && !accepted) {
-        md.log("imputation was NOT improved, new values are rejected",
-               date = debug, time = debug, trace = FALSE)
-        md.log(paste(round(percentImprove, 6), ">=", -tolerance),
-               date = debug, time = debug, trace = FALSE)
+      previous <- previous[is.finite(previous)]
+
+      checkMetric <- iterationMetric[
+        iterationMetric$variable == Y,
+        error_metric
+      ]
+
+      if (length(previous) == 0L) {
+
+        # This is the first successfully evaluated model for this variable.
+        # Accept it as the baseline instead of comparing it with Inf/NaN.
+        accepted <- TRUE
+
+        if (debug) {
+          md.log(
+            "no valid previous model was available; current model is accepted as the baseline",
+            date = debug, time = debug, trace = FALSE
+          )
+        }
+
+      } else {
+
+        # Compare the current model with the best previously accepted model.
+        errPrevious <- min(previous)
+        percentImprove <- (checkMetric - errPrevious) / errPrevious
+
+        accepted <-
+          is.finite(percentImprove) &&
+          percentImprove < -tolerance
+
+        if (debug && accepted) {
+          md.log(
+            "imputation was improved, new values are replaced",
+            date = debug, time = debug, trace = FALSE
+          )
+          md.log(
+            paste(round(percentImprove, 6), "<", -tolerance),
+            date = debug, time = debug, trace = FALSE
+          )
+        } else if (debug && !accepted) {
+          md.log(
+            "imputation was NOT improved, new values are rejected",
+            date = debug, time = debug, trace = FALSE
+          )
+          md.log(
+            paste(round(percentImprove, 6), ">=", -tolerance),
+            date = debug, time = debug, trace = FALSE
+          )
+        }
+      }
+
+      if (debug) {
+        md.log(
+          paste(
+            "criterion:",
+            "variable =", Y,
+            "| iteration =", k,
+            "| previous best =", ifelse(is.finite(errPrevious), errPrevious, "none"),
+            "| current =", checkMetric,
+            "| accepted =", accepted
+          ),
+          date = debug, time = debug, trace = FALSE
+        )
       }
     }
 
