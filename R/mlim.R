@@ -320,9 +320,19 @@ mlim <- function(data = NULL,
     impute[mapped] <- unname(algorithm_map[impute[mapped]])
 
     synt <- syntaxProcessing(
-      data, preimpute, impute, ram, hierarchy,
-      matching = matching, maxiter, max_models,
-      tuning_time, cv, verbosity = verbosity, report, save
+      data = data,
+      hierarchy = hierarchy,
+      preimpute = preimpute,
+      impute = impute,
+      ram = ram,
+      matching = matching,
+      maxiter = maxiter,
+      max_models = max_models,
+      tuning_time = tuning_time,
+      cv = cv,
+      verbosity = verbosity,
+      report = report,
+      save = save
     )
 
     min_ram <- synt$min_ram
