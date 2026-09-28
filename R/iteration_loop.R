@@ -209,7 +209,8 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
           variables = intersect(
             multilevel_source_variables,
             names(bdata)
-          )
+          ),
+          weights = bdata[["mlim_bootstrap_weights_column_"]]
         )
       }
 
