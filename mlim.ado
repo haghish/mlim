@@ -13,8 +13,8 @@ Syntax
 _ignore(varlist)_ _hierarchy(varlist)_ _tuningtime(#)_ _maxmodels(#)_ _maxiter(#)_
 _cv(#)_ _nomatching_ _noautobalance_ _seed(#)_
 _verbosity(string)_ _report(string)_ _tolerance(#)_ 
-_preimpute(string)_ _cpu(#)_ _ram(#)_ _flush_ _save(string)_
-_load(string)_ _java(string)_ _filename(string)_
+_preimpute(string)_ _cpu(#)_ _ram(#)_ _port(#)_ _flush_ _save(string)_
+_load(string)_ _preimputed(string)_ _noshutdown_ _java(string)_ _filename(string)_
 _debug_ ]
 
 Description
@@ -72,9 +72,12 @@ Options
 | __preimpute(string)__ | Passes __preimpute__ to R. |
 | __cpu(#)__ | Passes the requested number of CPUs to R. |
 | __ram(#)__ | Passes the requested RAM value to R. |
+| __port(#)__ | Specifies the local H2O server port and passes __port = #__ to R. The default is 54321. |
 | __flush__ | Passes __flush = TRUE__ to R, requesting cleanup of H2O models. |
 | __save(string)__    | Passes __save__ to the R package to save its imputation state (recommended). |
 | __load(string)__    | Passes __load__ to the R package to load a previously saved imputation state. |
+| __preimputed(string)__ | Specifies a Stata dataset containing preimputed values and passes it to R as __preimputed.data__. |
+| __noshutdown__      | Keeps the H2O server running after imputation by passing __shutdown = FALSE__ to R. |
 | __java(string)__    | Passes a Java path to R. Backslashes are converted to forward slashes.              |
 | __filename(string)__ | Saves the imputed data to a Stata __.dta__ file (recommended).                  |
 | __debug__           |                                                  Used for debugging the program.|
@@ -160,6 +163,14 @@ Limit computational resources to 4 CPU and 8GB of RAM:
 
 > . __mlim, m(5) cpu(4) ram(8)__
 
+Use a specific H2O port:
+
+> . __mlim, m(5) port(54325)__
+
+Keep the H2O server running after imputation:
+
+> . __mlim, m(5) noshutdown__
+
 Spend up to 10 minutes on hyperparameter tuning for each variable in each itteration:
 
 > . __mlim, m(5) tuningtime(600) maxmodels(200) maxiter(10) cv(5)__
@@ -240,17 +251,16 @@ program define mlim
 		PREIMPUTE(string)                                   ///
 		CPU(numlist integer max=1)                          ///
 		RAM(numlist max=1)                                  ///
+		PORT(integer 54321)                                 ///
 		FLUSH                                               ///
 		SAVE(string)                                        ///
 		LOAD(string)                                        ///
+		PREIMPUTED(string asis)                             ///
+		NOSHUTDOWN                                          ///
 		JAVA(string)                                        ///
 		FILENAME(string)                                    ///
 		DEBUG                                               ///
-		]                                  
-		      
-		///POSTIMPUTE                                          ///
-		///PREIMPUTED(string asis)                             ///
-		///NOSHUTDOWN                                          /// NOT APPLICABLE
+		]
 
     // SYntax check
     // ============================================================
@@ -261,6 +271,11 @@ program define mlim
 	
     if "`stochastic'" != "" & "`nostochastic'" != "" {
         display as error "stochastic and nostochastic cannot be specified together"
+        exit 198
+    }
+
+    if `port' < 1 | `port' > 65535 {
+        display as error "port must be between 1 and 65535"
         exit 198
     }
 	
@@ -383,6 +398,12 @@ program define mlim
     // RAM
     if "`ram'" != "" local rargs `"`rargs', ram = `ram'"'
 
+    // H2O server port
+    local rargs `"`rargs', port = `port'"'
+
+    // H2O shutdown behavior
+    if "`noshutdown'" != "" local rargs `"`rargs', shutdown = FALSE"'
+
     // flush H2O models
     if "`flush'" != "" local rargs `"`rargs', flush = TRUE"'
 
@@ -431,23 +452,37 @@ program define mlim
 
 	if `"`verbosity'"' != "" display "calling mlim via Rcall..."
 
+    // Reset Rcall's error flag before starting the R transaction
+    // ============================================================
+    global RcallError 0
+
     // Single imputation
     // ============================================================
     if `m' == 1 {
         if `"`filename'"' == "" {
             capture noisily rcall vanilla:                    ///
+                options("prefer_RCurl" = TRUE);               ///
                 df <- st.data();                              ///
                 `precode'                                     ///
-                imp <- mlim::mlim(data = df, `rargs');        ///
+                imp <- tryCatch(                             ///
+                    mlim::mlim(data = df, `rargs'),            ///
+                    error = function(e) e                      ///
+                );                                             ///
+                if (inherits(imp, "error")) stop(imp);        ///
                 st.load(imp);                                 ///
                 st.return <- "rc"
         }
 
         else {
             capture noisily rcall vanilla:                    ///
+                options("prefer_RCurl" = TRUE);               ///
                 df <- st.data();                              ///
                 `precode'                                     ///
-                imp <- mlim::mlim(data = df, `rargs');        ///
+                imp <- tryCatch(                             ///
+                    mlim::mlim(data = df, `rargs'),            ///
+                    error = function(e) e                      ///
+                );                                             ///
+                if (inherits(imp, "error")) stop(imp);        ///
                 outfile <- "`filename_r'";                    ///
                 if (!endsWith(tolower(outfile), ".dta"))      ///
                     outfile <- paste0(outfile, ".dta");       ///
@@ -467,27 +502,49 @@ program define mlim
     else {
         if `"`filename'"' == "" {
             capture noisily rcall vanilla:                    ///
+                options("prefer_RCurl" = TRUE);               ///
                 df <- st.data();                              ///
                 `precode'                                     ///
-                imp <- mlim::mlim(data = df, `rargs');        ///
-                stata.data <- mlim::mlim.stata(               ///
-                    mlim = imp,                               ///
-                    df = df,                                  ///
-                    format = "flong");                        ///
+                imp <- tryCatch(                             ///
+                    mlim::mlim(data = df, `rargs'),            ///
+                    error = function(e) e                      ///
+                );                                             ///
+                if (inherits(imp, "error")) stop(imp);        ///
+                stata.data <- tryCatch(                      ///
+                    mlim::mlim.stata(                          ///
+                        mlim = imp,                            ///
+                        df = df,                               ///
+                        format = "flong"                       ///
+                    ),                                         ///
+                    error = function(e) e                      ///
+                );                                             ///
+                if (inherits(stata.data, "error"))            ///
+                    stop(stata.data);                          ///
                 st.load(stata.data);                          ///
                 st.return <- "rc"
         }
 
         else {
             capture noisily rcall vanilla:                    ///
+                options("prefer_RCurl" = TRUE);               ///
                 df <- st.data();                              ///
                 `precode'                                     ///
-                imp <- mlim::mlim(data = df, `rargs');        ///
-                stata.data <- mlim::mlim.stata(               ///
-                    mlim = imp,                               ///
-                    df = df,                                  ///
-                    format = "flong",                         ///
-                    filename = "`filename_r'");               ///
+                imp <- tryCatch(                             ///
+                    mlim::mlim(data = df, `rargs'),            ///
+                    error = function(e) e                      ///
+                );                                             ///
+                if (inherits(imp, "error")) stop(imp);        ///
+                stata.data <- tryCatch(                      ///
+                    mlim::mlim.stata(                          ///
+                        mlim = imp,                            ///
+                        df = df,                               ///
+                        format = "flong",                      ///
+                        filename = "`filename_r'"              ///
+                    ),                                         ///
+                    error = function(e) e                      ///
+                );                                             ///
+                if (inherits(stata.data, "error"))            ///
+                    stop(stata.data);                          ///
                 st.load(stata.data);                          ///
                 st.return <- "rc"
         }
@@ -497,8 +554,12 @@ program define mlim
     // Check R execution
     // ============================================================
     local rc = _rc
-    if `rc' {
+
+    // Rcall can report an R-side failure through $RcallError even
+    // when Stata's _rc remains zero. Do not continue to MI import.
+    if `rc' | "$RcallError" == "1" {
         restore
+        if `rc' == 0 local rc = 498
         exit `rc'
     }
 
@@ -514,9 +575,10 @@ program define mlim
             restore
             exit `rc'
         }
+
+        // m and id are only transport variables used to import flong data
+        capture drop m id
     }
-	
-	drop m id //m is super varying
 
     // Keep the imputed dataset in memory
     // ============================================================
