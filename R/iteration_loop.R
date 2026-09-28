@@ -120,7 +120,19 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
       stop(cond)
     })
 
-    try(h2o::h2o.rm(updateFrame), silent = TRUE)
+    tryCatch(
+      h2o::h2o.rm(updateFrame),
+      error = function(cond) {
+        message(
+          paste0(
+            "H2O cleanup failed while removing the temporary update frame for variable '",
+            variable, "'.\n",
+            "Error: ", conditionMessage(cond)
+          )
+        )
+        NULL
+      }
+    )
 
     frame
   }
@@ -131,11 +143,35 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
   rebuildH2OFrames <- function(data, bdata, hex = NULL, bhex = NULL) {
 
     if (!is.null(hex)) {
-      try(h2o::h2o.rm(hex), silent = TRUE)
+      tryCatch(
+        h2o::h2o.rm(hex),
+        error = function(cond) {
+          message(
+            paste0(
+              "H2O cleanup failed while removing the current working frame 'hex' ",
+              "before rebuilding it.\n",
+              "Error: ", conditionMessage(cond)
+            )
+          )
+          NULL
+        }
+      )
     }
 
     if (!is.null(bhex)) {
-      try(h2o::h2o.rm(bhex), silent = TRUE)
+      tryCatch(
+        h2o::h2o.rm(bhex),
+        error = function(cond) {
+          message(
+            paste0(
+              "H2O cleanup failed while removing the current bootstrap frame 'bhex' ",
+              "before rebuilding it.\n",
+              "Error: ", conditionMessage(cond)
+            )
+          )
+          NULL
+        }
+      )
     }
 
     new_hex <- h2o::as.h2o(data)
