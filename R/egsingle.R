@@ -1,0 +1,58 @@
+#' US Sustaining Effects Study
+#'
+#' A subset of the mathematics scores from the U.S. Sustaining Effects Study.
+#' The dataset contains repeated observations for 1,721 students from 60 schools.
+#'
+#' This dataset is borrowed from the \pkg{mlmRev} R package.
+#'
+#' @format A data frame with 7,230 observations and 12 variables:
+#' \describe{
+#'   \item{schoolid}{A factor identifying schools.}
+#'   \item{childid}{A factor identifying students.}
+#'   \item{year}{A numeric variable indicating the year of the test.}
+#'   \item{grade}{A numeric variable indicating the student's grade.}
+#'   \item{math}{A numeric variable containing mathematics test scores on the
+#'   IRT scale-score metric.}
+#'   \item{retained}{A factor with levels \code{"0"} and \code{"1"} indicating
+#'   whether the student has been retained in a grade.}
+#'   \item{female}{A factor with levels \code{"Female"} and \code{"Male"}
+#'   indicating the student's sex.}
+#'   \item{black}{A factor with levels \code{"0"} and \code{"1"} indicating
+#'   whether the student is Black.}
+#'   \item{hispanic}{A factor with levels \code{"0"} and \code{"1"} indicating
+#'   whether the student is Hispanic.}
+#'   \item{size}{A numeric variable indicating the number of students enrolled
+#'   in the school.}
+#'   \item{lowinc}{A numeric variable giving the percentage of low-income
+#'   students in the school.}
+#'   \item{mobility}{A numeric variable measuring student mobility.}
+#' }
+#'
+#' @source
+#' The dataset is borrowed from the \pkg{mlmRev} R package.
+#' The original data were distributed with the HLM software package
+#' (Bryk, Raudenbush, and Congdon, 1996). Conversion to R format is described
+#' in Doran and Lockwood (2004).
+#'
+#' @references
+#' Doran, H. C., & Lockwood, J. R. (2004).
+#' \emph{Fitting value-added models in R}.
+#'
+#' @examples
+#' data(egsingle)
+#' str(egsingle)
+#'
+#' \dontrun{
+#' library(lme4)
+#' fm1 <- lmer(
+#'   math ~ year * size + female + (1 | childid) + (1 | schoolid),
+#'   data = egsingle
+#' )
+#' summary(fm1)
+#' }
+#'
+#' @docType data
+#' @keywords datasets
+#' @name egsingle
+#' @usage data(egsingle)
+#' NULL
