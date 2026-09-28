@@ -125,6 +125,29 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
     frame
   }
 
+  # Rebuild the H2O working frames from the last valid R-side state.
+  # This is used after a failed variable-specific iteration so that a
+  # retry never inherits a partially modified or invalid H2OFrame.
+  rebuildH2OFrames <- function(data, bdata, hex = NULL, bhex = NULL) {
+
+    if (!is.null(hex)) {
+      try(h2o::h2o.rm(hex), silent = TRUE)
+    }
+
+    if (!is.null(bhex)) {
+      try(h2o::h2o.rm(bhex), silent = TRUE)
+    }
+
+    new_hex <- h2o::as.h2o(data)
+    new_bhex <- NULL
+
+    if (!is.null(bdata)) {
+      new_bhex <- h2o::as.h2o(bdata)
+    }
+
+    list(hex = new_hex, bhex = new_bhex)
+  }
+
   # ------------------------------------------------------------
   # Generate H2O datasets if flushing is disabled
   # ============================================================
@@ -260,45 +283,190 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
       }
       if (verbose != 0) message(paste0("    ", Y))
 
+      # A variable-specific H2O/AutoML step may fail transiently.
+      # Try the same imputation up to three times before skipping the
+      # variable. The same seed is retained across attempts.
+      max_attempts <- 3L
       it <- NULL
+      last_error <- NULL
 
-      tryCatch(
-        capture.output(
-          it <- iterate(
-            MI, dataNA, bdataNA,
-            preimputed.data, data, bdata, boot, hex, bhex, metrics, tolerance,
-            m, k, X, Y, z = which(ITERATIONVARS == Y), m.it,
+      for (attempt in seq_len(max_attempts)) {
 
-            # loop data
-            ITERATIONVARS, vars2impute,
-            allPredictors, preimpute, impute,
+        it <- NULL
+        last_error <- NULL
 
-            # settings
-            error_metric, FAMILY = FAMILY, cv, tuning_time,
-            max_models,
-            autobalance,
-            seed, save, flush,
-            verbose, debug, report, sleep,
+        # After a failed attempt, recreate the H2O working frames from
+        # the last successfully accepted R-side state before retrying.
+        if (attempt > 1L && !flush) {
+          frames <- tryCatch(
+            rebuildH2OFrames(
+              data = data,
+              bdata = bdata,
+              hex = hex,
+              bhex = bhex
+            ),
+            error = function(cond) {
+              last_error <<- cond
+              NULL
+            }
+          )
 
-            # saving settings
-            mem, orderedCols, ignore, maxiter,
-            matching, ignore.rank,
-            verbosity, error, cpu, max_ram, min_ram,
-            stochastic
-          ),
-          file = report,
-          append = TRUE
-        ),
-        error = function(cond) {
-          message(paste0("\nReimputing '", Y,
-                         "' with the currently specified algorithms failed and this variable will be skipped!\n",
-                         "See Java server's error below:"))
-          md.log(paste("Reimputing", Y, "failed and the variable will be skipped!"),
-                 date = TRUE, time = TRUE, print = TRUE)
-          message(cond)
-          return(NULL)
+          if (is.null(frames)) {
+            if (attempt < max_attempts) {
+              message(
+                paste0(
+                  "\nReimputing '", Y, "' failed on attempt ",
+                  attempt, " of ", max_attempts,
+                  " while rebuilding the H2O working data. Retrying..."
+                )
+              )
+
+              if (!is.null(last_error)) {
+                message(last_error)
+              }
+
+              Sys.sleep(sleep)
+              next
+            }
+
+            break
+          }
+
+          hex <- frames$hex
+          bhex <- frames$bhex
+
+          if (debug) {
+            md.log(
+              paste(
+                "retry", attempt, "of", max_attempts,
+                "- H2O working data reuploaded"
+              ),
+              date = debug, time = debug, trace = FALSE
+            )
+          }
         }
-      )
+
+        tryCatch(
+          capture.output(
+            it <- iterate(
+              MI, dataNA, bdataNA,
+              preimputed.data, data, bdata, boot, hex, bhex, metrics, tolerance,
+              m, k, X, Y, z = which(ITERATIONVARS == Y), m.it,
+
+              # loop data
+              ITERATIONVARS, vars2impute,
+              allPredictors, preimpute, impute,
+
+              # settings
+              error_metric, FAMILY = FAMILY, cv, tuning_time,
+              max_models,
+              autobalance,
+              seed, save, flush,
+              verbose, debug, report, sleep,
+
+              # saving settings
+              mem, orderedCols, ignore, maxiter,
+              matching, ignore.rank,
+              verbosity, error, cpu, max_ram, min_ram,
+              stochastic
+            ),
+            file = report,
+            append = TRUE
+          ),
+          error = function(cond) {
+            last_error <<- cond
+            it <<- NULL
+          }
+        )
+
+        # Successful attempt
+        if (!is.null(it)) {
+          if (attempt > 1L) {
+            message(
+              paste0(
+                "\nReimputing '", Y, "' succeeded on attempt ",
+                attempt, " of ", max_attempts, "."
+              )
+            )
+          }
+          break
+        }
+
+        # Failed attempt, but another retry remains
+        if (attempt < max_attempts) {
+          message(
+            paste0(
+              "\nReimputing '", Y, "' failed on attempt ",
+              attempt, " of ", max_attempts, ". Retrying..."
+            )
+          )
+
+          if (!is.null(last_error)) {
+            message(last_error)
+          }
+
+          if (debug) {
+            md.log(
+              paste(
+                "Reimputing", Y, "failed on attempt",
+                attempt, "of", max_attempts, "- retrying"
+              ),
+              date = TRUE, time = TRUE, print = FALSE, trace = FALSE
+            )
+          }
+
+          Sys.sleep(sleep)
+        }
+      }
+
+      # All three attempts failed. Restore clean H2O working frames before
+      # moving to the next variable. If the frames themselves cannot be
+      # restored, the H2O session is no longer usable and the error is fatal.
+      if (is.null(it)) {
+
+        if (!flush) {
+          frames <- tryCatch(
+            rebuildH2OFrames(
+              data = data,
+              bdata = bdata,
+              hex = hex,
+              bhex = bhex
+            ),
+            error = function(cond) {
+              message(
+                paste0(
+                  "\nThe H2O working data could not be restored after ",
+                  max_attempts, " failed attempts for '", Y, "'."
+                )
+              )
+              stop(cond)
+            }
+          )
+
+          hex <- frames$hex
+          bhex <- frames$bhex
+        }
+
+        message(
+          paste0(
+            "\nReimputing '", Y, "' failed after ", max_attempts,
+            " attempts and this variable will be skipped!\n",
+            "See the last error below:"
+          )
+        )
+
+        md.log(
+          paste(
+            "Reimputing", Y, "failed after", max_attempts,
+            "attempts and the variable will be skipped!"
+          ),
+          date = TRUE, time = TRUE, print = TRUE, trace = FALSE
+        )
+
+        if (!is.null(last_error)) {
+          message(last_error)
+        }
+      }
 
       # Update the working state returned by iterate()
       # --------------------------------------------------------
