@@ -11,6 +11,7 @@ mlim(
   preimpute = "mm",
   stochastic = m > 1,
   ignore = NULL,
+  hierarchy = NULL,
   tuning_time = 900,
   max_models = NULL,
   maxiter = 10L,
@@ -65,6 +66,14 @@ imputation.}
 \item{ignore}{Character vector of column names or numeric indices identifying
 variables that should be retained in the data but excluded from the imputation
 models.}
+
+\item{hierarchy}{Character vector specifying the clustering variables from the
+highest to the lowest level. For example,
+\code{hierarchy = c("city", "school", "classroom", "student")} specifies
+students nested within classrooms, classrooms nested within schools, and schools
+nested within cities. Hierarchy variables must exist in \code{data} and cannot
+contain missing values. The default is \code{NULL}, which assumes no
+hierarchical structure.}
 
 \item{tuning_time}{Numeric. Maximum runtime in seconds for AutoML tuning of each
 variable in each iteration. The default is \code{900} seconds.
