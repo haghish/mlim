@@ -25,6 +25,10 @@
 #' @param add_cluster_size Logical. If `TRUE`, the number of observations in
 #'   each cluster is added as an additional variable. The default is `TRUE`.
 #'
+#' @param weights Optional numeric vector of observation weights. When supplied,
+#'   cluster means, proportions, and cluster sizes are calculated using these
+#'   weights. The default is `NULL`, which gives all observations equal weight.
+#'
 #' @details
 #' The function creates cluster-level summaries at each level of the supplied
 #' hierarchy. Continuous and ordinal variables are summarized using cluster
@@ -79,7 +83,8 @@ mlim.multilevel.R <- function(data,
                               hierarchy,
                               variables = NULL,
                               leave_one_out = TRUE,
-                              add_cluster_size = TRUE) {
+                              add_cluster_size = TRUE,
+                              weights = NULL) {
 
   # Check input
   if (!is.data.frame(data)) {
@@ -102,6 +107,22 @@ mlim.multilevel.R <- function(data,
     stop("Hierarchy variables cannot contain missing values.")
   }
 
+  if (is.null(weights)) {
+    weights <- rep(1, nrow(data))
+  }
+  else {
+    if (!is.numeric(weights) ||
+        length(weights) != nrow(data) ||
+        anyNA(weights) ||
+        any(!is.finite(weights)) ||
+        any(weights < 0)) {
+      stop(
+        "'weights' must be a non-negative numeric vector ",
+        "with one finite value per row."
+      )
+    }
+  }
+
   # Variables for which cluster summaries are created
   if (is.null(variables)) {
     variables <- setdiff(names(data), hierarchy)
@@ -114,18 +135,18 @@ mlim.multilevel.R <- function(data,
   out <- data
 
   # Helper: numeric cluster mean
-  cluster_mean <- function(x, group, loo = TRUE) {
+  cluster_mean <- function(x, group, w, loo = TRUE) {
 
     observed <- !is.na(x)
 
     group_sum <- ave(
-      ifelse(observed, x, 0),
+      ifelse(observed, w * x, 0),
       group,
       FUN = sum
     )
 
     group_n <- ave(
-      as.integer(observed),
+      ifelse(observed, w, 0),
       group,
       FUN = sum
     )
@@ -133,10 +154,10 @@ mlim.multilevel.R <- function(data,
     if (loo) {
 
       numerator <- group_sum -
-        ifelse(observed, x, 0)
+        ifelse(observed, w * x, 0)
 
       denominator <- group_n -
-        as.integer(observed)
+        ifelse(observed, w, 0)
 
     } else {
 
@@ -151,9 +172,8 @@ mlim.multilevel.R <- function(data,
     result
   }
 
-
   # Helper: cluster proportion
-  cluster_prop <- function(x, level, group, loo = TRUE) {
+  cluster_prop <- function(x, level, group, w, loo = TRUE) {
 
     observed <- !is.na(x)
 
@@ -164,13 +184,13 @@ mlim.multilevel.R <- function(data,
     )
 
     group_sum <- ave(
-      indicator,
+      w * indicator,
       group,
       FUN = sum
     )
 
     group_n <- ave(
-      as.integer(observed),
+      ifelse(observed, w, 0),
       group,
       FUN = sum
     )
@@ -178,10 +198,10 @@ mlim.multilevel.R <- function(data,
     if (loo) {
 
       numerator <- group_sum -
-        ifelse(observed, as.integer(x == level), 0)
+        ifelse(observed, w * indicator, 0)
 
       denominator <- group_n -
-        as.integer(observed)
+        ifelse(observed, w, 0)
 
     } else {
 
@@ -195,7 +215,6 @@ mlim.multilevel.R <- function(data,
 
     result
   }
-
 
   # Work through each level of the hierarchy
   for (level_index in seq_along(hierarchy)) {
@@ -223,9 +242,9 @@ mlim.multilevel.R <- function(data,
     )
 
     cluster_n <- ave(
-      rep(1L, nrow(data)),
+      weights,
       group,
-      FUN = length
+      FUN = sum
     )
 
     # Skip individual-level IDs
@@ -268,6 +287,7 @@ mlim.multilevel.R <- function(data,
         out[[new_name]] <- cluster_mean(
           x,
           group,
+          weights,
           loo = leave_one_out
         )
 
@@ -292,6 +312,7 @@ mlim.multilevel.R <- function(data,
         out[[new_name]] <- cluster_mean(
           x_num,
           group,
+          weights,
           loo = leave_one_out
         )
 
@@ -320,6 +341,7 @@ mlim.multilevel.R <- function(data,
           x,
           lev,
           group,
+          weights,
           loo = leave_one_out
         )
 
@@ -358,6 +380,7 @@ mlim.multilevel.R <- function(data,
               x,
               lev,
               group,
+              weights,
               loo = leave_one_out
             )
           }
