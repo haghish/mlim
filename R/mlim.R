@@ -372,6 +372,13 @@ mlim <- function(data = NULL,
   # INITIALIZE H2O
   # ============================================================
   if (initialize_h2o) {
+
+    # Always begin with a fresh local H2O server on the requested port.
+    # If an older H2O cluster is already running there, shut it down
+    # and wait until the port is released before starting a new one.
+    stopH2o(port = port)
+    Sys.sleep(0.5)
+
     capture.output(
       init(
         nthreads = cpu,
