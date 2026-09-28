@@ -10,8 +10,8 @@ Syntax
 ------
 
 > __mlim__ [, _m(#)_ _algos(string)_ _stochastic_ _nostochastic_
-_ignore(varlist)_ _tuningtime(#)_ _maxmodels(#)_ _maxiter(#)_
-_cv(#)_ _matching_ _noautobalance_ _balance(varlist)_ _seed(#)_
+_ignore(varlist)_ _hierarchy(varlist)_ _tuningtime(#)_ _maxmodels(#)_ _maxiter(#)_
+_cv(#)_ _nomatching_ _noautobalance_ _seed(#)_
 _verbosity(string)_ _report(string)_ _tolerance(#)_ 
 _preimpute(string)_ _cpu(#)_ _ram(#)_ _flush_ _save(string)_
 _load(string)_ _java(string)_ _filename(string)_
@@ -58,13 +58,13 @@ Options
 | __stochastic__      | Passes __stochastic = TRUE__ to R. Experimental in this source. |
 | __nostochastic__    | Passes __stochastic = FALSE__ to R. May not be combined with __stochastic__. Experimental feature.     |
 | __ignore(varlist)__ | Excludes variables from the set of variables to be imputed |
+| __hierarchy(varlist)__ | Specifies nested hierarchy variables from highest to lowest level and passes them to R as __hierarchy__. |
 | __tuningtime(#)__   | Passes __tuning_time = #__ to R. |
 | __maxmodels(#)__    | Passes __max_models = #__ to R. |
 | __maxiter(#)__      | Passes __maxiter = #__ to R. |
 | __cv(#)__           | Passes __cv = #__ to R. |
-| __matching__        | Experimental option related to predictive matching. See Remarks below. |
+| __nomatching__      | Disables predictive matching by passing __matching = FALSE__ to R. By default, R uses __matching = "AUTO"__. |
 | __noautobalance__   | Turns off class imbalance correction in single imputation |
-| __balance(varlist)__ | Passes the listed variables to R as __balance__. Experimental in this source. |
 | __seed(#)__         | Passes the integer random-number seed to R. |
 | __verbosity(string)__ | Passes __verbosity__ to R. |
 | __report(string)__    | Passes a report path or report specification to R. |
@@ -112,14 +112,10 @@ Before calling R, the command uses __preserve__. If R execution or the subsequen
 __mi import flong__ fails, the original data are restored. On success, the command
 uses __restore, not__, retaining the imputed dataset loaded by R.
 
-### Experimental matching option
+### Predictive matching
 
-The current syntax declares __matching__ as a switch. The implementation then treats
-its local macro as though it could contain values such as TRUE, FALSE, or AUTO.
-Consequently, in this development snapshot, specifying __matching__ does not enable
-matching; the generated R argument falls through to __matching = FALSE__. This option
-should therefore be regarded as under development until its syntax and implementation
-are reconciled.
+By default, the R package uses __matching = "AUTO"__. Specify __nomatching__ to
+disable predictive matching and pass __matching = FALSE__ to R.
 
 ### Reserved names
 
@@ -156,6 +152,10 @@ Ignore a variable and use a reproducible seed:
 
 > . __mlim, m(5) ignore(length) seed(2026)__
 
+Specify a nested hierarchical structure from highest to lowest level:
+
+> . __mlim, m(5) hierarchy(school classroom student)__
+
 Limit computational resources to 4 CPU and 8GB of RAM:
 
 > . __mlim, m(5) cpu(4) ram(8)__
@@ -164,9 +164,9 @@ Spend up to 10 minutes on hyperparameter tuning for each variable in each ittera
 
 > . __mlim, m(5) tuningtime(600) maxmodels(200) maxiter(10) cv(5)__
 
-Disable automatic balancing and request balancing for selected variables:
+Disable automatic balancing:
 
-> . __mlim, m(5) noautobalance balance(outcome group)__
+> . __mlim, m(5) noautobalance__
 
 Save the imputed dataset to disk:
 
@@ -226,11 +226,12 @@ program define mlim
 		STOCHASTIC                                          /// UNDER TESTING
 		NOSTOCHASTIC                                        /// UNDER TESTING
 		IGNORE(varlist)                                     ///
+		HIERARCHY(varlist)                                  ///
 		TUNINGTime(numlist integer max=1)                   ///
 		MAXModels(numlist integer max=1)                    ///
 		MAXITER(numlist integer max=1)                      ///
 		CV(numlist integer max=1)                           ///
-		MATCHING                                            /// UNDER TESTING
+		NOMATCHING                                          ///
 		NOAUTOBALANCE                                       /// UNDER TESTING
 		SEED(numlist integer max=1)                         ///
 		VERBOSITY(string)                                   ///
@@ -250,7 +251,6 @@ program define mlim
 		///POSTIMPUTE                                          ///
 		///PREIMPUTED(string asis)                             ///
 		///NOSHUTDOWN                                          /// NOT APPLICABLE
-		///BALANCE(varlist)                                    /// UNDER TESTING
 
     // SYntax check
     // ============================================================
@@ -288,7 +288,7 @@ program define mlim
         exit 198
     }
 	
-    rcall_check mlim>=0.3.0 readstata13>=0.11.0  //UPDATE mlim to 0.4.0
+    rcall_check mlim>=0.4.0 readstata13>=0.11.0
 
     // Identify variables with missing observations that should be imputed
     // ============================================================
@@ -344,37 +344,20 @@ program define mlim
     // variables to ignore
     if "`ignore'" != "" local rargs `"`rargs', ignore = scan(text = "`ignore'", what = character(), quiet = TRUE)"'
 
+    // hierarchical structure
+    if "`hierarchy'" != "" local rargs `"`rargs', hierarchy = scan(text = "`hierarchy'", what = character(), quiet = TRUE)"'
+
     // tuning
     if "`tuningtime'" != "" local rargs `"`rargs', tuning_time = `tuningtime'"'
     if "`maxmodels'" != "" local rargs `"`rargs', max_models = `maxmodels'"'
     if "`maxiter'" != "" local rargs `"`rargs', maxiter = `maxiter'"'
     if "`cv'" != "" local rargs `"`rargs', cv = `cv'"'
 
-    // matching (must be specified because it is an experimental feature)
-    if `"`matching'"' != "" {
-        local matching_upper = upper(`"`matching'"')
-
-        if "`matching_upper'" == "TRUE" | "`matching_upper'" == "T" {
-            local rargs `"`rargs', matching = TRUE"'
-        }
-        else if "`matching_upper'" == "FALSE" | "`matching_upper'" == "F" {
-            local rargs `"`rargs', matching = FALSE"'
-        }
-		else if "`matching_upper'" == "AUTO" | "`matching_upper'" == "auto" {
-            local rargs `"`rargs', matching = AUTO"'
-        }
-		
-		// if matching is not specified, turn it off! 
-        else {
-            local rargs `"`rargs', matching = FALSE"'
-        }
-    }
+    // disable predictive matching
+    if "`nomatching'" != "" local rargs `"`rargs', matching = FALSE"'
 
     // automatic class balancing
     if "`noautobalance'" != "" local rargs `"`rargs', autobalance = FALSE"'
-	
-    // variables to balance
-    //if "`balance'" != "" local rargs `"`rargs', balance = scan(text = "`balance'", what = character(), quiet = TRUE)"'
 
     // random seed
     if "`seed'" != "" local rargs `"`rargs', seed = `seed'"'
