@@ -38,6 +38,13 @@
 #' @param ignore Character vector of column names or numeric indices identifying
 #'   variables that should be retained in the data but excluded from the imputation
 #'   models.
+#' @param hierarchy Character vector specifying the clustering variables from the
+#'   highest to the lowest level. For example,
+#'   \code{hierarchy = c("city", "school", "classroom", "student")} specifies
+#'   students nested within classrooms, classrooms nested within schools, and schools
+#'   nested within cities. Hierarchy variables must exist in \code{data} and cannot
+#'   contain missing values. The default is \code{NULL}, which assumes no
+#'   hierarchical structure.
 #' @param tuning_time Numeric. Maximum runtime in seconds for AutoML tuning of each
 #'   variable in each iteration. The default is \code{900} seconds.
 #'   this argument also influences \code{max_models}, see below.
@@ -130,6 +137,7 @@ mlim <- function(data = NULL,
                  preimpute = "mm",
                  stochastic = m > 1,
                  ignore = NULL,
+                 hierarchy = NULL,
 
                  # computational resources
                  tuning_time = 900,
@@ -312,7 +320,7 @@ mlim <- function(data = NULL,
     impute[mapped] <- unname(algorithm_map[impute[mapped]])
 
     synt <- syntaxProcessing(
-      data, preimpute, impute, ram,
+      data, preimpute, impute, ram, hierarchy,
       matching = matching, maxiter, max_models,
       tuning_time, cv, verbosity = verbosity, report, save
     )
@@ -491,6 +499,7 @@ mlim <- function(data = NULL,
       # loop data
       vars2impute,
       allPredictors, preimpute, impute,
+      hierarchy = hierarchy,
 
       # settings
       error_metric, FAMILY = FAMILY, cv, tuning_time,
