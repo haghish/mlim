@@ -515,6 +515,8 @@ program define mlim
             exit `rc'
         }
     }
+	
+	drop m id //m is super varying
 
     // Keep the imputed dataset in memory
     // ============================================================
