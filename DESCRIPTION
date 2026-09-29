@@ -37,7 +37,7 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 Imports:
     h2o (>= 3.34.0.0),
-    curl (>= 4.3.2),
+    curl (>= 8.0.0),
     mice,
     missRanger,
     memuse,
