@@ -14,8 +14,8 @@
 {it:ignore(varlist)} {it:hierarchy(varlist)} {it:tuningtime(#)} {it:maxmodels(#)} {it:maxiter(#)}
 {it:cv(#)} {it:nomatching} {it:noautobalance} {it:seed(#)}
 {it:verbosity(string)} {it:report(string)} {it:tolerance(#)} 
-{it:preimpute(string)} {it:cpu(#)} {it:ram(#)} {it:flush} {it:save(string)}
-{it:load(string)} {it:java(string)} {it:filename(string)}
+{it:preimpute(string)} {it:cpu(#)} {it:ram(#)} {it:port(#)} {it:flush} {it:save(string)}
+{it:load(string)} {it:preimputed(string)} {it:noshutdown} {it:java(string)} {it:filename(string)}
 {it:debug} ]
 
 
@@ -78,9 +78,12 @@ R and Java Runtime should also be accessible via path environment.
 {col 5}{bf:preimpute(string)}{col 26}Passes {bf:preimpute} to R.
 {col 5}{bf:cpu(#)}{col 26}Passes the requested number of CPUs to R.
 {col 5}{bf:ram(#)}{col 26}Passes the requested RAM value to R.
+{col 5}{bf:port(#)}{col 26}Specifies the local H2O server port and passes {bf:port = #} to R. The default is 54321.
 {col 5}{bf:flush}{col 26}Passes {bf:flush = TRUE} to R, requesting cleanup of H2O models.
 {col 5}{bf:save(string)}{col 26}Passes {bf:save} to the R package to save its imputation state (recommended).
 {col 5}{bf:load(string)}{col 26}Passes {bf:load} to the R package to load a previously saved imputation state.
+{col 5}{bf:preimputed(string)}{col 26}Specifies a Stata dataset containing preimputed values and passes it to R as {bf:preimputed.data}.
+{col 5}{bf:noshutdown}{col 26}Keeps the H2O server running after imputation by passing {bf:shutdown = FALSE} to R.
 {col 5}{bf:java(string)}{col 26}Passes a Java path to R. Backslashes are converted to forward slashes.
 {col 5}{bf:filename(string)}{col 26}Saves the imputed data to a Stata {bf:.dta} file (recommended).
 {col 5}{bf:debug}{col 26}Used for debugging the program.
@@ -180,6 +183,16 @@ Specify a nested hierarchical structure from highest to lowest level:
 Limit computational resources to 4 CPU and 8GB of RAM:
 
 {p 8 8 2} . {bf:mlim, m(5) cpu(4) ram(8)}
+
+{p 4 4 2}
+Use a specific H2O port:
+
+{p 8 8 2} . {bf:mlim, m(5) port(54325)}
+
+{p 4 4 2}
+Keep the H2O server running after imputation:
+
+{p 8 8 2} . {bf:mlim, m(5) noshutdown}
 
 {p 4 4 2}
 Spend up to 10 minutes on hyperparameter tuning for each variable in each itteration:
