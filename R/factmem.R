@@ -11,12 +11,7 @@ factmem <- function(df) {
   for (i in seq_len(ncol(df))) {
     lev <- levels(df[[i]])
     nam <- colnames(df)[i]
-
-    mem[[i]] <- list(
-      names = nam,
-      support = seq_along(lev),
-      level = lev
-    )
+    mem[[i]] <- list(names = nam, support = seq_along(lev), level = lev)
   }
 
   return(mem)
