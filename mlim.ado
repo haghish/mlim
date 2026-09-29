@@ -217,7 +217,7 @@ After saving the program as __mlim.ado__, generate the Stata help file with:
 ***/
 
 
-capture program drop mlim
+*capture program drop mlim
 program define mlim
     version 14
 

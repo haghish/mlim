@@ -4,7 +4,7 @@
 \alias{mlim.preimpute}
 \title{Preimputation of missing values}
 \usage{
-mlim.preimpute(data, preimpute = "mm", seed = NULL)
+mlim.preimpute(data, preimpute = "random", seed = NULL)
 }
 \arguments{
 \item{data}{data.frame containing missing values}

@@ -10,25 +10,29 @@ mlim(
   algos = c("ELNET"),
   stochastic = m > 1,
   ignore = NULL,
-  tuning_time = 900,
-  max_models = NULL,
+  tuning_time = 3600,
+  max_models = 100,
   maxiter = 10L,
-  cv = 10L,
+  cv = 5L,
   matching = "AUTO",
   autobalance = TRUE,
   seed = NULL,
   verbosity = NULL,
   report = NULL,
   tolerance = 0.001,
-  preimpute = "mm",
-  cpu = -1,
+  preimpute = "random",
+  cpu = 1,
   ram = NULL,
   flush = FALSE,
+  port = 54321,
+  insecure = TRUE,
+  https = FALSE,
+  bind_to_localhost = FALSE,
+  ignore_config = TRUE,
+  java = NULL,
   preimputed.data = NULL,
   save = NULL,
   load = NULL,
-  shutdown = TRUE,
-  java = NULL,
   ...
 )
 }
@@ -66,31 +70,24 @@ avoid inflating the correlation between imputed valuables.}
 \item{ignore}{character vector of column names or index of columns that should
 should be ignored in the process of imputation.}
 
-\item{tuning_time}{integer. maximum runtime (in seconds) for fine-tuning the
-imputation model for each variable in each iteration. the default
-time is 900 seconds but for a large dataset, you
-might need to provide a larger model development
-time. this argument also influences \code{max_models},
-see below. If you are using 'ELNET' algorithm (default),
-you can be generous with the 'tuning_time' argument because
-'ELNET' tunes much faster than the rest and will only
-produce one model.}
+\item{tuning_time}{Numeric. Maximum runtime in seconds for AutoML tuning of each
+variable in each iteration. The default is \code{3600} seconds.
+this argument is influenced by \code{max_models}, see below.
+mlim trains models until either max_models or tuning_time is
+reached.}
 
-\item{max_models}{integer. maximum number of models that can be generated in
-the proecess of fine-tuning the parameters. this value
-default to 100, meaning that for imputing each variable in
-each iteration, up to 100 models can be fine-tuned. increasing
-this value should be consistent with increasing
-\code{max_model_runtime_secs}, allowing the model to spend
-more time in the process of individualized fine-tuning.
-as a result, the better tuned the model, the more accurate
-the imputed values are expected to be}
+\item{max_models}{Integer or \code{NULL}. Maximum number of models that mlim may
+fit for each variable and iteration. If \code{NULL}, no explicit model-count
+limit is supplied by \code{mlim}. For algorithms other than ELNET and RF,
+this argument is strongly recommended.the default is 100 models per feature
+with missing values. mlim trains models until either max_models or tuning_time is
+reached.}
 
 \item{maxiter}{integer. maximum number of iterations. the default value is \code{15},
 but it can be reduced to \code{3} (not recommended, see below).}
 
-\item{cv}{logical. specify number of k-fold Cross-Validation (CV). values of
-5 or higher are required. default is 10.}
+\item{cv}{Integer specifying the number of cross-validation folds. Values of
+\code{5} or higher are required. the default is \code{5}.}
 
 \item{matching}{logical. if \code{TRUE}, imputed values are coerced to the
 closest value to the non-missing values of the variable.
@@ -124,32 +121,34 @@ of required iterations at a marginal increase of imputation error.
 for larger datasets, value of "1e-3" is recommended to reduce number
 of iterations. the default value is '1e-3'.}
 
-\item{preimpute}{character. specifies the 'primary' procedure of handling the missing
-data. before 'mlim' begins imputing the missing observations, they should
-be prepared for the imputation algorithms and thus, they should be replaced
-with some values.
-the default procedure is a quick "RF", which models the missing
-data with parallel Random Forest model. this is a very fast procedure,
-which later on, will be replaced within the "reimputation" procedure (see below).
-possible other alternative is \code{"mm"},
-which carries out median/mode replacement, as practiced by most imputation algorithms.
-"mm" is much faster than "RF". if your dataset is very
-large, consider pre-imputing it before hand using 'mlim.preimpute()'
-function and passing the preimputed dataset to mlim (see "preimputed.data" argument).}
+\item{preimpute}{Character specifying the initial treatment of missing values before
+iterative model-based imputation. The default is \code{"random"}, which performs
+random sampling from each feature. The alternative is \code{"mm"},
+which performs median/mode preimputation.}
 
-\item{cpu}{integer. number of CPUs to be dedicated for the imputation.
-the default takes all of the available CPUs.}
+\item{cpu}{Integer specifying the number of CPU threads available to H2O. The
+default, \code{1}, which uses only one threads.}
 
-\item{ram}{integer. specifies the maximum size, in Gigabytes, of the
-memory allocation. by default, all the available memory is
-used for the imputation.
-large memory size is particularly advised, especially
-for multicore processes. the more you give the more you get!}
+\item{ram}{Numeric or \code{NULL}. Maximum memory, in gigabytes, allocated to the
+H2O Java server. If \code{NULL}, H2O's default memory allocation is used.}
 
-\item{flush}{logical (experimental). if TRUE, after each model, the server is
-cleaned to retrieve RAM. this feature is in testing mode and is
-currently set to FALSE by default, but it is recommended if you
-have limited amount of RAM or large datasets.}
+\item{flush}{Logical. If \code{TRUE}, H2O objects are removed after each
+variable-specific imputation to reduce memory use. This can increase runtime
+because the working data must be uploaded again. The default is \code{FALSE}.}
+
+\item{port}{Object of class numeric representing the port number of the H2O server. The default is 54321.}
+
+\item{insecure}{logical. argument for h2o.init to initiate the Java server. default is TRUE}
+
+\item{https}{logical. argument for h2o.init to initiate the Java server. default is FALSE}
+
+\item{bind_to_localhost}{logical. argument for h2o.init to initiate the Java server. default is FALSE}
+
+\item{ignore_config}{logical. argument for h2o.init to initiate the Java server. default is TRUE}
+
+\item{java}{Character or \code{NULL}. Optional path to a 64-bit Java executable,
+primarily for systems where Java is installed but is not available on the system
+path.}
 
 \item{preimputed.data}{data.frame. if you have used another software for missing
 data imputation, you can still optimize the imputation
@@ -170,13 +169,6 @@ previously stopped. the "mlim" object saves the current state of
 the imputation and is particularly recommended for large datasets
 or when the user specifies a computationally extensive settings
 (e.g. specifying several algorithms, increasing tuning time, etc.).}
-
-\item{shutdown}{logical. if TRUE, h2o server is closed after the imputation.
-the default is TRUE}
-
-\item{java}{character, specifying path to the executable 64bit Java JDK on the
-Microsoft Windows machines, if JDK is installed but the path environment
-variable is not set.}
 
 \item{...}{arguments that are used internally between 'mlim' and 'mlim.postimpute'.
 these arguments are not documented in the help file and are not
@@ -202,7 +194,7 @@ dfNA <- iris
 dfNA$Species <- mlim.na(dfNA$Species, p = 0.1, stratify = TRUE, seed = 2022)
 
 # run the ELNET single imputation (fastest imputation via 'mlim')
-MLIM <- mlim(dfNA, shutdown = FALSE)
+MLIM <- mlim(dfNA)
 
 # in single imputation, you can estimate the imputation accuracy via cross validation RMSE
 mlim.summarize(MLIM)

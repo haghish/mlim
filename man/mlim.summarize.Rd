@@ -2,33 +2,36 @@
 % Please edit documentation in R/mlim.summarize.R
 \name{mlim.summarize}
 \alias{mlim.summarize}
-\title{mlim imputation summary}
+\title{Summarize mlim imputation error}
 \usage{
 mlim.summarize(data)
 }
 \arguments{
-\item{data}{dataset imputed with mlim}
+\item{data}{An object returned by \code{mlim()}.}
 }
 \value{
-estimated imputation accuracy via cross-valdiation procedure
+For a single imputation, a data frame containing
+variable names and RMSE values. For multiple imputation,
+a data frame containing one RMSE column per imputation.
 }
 \description{
-provides information about estimated accuracy of the imputation as well
-             as the overall procedure of the imputation.
+Summarizes the best accepted
+cross-validation RMSE for each imputed variable.
 }
 \examples{
 \dontrun{
 data(iris)
 
-# add 10\% stratified missing values to one factor variable
 irisNA <- iris
-irisNA$Species <- mlim.na(irisNA$Species, p = 0.1, stratify = TRUE, seed = 2022)
+irisNA$Species <- mlim.na(
+  irisNA$Species,
+  p = 0.1,
+  stratify = TRUE,
+  seed = 2022
+)
 
-# run the ELNET single imputation (fastest imputation via 'mlim')
-MLIM <- mlim(irisNA)
-
-# in single imputation, you can estimate the imputation accuracy via cross validation RMSE
-mlim.summarize(MLIM)
+imp <- mlim(irisNA)
+mlim.summarize(imp)
 }
 }
 \author{

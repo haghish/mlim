@@ -1,22 +1,6 @@
 #' @title missing data imputation with automated machine learning
 #' @description imputes data.frame with mixed variable types using automated
 #'              machine learning (AutoML)
-# @param impute character. specify a vector of algorithms to be used
-#        in the process of auto-tuning. the supported main algorithms are
-#        "ELNET", "RF",
-#        "GBM", "DL", "XGB" (available for Mac and Linux), and "Ensemble".
-#
-#        the default is "AUTO", which is mostly based on "ELNET", but also
-#        uses Extremely Randomized Forests, in addition to Random Forest, before
-#        concluding the imputation, when "ELNET" stops improving. This procedure is
-#        relatively fast and yields charming results, often equal to specifying "impute = c('ELNET', 'RF')",
-#        which at each step of the imputation, uses both "ELNET" and "RF", doubling the imputation
-#        time, and thus, it is advised.
-#
-#        "GBM", "DL", "XGB", and "Ensemble" take the full given "tuning_time" (see below) to
-#        tune the best model for imputing he given variable. it is advised to use these extensive
-#        algorithms in the process of "postimputation" and let "ELNET" do most of the legwork to save
-#        computational resources.
 #' @importFrom utils setTxtProgressBar txtProgressBar capture.output packageVersion
 #' @importFrom tools file_ext
 #' @importFrom h2o h2o.init as.h2o h2o.automl h2o.predict h2o.ls
@@ -48,51 +32,27 @@
 #'              will produce only one fine-tuned model, often at less time than
 #'              other algorithms need for developing a single model, which is why "ELNET"
 #'              is work horse of the mlim imputation package.
-#' @param preimpute character. specifies the 'primary' procedure of handling the missing
-#'                  data. before 'mlim' begins imputing the missing observations, they should
-#'                  be prepared for the imputation algorithms and thus, they should be replaced
-#'                  with some values.
-#'                  the default procedure is a quick "RF", which models the missing
-#'                  data with parallel Random Forest model. this is a very fast procedure,
-#'                  which later on, will be replaced within the "reimputation" procedure (see below).
-#'                  possible other alternative is \code{"mm"},
-#'                  which carries out median/mode replacement, as practiced by most imputation algorithms.
-#'                  "mm" is much faster than "RF". if your dataset is very
-#'                  large, consider pre-imputing it before hand using 'mlim.preimpute()'
-#'                  function and passing the preimputed dataset to mlim (see "preimputed.data" argument).
-#
-#                  another alternative is "iterate", which instead of filling the missing observations with median and mode, it
-#                  gradually adds the imputed variables to the vector of predictors, as it carries out the
-#                  first iteration.
-# @param postimpute (EXPERIMENTAL FEATURE) logical. if TRUE, mlim uses algorithms rather than 'ELNET' for carrying out
-#                   postimputation optimization. however, if FALSE, all specified algorihms will
-#                   be used in the process of 'reimputation' together. the 'Ensemble' algorithm
-#                   is encouraged when other algorithms are used. However, for general users
-#                   unspecialized in machine learning, postimpute is NOT recommended because this
+#' @param preimpute Character specifying the initial treatment of missing values before
+#'   iterative model-based imputation. The default is \code{"random"}, which performs
+#'   random sampling from each feature. The alternative is \code{"mm"},
+#'   which performs median/mode preimputation.
 #                   feature is currently experimental, prone to over-fitting, and highly computationally extensive.
 #' @param stochastic logical. by default it is set to TRUE for multiple imputation and FALSE for
 #'                   single imputation. stochastic argument is currently under testing and is intended to
 #'                   avoid inflating the correlation between imputed valuables.
 #' @param ignore character vector of column names or index of columns that should
 #'               should be ignored in the process of imputation.
-#' @param tuning_time integer. maximum runtime (in seconds) for fine-tuning the
-#'                               imputation model for each variable in each iteration. the default
-#'                               time is 900 seconds but for a large dataset, you
-#'                               might need to provide a larger model development
-#'                               time. this argument also influences \code{max_models},
-#'                               see below. If you are using 'ELNET' algorithm (default),
-#'                               you can be generous with the 'tuning_time' argument because
-#'                               'ELNET' tunes much faster than the rest and will only
-#'                               produce one model.
-#' @param max_models integer. maximum number of models that can be generated in
-#'                   the proecess of fine-tuning the parameters. this value
-#'                   default to 100, meaning that for imputing each variable in
-#'                   each iteration, up to 100 models can be fine-tuned. increasing
-#'                   this value should be consistent with increasing
-#'                   \code{max_model_runtime_secs}, allowing the model to spend
-#'                   more time in the process of individualized fine-tuning.
-#'                   as a result, the better tuned the model, the more accurate
-#'                   the imputed values are expected to be
+#' @param tuning_time Numeric. Maximum runtime in seconds for AutoML tuning of each
+#'   variable in each iteration. The default is \code{3600} seconds.
+#'   this argument is influenced by \code{max_models}, see below.
+#'   mlim trains models until either max_models or tuning_time is
+#'   reached.
+#' @param max_models Integer or \code{NULL}. Maximum number of models that mlim may
+#'   fit for each variable and iteration. If \code{NULL}, no explicit model-count
+#'   limit is supplied by \code{mlim}. For algorithms other than ELNET and RF,
+#'   this argument is strongly recommended.the default is 100 models per feature
+#'   with missing values. mlim trains models until either max_models or tuning_time is
+#'   reached.
 #' @param autobalance logical. if TRUE (default), binary and multinomial factor variables
 #'                    will be balanced before single imputation. This argument
 #'                    is currently only implemented for single imputation.
@@ -137,12 +97,9 @@
 #'        but it can be reduced to \code{3} (not recommended, see below).
 # @param miniter integer. minimum number of iterations. the default value is
 #                2.
-#' @param flush logical (experimental). if TRUE, after each model, the server is
-#'              cleaned to retrieve RAM. this feature is in testing mode and is
-#'              currently set to FALSE by default, but it is recommended if you
-#'              have limited amount of RAM or large datasets.
-#' @param cv logical. specify number of k-fold Cross-Validation (CV). values of
-#'               5 or higher are required. default is 10.
+#' @param port Object of class numeric representing the port number of the H2O server. The default is 54321.
+#' @param cv Integer specifying the number of cross-validation folds. Values of
+#'   \code{5} or higher are required. the default is \code{5}.
 # @param error_metric character. specify the minimum improvement
 #                                  in the estimated error to proceed to the
 #                                  following iteration or stop the imputation.
@@ -172,8 +129,6 @@
 #                       the higher the weight, the more important an observation
 #                       becomes in the modeling process. the default is NULL.
 #' @param seed integer. specify the random generator seed
-# @param plot logical. If TRUE, estimated error of the imputed dataset is plotted,
-#        showing the reduction in CV error
 
 #' @param report filename. if a filename is specified (e.g. report = "mlim.md"), the \code{"md.log"} R
 #'               package is used to generate a Markdown progress report for the
@@ -188,13 +143,6 @@
 # @param init logical. should h2o Java server be initiated? the default is TRUE.
 #             however, if the Java server is already running, set this argument
 #'             to FALSE.
-#' @param cpu integer. number of CPUs to be dedicated for the imputation.
-#'                 the default takes all of the available CPUs.
-#' @param ram integer. specifies the maximum size, in Gigabytes, of the
-#'                     memory allocation. by default, all the available memory is
-#'                     used for the imputation.
-#'                     large memory size is particularly advised, especially
-#'                     for multicore processes. the more you give the more you get!
 #' @param preimputed.data data.frame. if you have used another software for missing
 #'                      data imputation, you can still optimize the imputation
 #'                      by handing the data.frame to this argument, which will
@@ -217,11 +165,20 @@
 #                 following itterations. otherwise, if FALSE, the current arguments of
 #                 mlim are used to overpower the settings of the mlim object. the settings
 #                 include the full list of the mlim arguments.
-#' @param shutdown logical. if TRUE, h2o server is closed after the imputation.
-#'                 the default is TRUE
-#' @param java character, specifying path to the executable 64bit Java JDK on the
-#'             Microsoft Windows machines, if JDK is installed but the path environment
-#'             variable is not set.
+#' @param cpu Integer specifying the number of CPU threads available to H2O. The
+#'   default, \code{1}, which uses only one threads.
+#' @param ram Numeric or \code{NULL}. Maximum memory, in gigabytes, allocated to the
+#'   H2O Java server. If \code{NULL}, H2O's default memory allocation is used.
+#' @param flush Logical. If \code{TRUE}, H2O objects are removed after each
+#'   variable-specific imputation to reduce memory use. This can increase runtime
+#'   because the working data must be uploaded again. The default is \code{FALSE}.
+#' @param java Character or \code{NULL}. Optional path to a 64-bit Java executable,
+#'   primarily for systems where Java is installed but is not available on the system
+#'   path.
+#' @param insecure logical. argument for h2o.init to initiate the Java server. default is TRUE
+#' @param https logical. argument for h2o.init to initiate the Java server. default is FALSE
+#' @param bind_to_localhost logical. argument for h2o.init to initiate the Java server. default is FALSE
+#' @param ignore_config logical. argument for h2o.init to initiate the Java server. default is TRUE
 #' @param ... arguments that are used internally between 'mlim' and 'mlim.postimpute'.
 #'            these arguments are not documented in the help file and are not
 #'            intended to be used by end user.
@@ -241,7 +198,7 @@
 #' dfNA$Species <- mlim.na(dfNA$Species, p = 0.1, stratify = TRUE, seed = 2022)
 #'
 #' # run the ELNET single imputation (fastest imputation via 'mlim')
-#' MLIM <- mlim(dfNA, shutdown = FALSE)
+#' MLIM <- mlim(dfNA)
 #'
 #' # in single imputation, you can estimate the imputation accuracy via cross validation RMSE
 #' mlim.summarize(MLIM)
@@ -278,12 +235,11 @@ mlim <- function(data = NULL,
                  ignore = NULL,
 
                  # computational resources
-                 tuning_time = 900,
-                 max_models = NULL, # run all that you can
+                 tuning_time = 3600,
+                 max_models = 100, # run all that you can
                  maxiter = 10L,
                  #miniter = 2L,
-                 cv = 10L,
-                 #validation = 0,
+                 cv = 5L,
 
                  matching = "AUTO",    #EXPERIMENTAL
                  autobalance = TRUE,
@@ -300,7 +256,7 @@ mlim <- function(data = NULL,
                  tolerance = 1e-3,
 
                  ## simplify the settings by taking these arguments out
-                 preimpute = "mm",
+                 preimpute = "random",
                  #impute = "AUTO",
                  #error_metric  = "RMSE", #??? mormalize it
                  #stopping_metric = "AUTO",
@@ -308,17 +264,20 @@ mlim <- function(data = NULL,
                  #stopping_tolerance=1e-3,
 
                  # setup the h2o cluster
-                 cpu = -1,
+                 cpu = 1,
                  ram = NULL,
                  flush = FALSE,
+                 port = 54321,
+                 insecure = TRUE,
+                 https = FALSE,
+                 bind_to_localhost = FALSE,
+                 ignore_config = TRUE,
+                 java = NULL,
 
                  # NOT YET IMPLEMENTED
                  preimputed.data = NULL,
                  save = NULL,
                  load = NULL,
-                 #init = TRUE,
-                 shutdown = TRUE,
-                 java = NULL,
                  #force.load = TRUE,
                  ...
                  ) {
@@ -341,7 +300,7 @@ mlim <- function(data = NULL,
 
   # check the ... arguments
   # ============================================================
-  hidden_args <- c("superdebug", "init", "ignore.rank", "sleep", "stochastic")
+  hidden_args <- c("superdebug", "ignore.rank", "sleep", "stochastic")
   stopifnot("incompatible '...' arguments" = (names(list(...)) %in% hidden_args))
 
   # Simplify the syntax by taking arguments that are less relevant to the majority
@@ -361,7 +320,6 @@ mlim <- function(data = NULL,
   # flush       <- threeDots(name = "flush", ..., default = TRUE)
   verbose     <- 0
   error_metric<- "RMSE"
-  #preimpute   <- "RF"
   ignore.rank <- threeDots(name = "ignore.rank", ..., default = FALSE)  #EXPERIMENTAL
   sleep       <- threeDots(name = "sleep", ..., default = .25)
   superdebug  <- threeDots(name = "superdebug", ..., default = FALSE)
@@ -453,7 +411,6 @@ mlim <- function(data = NULL,
     if (!is.null(seed)) set.seed(seed) # avoid setting seed by default if it is a continuation
 
     alg <- algoSelector(algos, postimpute)
-    # preimpute <- "RF" #alg$preimpute ## for now, make this global
     impute <- alg$impute
     postimputealgos <- alg$postimpute
 
@@ -487,30 +444,24 @@ mlim <- function(data = NULL,
 
   # Run H2O on the statistics server¤
   # ============================================================
-  if (init) {
-    #sink(file = report, append = TRUE)
-    #message("\n") # for Markdown styling
-    capture.output(connection <- init(nthreads = cpu,
-                                      min_mem_size = min_ram,
-                                      max_mem_size = max_ram,
-                                      ignore_config = TRUE,
-                                      java = java,
-                                      report, debug),
-                   file = report, append = TRUE)
-    #sink()
-
-    ## ??? DO NOT CLOSE ALL THE CONNECTIONS
-    #sink.reset <- function(){
-    #  for(i in seq_len(sink.number())){
-    #    sink(NULL)
-    #  }
-    #}
-    #sink.reset()
-
-
-    ##closeAllConnections()
-    ##print(connection)
-  }
+  # Always begin with a fresh local H2O server on the requested port.
+  # If an older H2O cluster is already running there, shut it down
+  # and wait until the port is released before starting a new one.
+  stopH2o(port = port)
+  Sys.sleep(1)
+  capture.output(
+    connection <- init(nthreads = cpu,
+                       min_mem_size = min_ram,
+                       max_mem_size = max_ram,
+                       ignore_config = ignore_config,
+                       java = java,
+                       report,
+                       debug,
+                       port = port,
+                       insecure = insecure,
+                       https = https,
+                       bind_to_localhost = bind_to_localhost),
+    file = report, append = TRUE)
 
   # Identify variables for imputation and their models' families
   # ============================================================
@@ -660,11 +611,11 @@ mlim <- function(data = NULL,
 
   message("\n")
 
-  if (shutdown) {
-    md.log("shutting down the server", trace=FALSE)
-    h2o::h2o.shutdown(prompt = FALSE)
-    Sys.sleep(sleep)
-  }
+
+  md.log("shutting down the server", trace=FALSE)
+  h2o::h2o.shutdown(prompt = FALSE)
+  Sys.sleep(sleep)
+
 
   if (m > 1) class(MI) <- "mlim.mi"
   else class(MI) <- c("mlim", "data.frame")

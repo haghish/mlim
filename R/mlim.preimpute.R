@@ -37,7 +37,7 @@
 #' }
 #' @export
 
-mlim.preimpute <- function(data, preimpute = "mm", seed = NULL) {
+mlim.preimpute <- function(data, preimpute = "random", seed = NULL) {
 
   # Syntax check
   # ============================================================

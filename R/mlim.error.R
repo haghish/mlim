@@ -1,204 +1,527 @@
-#' @title imputation error
-#' @description calculates NRMSE, missclassification rate, and miss-ranking
-#'              absolute mean distance, scaled between 0 to 1, where 1 means
-#'              maximum distance between the actual rank of a level and the
-#'              imputed level.
-#' @param imputed the imputed dataframe
-#' @param incomplete the dataframe with missing values
-#' @param complete the original dataframe with no missing values
-#' @param transform character. it can be either "standardize", which standardizes the
-#'                numeric variables before evaluating the imputation error, or
-#'                "normalize", which change the scale of continuous variables to
-#'                range from 0 to 1. the default is NULL.
-#' @param varwise logical, default is FALSE. if TRUE, in addition to
-#'                mean accuracy for each variable type, the algorithm's
-#'                performance for each variable (column) of the datast is
-#'                also returned. if TRUE, instead of a numeric vector, a
-#'                list is retuned.
-#' @param ignore.missclass logical. the default is TRUE. if FALSE, the overall
-#'                missclassification rate for imputed unordered factors will be
-#'                returned. in general, missclassification is not recommended,
-#'                particularly for multinomial factors because it is not robust
-#'                to imbalanced data. in other words, an imputation might show
-#'                a very high accuracy, because it is biased towards the majority
-#'                class, ignoring the minority levels. to avoid this error,
-#'                Mean Per Class Error (MPCE) is returned, which is the average
-#'                missclassification of each class and thus, it is a fairer
-#'                criteria for evaluating multinomial classes.
-#' @param ignore.rank logical (default is FALSE, which is recommended). if TRUE,
-#'                the accuracy of imputation of ordered factors (ordinal variables)
-#'                will be evaluated based on 'missclassification rate' instead of
-#'                normalized euclidean distance. this practice is not recommended
-#'                because higher classification rate for ordinal variables does not
-#'                guarantee lower distances between the imputed levels, despite the
-#'                popularity of evaluating ordinal variables based on missclassification
-#'                rate. in other words, assume an ordinal variable has 5 levels (1. strongly
-#'                disagree, 2. disagree, 3. uncertain, 4. agree, 5.strongly agree). in this
-#'                example, if "ignore.rank = TRUE", then an imputation that imputes level
-#'                "5" as "4" is equally inaccurate as other algorithm that imputes level "5"
-#'                as "1". therefore, if you have ordinal variables in your dataset, make sure
-#'                you declare them as "ordered" factors to get the best imputation accuracy.
-
+#' @title Evaluate imputation error
+#' @description Calculates normalized RMSE for numeric
+#' variables, mean per-class error for unordered factors,
+#' and normalized rank error for ordered factors.
+#' @param imputed Imputed data frame, \code{mlim} object,
+#' \code{mlim.mi} object, list of completed data frames,
+#' or \code{mids} object.
+#' @param incomplete Original incomplete data frame.
+#' @param complete Original complete data frame used as
+#' the reference.
+#' @param transform Optional transformation for numeric
+#' variables. Supported values are \code{"standardize"}
+#' and \code{"normalize"}. The same transformation,
+#' estimated from \code{complete}, is applied to all
+#' three datasets.
+#' @param varwise Logical. If \code{TRUE}, variable-wise
+#' error estimates are returned in addition to overall
+#' estimates.
+#' @param ignore.missclass Logical. If \code{FALSE},
+#' ordinary misclassification error is also returned for
+#' unordered factors. The default is \code{TRUE}.
+#' @param ignore.rank Logical. If \code{FALSE}, ordered
+#' factors are evaluated using normalized rank distance.
+#' If \code{TRUE}, they are treated as unordered factors.
+#' @return A named numeric vector, or a list when
+#' \code{varwise = TRUE}. For multiple imputations,
+#' returns a matrix or a list of variable-wise results.
 #' @author E. F. Haghish
 #' @examples
-#'
 #' \dontrun{
 #' data(iris)
+#' irisNA <- mlim.na(
+#'   iris, p = 0.1,
+#'   stratify = TRUE,
+#'   seed = 2022
+#' )
 #'
-#' # add 10% missing values, ensure missingness is stratified for factors
-#' irisNA <- mlim.na(iris, p = 0.1, stratify = TRUE, seed = 2022)
+#' imp <- mlim(irisNA)
+#' mlim.error(imp, irisNA, iris)
 #'
-#' # run the default imputation
-#' MLIM <- mlim(irisNA)
-#' mlim.error(MLIM, irisNA, iris)
-#'
-#' # get error estimations for each variable
-#' mlim.error(MLIM, irisNA, iris, varwise = TRUE)
+#' mlim.error(
+#'   imp, irisNA, iris,
+#'   varwise = TRUE
+#' )
 #' }
-#' @return numeric vector
 #' @export
-mlim.error <- function(imputed, incomplete, complete, transform = NULL,
-                       varwise = FALSE, ignore.missclass = TRUE,
-                       ignore.rank=FALSE) {
 
-  rankerror    <- NA
-  classerror   <- NA
-  meanclasserr <- NA
-  nrmse        <- NA
-  err          <- NULL
+mlim.error <- function(imputed, incomplete, complete,
+                       transform = NULL, varwise = FALSE,
+                       ignore.missclass = TRUE,
+                       ignore.rank = FALSE) {
 
-  if ("mlim" %in% class(imputed) | "data.frame" %in% class(imputed) ) {
-    # make sure the complete dataset is complete!
-    if (length(which(colSums(is.na(complete)) > 0)) > 0)
-      stop("'complete dataset has missing values")
+  if (!is.logical(varwise) ||
+      length(varwise) != 1L ||
+      is.na(varwise)) {
+    stop(
+      "'varwise' must be TRUE or FALSE.",
+      call. = FALSE
+    )
+  }
 
-    # get the variables with missing data, ignoring the rest
-    naCols <- which(colSums(is.na(incomplete)) > 0)
-    imputed <- imputed[, naCols, drop = FALSE]
-    incomplete <- incomplete[, naCols, drop = FALSE]
-    complete <- complete[, naCols, drop = FALSE]
+  if (!is.logical(ignore.missclass) ||
+      length(ignore.missclass) != 1L ||
+      is.na(ignore.missclass)) {
+    stop(
+      "'ignore.missclass' must be TRUE or FALSE.",
+      call. = FALSE
+    )
+  }
 
-    classes <- lapply(complete, class)
-    types <- character(length(classes))
-    for (i in 1:length(classes)) types[i] <- classes[[i]][1]
-    if ("integer" %in% types) types[which(types == "integer")] <- "numeric"
+  if (!is.logical(ignore.rank) ||
+      length(ignore.rank) != 1L ||
+      is.na(ignore.rank)) {
+    stop(
+      "'ignore.rank' must be TRUE or FALSE.",
+      call. = FALSE
+    )
+  }
 
-    n <- nrow(imputed)
+  if (!is.null(transform)) {
 
-    if (!ignore.rank) {
-      err <- rep(NA, 4)
-      names(err) <- c('nrmse', 'mpce', 'missclass', 'missrank')
+    if (!is.character(transform) ||
+        length(transform) != 1L ||
+        is.na(transform)) {
+      stop(
+        "'transform' must be NULL or character.",
+        call. = FALSE
+      )
     }
-    else {
-      err <- rep(NA, 3)
-      names(err) <- c('nrmse', 'mpce', 'missclass')
-      if ("ordered" %in% types) types[which(types == "ordered")] <- "factor"
+
+    transform <- tolower(transform)
+
+    if (!transform %in%
+        c("standardize", "normalize")) {
+      stop(
+        paste(
+          "'transform' must be 'standardize',",
+          "'normalize', or NULL."
+        ),
+        call. = FALSE
+      )
+    }
+  }
+
+  # Multiple-imputation objects
+  # ========================================================
+  if (inherits(imputed, "mids")) {
+
+    if (!requireNamespace(
+      "mice", quietly = TRUE
+    )) {
+      stop(
+        paste(
+          "The 'mice' package is required",
+          "to evaluate a 'mids' object."
+        ),
+        call. = FALSE
+      )
     }
 
-    for (t in types){
-      ind <- which(types == t)
+    imputed <- mice::complete(
+      imputed,
+      action = "all"
+    )
+  }
 
-      if (t == "numeric") {
-        if (is.null(transform)) {
-          nrmse <-  nrmse(imputed[,ind, drop = FALSE],
-                          incomplete[,ind, drop = FALSE],
-                          complete[,ind, drop = FALSE])
-          if (!is.null(nrmse)) err[1] <- mean(nrmse, na.rm = TRUE)
-        }
-        else {
-          if (transform == "standardize") {
-            v1 <- scale(imputed[,ind, drop = FALSE])
-            v2 <- scale(incomplete[,ind, drop = FALSE])
-            v3 <- scale(complete[,ind, drop = FALSE])
-          }
-          else if (transform == "normalize") {
-            v1 <- normalize(imputed[,ind, drop = FALSE])
-            v2 <- normalize(incomplete[,ind, drop = FALSE])
-            v3 <- normalize(complete[,ind, drop = FALSE])
-          }
-          else {
-            stop(paste(transform, "is not a recognized transformation"))
-          }
-          nrmse <-  nrmse(v1, v2, v3)
-          if (!is.null(nrmse)) err[1] <- mean(nrmse, na.rm = TRUE)
-        }
+  if (inherits(imputed, "mlim.mi") ||
+      (is.list(imputed) &&
+       !is.data.frame(imputed))) {
 
-      }
-      else if (t == 'ordered' & !ignore.rank) {
-        rankerror <- missrank(imputed[,ind, drop = FALSE],
-                              incomplete[,ind, drop = FALSE],
-                              complete[,ind, drop = FALSE])
-        if (!is.null(rankerror))  err[4] <- mean(rankerror, na.rm = TRUE)
-      }
-
-      # ??? this does not mean that it is necessarily a factor variable. IMPROVE IT
-      else {
-        meanclasserr <- mean_per_class_error(imputed[,ind, drop = FALSE],
-                                  incomplete[,ind, drop = FALSE],
-                                  complete[,ind, drop = FALSE])
-        if (!is.null(meanclasserr)) err[2] <- mean(meanclasserr, na.rm = TRUE)
-
-        if (!ignore.missclass) {
-          classerror <- missclass(imputed[,ind, drop = FALSE],
-                                  incomplete[,ind, drop = FALSE],
-                                  complete[,ind, drop = FALSE])
-          if (!is.null(classerror)) err[3] <- mean(classerror, na.rm = TRUE)
-        }
-      }
+    if (length(imputed) < 1L) {
+      stop(
+        "No completed datasets were supplied.",
+        call. = FALSE
+      )
     }
+
+    results <- vector(
+      "list", length(imputed)
+    )
+
+    for (i in seq_along(imputed)) {
+
+      results[[i]] <- mlim.error(
+        imputed = imputed[[i]],
+        incomplete = incomplete,
+        complete = complete,
+        transform = transform,
+        varwise = varwise,
+        ignore.missclass = ignore.missclass,
+        ignore.rank = ignore.rank
+      )
+    }
+
+    names(results) <- paste0(
+      "imputation_", seq_along(results)
+    )
 
     if (varwise) {
-      vwa <- NULL
-      if (length(nrmse) > 1) vwa <- c(vwa, nrmse)
-      else if (is.valid(nrmse)) vwa <- c(vwa, nrmse)
-      if (ignore.missclass) {
-        if (length(meanclasserr) > 1) vwa <- c(vwa, meanclasserr)
-        else if (is.valid(meanclasserr)) vwa <- c(vwa, meanclasserr)
-      }
-      else {
-        if (length(classerror) > 1) vwa <- c(vwa, classerror)
-        else if (is.valid(classerror)) vwa <- c(vwa, classerror)
-      }
-      if (length(rankerror) > 1) vwa <- c(vwa, rankerror)
-      else if (is.valid(rankerror)) vwa <- c(vwa, rankerror)
-      return(list(error = err[!is.na(err)],
-                  nrmse = nrmse,
-                  missclass = classerror,
-                  missrank = rankerror,
-                  all = vwa))
+      return(results)
     }
-    else return(err[!is.na(err)])
-  }
 
-  else if ("mlim.mi" %in% class(imputed) |
-           "list"    %in% class(imputed) |
-           "mids"    %in% class(imputed)) {
-    mat <- NULL
-    for (i in 1:length(imputed)) {
-      tmp <- imputed[[i]]
-      class(tmp) <- c("mlim", "data.frame")
-      mat <- rbind(mat, mlim.error(tmp, incomplete, complete,
-                                   varwise = varwise,
-                                   transform = transform,
-                                   ignore.rank=ignore.rank))
+    metric_names <- unique(
+      unlist(lapply(results, names))
+    )
+
+    mat <- matrix(
+      NA_real_,
+      nrow = length(results),
+      ncol = length(metric_names),
+      dimnames = list(
+        names(results),
+        metric_names
+      )
+    )
+
+    for (i in seq_along(results)) {
+      mat[
+        i, names(results[[i]])
+      ] <- results[[i]]
     }
+
     return(mat)
   }
-  else stop("'imputed' must be of class 'data.frame', 'list', 'mlim', 'mlim.mi', or 'mids'")
+
+  # Single completed dataset
+  # ========================================================
+  if (!is.data.frame(imputed)) {
+    stop(
+      paste(
+        "'imputed' must be a data.frame,",
+        "'mlim', 'mlim.mi', list, or 'mids'."
+      ),
+      call. = FALSE
+    )
+  }
+
+  if (!is.data.frame(incomplete) ||
+      !is.data.frame(complete)) {
+    stop(
+      paste(
+        "'incomplete' and 'complete'",
+        "must be data.frames."
+      ),
+      call. = FALSE
+    )
+  }
+
+  if (anyNA(complete)) {
+    stop(
+      "'complete' must not contain missing values.",
+      call. = FALSE
+    )
+  }
+
+  if (nrow(imputed) != nrow(incomplete) ||
+      nrow(complete) != nrow(incomplete)) {
+    stop(
+      "All datasets must have the same rows.",
+      call. = FALSE
+    )
+  }
+
+  if (!identical(
+    names(imputed), names(incomplete)
+  ) ||
+  !identical(
+    names(complete), names(incomplete)
+  )) {
+    stop(
+      paste(
+        "All datasets must have identical",
+        "variables and variable order."
+      ),
+      call. = FALSE
+    )
+  }
+
+  naCols <- which(
+    colSums(is.na(incomplete)) > 0L
+  )
+
+  if (length(naCols) < 1L) {
+    stop(
+      "'incomplete' contains no missing values.",
+      call. = FALSE
+    )
+  }
+
+  imputed <- imputed[
+    , naCols, drop = FALSE
+  ]
+  incomplete <- incomplete[
+    , naCols, drop = FALSE
+  ]
+  complete <- complete[
+    , naCols, drop = FALSE
+  ]
+
+  classes <- lapply(complete, class)
+  types <- vapply(
+    classes,
+    function(x) x[1],
+    character(1)
+  )
+
+  types[types == "integer"] <- "numeric"
+
+  if (ignore.rank) {
+    types[types == "ordered"] <- "factor"
+  }
+
+  supported <- c(
+    "numeric", "ordered", "factor",
+    "character", "logical"
+  )
+
+  if (any(!types %in% supported)) {
+    bad <- unique(types[!types %in% supported])
+    stop(
+      paste(
+        "Unsupported variable class:",
+        paste(bad, collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+
+  nrmse_error <- NULL
+  mpce_error <- NULL
+  class_error <- NULL
+  rank_error <- NULL
+
+  # Numeric variables
+  # ========================================================
+  ind <- which(types == "numeric")
+
+  if (length(ind) > 0L) {
+
+    v1 <- imputed[, ind, drop = FALSE]
+    v2 <- incomplete[, ind, drop = FALSE]
+    v3 <- complete[, ind, drop = FALSE]
+
+    if (!is.null(transform)) {
+
+      for (j in seq_along(v3)) {
+
+        if (transform == "standardize") {
+
+          center <- mean(
+            v3[[j]], na.rm = TRUE
+          )
+          spread <- stats::sd(
+            v3[[j]], na.rm = TRUE
+          )
+
+          if (is.finite(spread) &&
+              spread > 0) {
+            v1[[j]] <- (
+              v1[[j]] - center
+            ) / spread
+            v2[[j]] <- (
+              v2[[j]] - center
+            ) / spread
+            v3[[j]] <- (
+              v3[[j]] - center
+            ) / spread
+          }
+        }
+
+        if (transform == "normalize") {
+
+          lower <- min(
+            v3[[j]], na.rm = TRUE
+          )
+          upper <- max(
+            v3[[j]], na.rm = TRUE
+          )
+          spread <- upper - lower
+
+          if (is.finite(spread) &&
+              spread > 0) {
+            v1[[j]] <- (
+              v1[[j]] - lower
+            ) / spread
+            v2[[j]] <- (
+              v2[[j]] - lower
+            ) / spread
+            v3[[j]] <- (
+              v3[[j]] - lower
+            ) / spread
+          }
+        }
+      }
+    }
+
+    nrmse_error <- nrmse(
+      v1, v2, v3
+    )
+
+    valid <- is.finite(nrmse_error)
+
+    if (!any(valid)) {
+      nrmse_error <- NULL
+    }
+  }
+
+  # Ordered factors
+  # ========================================================
+  ind <- which(types == "ordered")
+
+  if (length(ind) > 0L &&
+      !ignore.rank) {
+
+    rank_error <- missrank(
+      imputed[, ind, drop = FALSE],
+      incomplete[, ind, drop = FALSE],
+      complete[, ind, drop = FALSE]
+    )
+
+    valid <- is.finite(rank_error)
+
+    if (!any(valid)) {
+      rank_error <- NULL
+    }
+  }
+
+  # Unordered categorical variables
+  # ========================================================
+  ind <- which(
+    types %in% c(
+      "factor", "character", "logical"
+    )
+  )
+
+  if (length(ind) > 0L) {
+
+    mpce_error <- numeric(
+      length(ind)
+    )
+    names(mpce_error) <- names(
+      complete
+    )[ind]
+
+    if (!ignore.missclass) {
+      class_error <- numeric(
+        length(ind)
+      )
+      names(class_error) <- names(
+        complete
+      )[ind]
+    }
+
+    for (j in seq_along(ind)) {
+
+      col <- ind[j]
+
+      mpce_error[j] <-
+        mean_per_class_error(
+          imputed[
+            , col, drop = FALSE
+          ],
+          incomplete[
+            , col, drop = FALSE
+          ],
+          complete[
+            , col, drop = FALSE
+          ],
+          mean = TRUE
+        )
+
+      if (!ignore.missclass) {
+        class_error[j] <- missclass(
+          imputed[
+            , col, drop = FALSE
+          ],
+          incomplete[
+            , col, drop = FALSE
+          ],
+          complete[
+            , col, drop = FALSE
+          ]
+        )[1]
+      }
+    }
+
+    mpce_error[
+      !is.finite(mpce_error)
+    ] <- NA_real_
+
+    if (!ignore.missclass) {
+      class_error[
+        !is.finite(class_error)
+      ] <- NA_real_
+    }
+  }
+
+  # Overall error estimates
+  # ========================================================
+  err <- numeric()
+
+  if (!is.null(nrmse_error)) {
+    valid <- is.finite(nrmse_error)
+
+    if (any(valid)) {
+      err["nrmse"] <- mean(
+        nrmse_error[valid]
+      )
+    }
+  }
+
+  if (!is.null(mpce_error)) {
+    valid <- is.finite(mpce_error)
+
+    if (any(valid)) {
+      err["mpce"] <- mean(
+        mpce_error[valid]
+      )
+    }
+  }
+
+  if (!ignore.missclass &&
+      !is.null(class_error)) {
+    valid <- is.finite(class_error)
+
+    if (any(valid)) {
+      err["missclass"] <- mean(
+        class_error[valid]
+      )
+    }
+  }
+
+  if (!ignore.rank &&
+      !is.null(rank_error)) {
+    valid <- is.finite(rank_error)
+
+    if (any(valid)) {
+      err["missrank"] <- mean(
+        rank_error[valid]
+      )
+    }
+  }
+
+  if (!varwise) {
+    return(err)
+  }
+
+  all_error <- c(
+    nrmse_error,
+    mpce_error,
+    if (!ignore.missclass) {
+      class_error
+    },
+    if (!ignore.rank) {
+      rank_error
+    }
+  )
+
+  return(list(
+    error = err,
+    nrmse = nrmse_error,
+    mpce = mpce_error,
+    missclass = class_error,
+    missrank = rank_error,
+    all = all_error
+  ))
 }
-
-# data(charity)
-# charity$ta1 <- factor(charity$ta1, ordered = FALSE)
-# for (i in colnames(charity))
-# dfNA <-  mlim.na(charity, p = 0.1, stratify = TRUE, seed = 2022)
-# imp <- missRanger::missRanger(dfNA)
-# mlim.error(imp, dfNA, charity)
-#print((ELNETerror <- mlim.error(ELNET, dfNA, df)))
-
-# if we standardize numeric vars, RMSE and MAE can be more than 1
-
-
-
-
-
-

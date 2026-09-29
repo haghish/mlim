@@ -1,11 +1,7 @@
-# ----------------------------------------------------------
-# getMetrics
-# ==========================================================
 #' @title retreives metrics data
 #' @description a function to retreive the metrics data from
 #'              datasets preimputed with mlim
-#' @param preimputed.data data.frame previously imputed by mlim or
-#'                        other programs
+#' @param preimputed.data data.frame previously imputed by mlim or other programs
 #' @author E. F. Haghish
 #' @keywords Internal
 #' @noRd
