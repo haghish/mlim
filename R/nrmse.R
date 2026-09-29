@@ -6,36 +6,19 @@
 #' @author E. F. Haghish
 #' @keywords Internal
 #' @noRd
+nrmse <- function(imputed, incomplete, complete){
+  nrmse <- NULL
+  mis <- as.data.frame(is.na(incomplete))
+  index <- which(colSums(mis) > 0)
+  for (i in index) {
+    v.na <- is.na(incomplete[, i])
+    nrmse <- c(nrmse,
+               sqrt(mean((imputed[v.na,i] - complete[v.na,i])^{2}) /
+                      stats::var(complete[v.na,i]))
+    )
 
-nrmse <- function(imputed, incomplete, complete) {
-  missing <- is.na(incomplete)
-  index <- which(colSums(missing) > 0L)
-
-  if (length(index) == 0L) {
-    return(numeric(0))
   }
-
-  out <- vapply(
-    index,
-    function(i) {
-      v.na <- missing[, i]
-      truth <- complete[v.na, i]
-      estimate <- imputed[v.na, i]
-      variance <- stats::var(truth, na.rm = TRUE)
-      if (!is.finite(variance) || variance <= 0) {
-        return(NA_real_)
-      }
-
-      sqrt(
-        mean(
-          (estimate - truth)^2,
-          na.rm = TRUE
-        ) / variance
-      )
-    },
-    numeric(1L)
-  )
-
-  names(out) <- colnames(incomplete)[index]
-  return(out)
+  names(nrmse) <- colnames(incomplete)[index]
+  return(nrmse)
+  #sqrt(mean((imputed[mis] - complete[mis])^{2}) / stats::var(complete[mis]))
 }

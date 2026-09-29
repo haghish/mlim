@@ -26,6 +26,7 @@
 #' @author E. F. Haghish
 #' @keywords Internal
 #' @noRd
+
 checkNconvert <- function(data, vars2impute, ignore,
                           ignore.rank=FALSE, report=NULL) {
 
@@ -72,8 +73,14 @@ checkNconvert <- function(data, vars2impute, ignore,
         orderedIndex <- orderedIndex + 1
         mem[[orderedIndex]] <- factmem(data[, i, drop = FALSE])
         family[j] <- 'quasibinomial'
-        # represent ordered factors by rank indices
-        data[,i] <- as.numeric(data[,i])
+        #  take the labels if numeric
+        if (is.numeric(as.character(data[,i]))) {
+          data[,i] <- as.numeric(levels(data[,i]))[data[,i]]
+        }
+        # otherwise take the levels
+        else {
+          data[,i] <- as.numeric(data[,i])
+        }
       }
       else if (cardinality > 2 & ignore.rank) {
         family[j] <- 'multinomial'
@@ -84,8 +91,14 @@ checkNconvert <- function(data, vars2impute, ignore,
         mem[[orderedIndex]] <- factmem(data[, i, drop = FALSE])
         family[j] <- 'gaussian_integer'
 
-        # represent ordered factors by rank indices
-        data[,i] <- as.numeric(data[,i])
+        #  take the labels if numeric
+        if (is.numeric(as.character(data[,i]))) {
+          data[,i] <- as.numeric(levels(data[,i]))[data[,i]]
+        }
+        # otherwise take the levels
+        else {
+          data[,i] <- as.numeric(data[,i])
+        }
       }
     }
     else if ("integer" %in% classes[[i]])  {
@@ -113,7 +126,16 @@ checkNconvert <- function(data, vars2impute, ignore,
               orderedCols = match(
                 COLNAMES[features == "ordered"],
                 colnames(data))
-  )
-  )
+              )
+         )
 }
 
+
+#iim <- selectVariables(data=irisWithNA, ignore = c("Sepal.Length","Sepal.Width" ,"Petal.Length","Petal.Width"))
+#get <- checkNconvert(data=DATA1, vars2impute=vars2impute, ignore = NULL)
+#print(get$family)
+#print(get$class)
+#data(cars)
+#cars$dist[c(1,4,7,13,16,22,26,29,35,44,45)] <- NA
+#a <- mlim:::selectVariables(data=cars)
+#b <- checkNconvert(data=cars, vars2impute=a$vars2impute, ignore = NULL)

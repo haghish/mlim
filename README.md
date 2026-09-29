@@ -1,8 +1,7 @@
-> __mlim is being updated to v. 1.0.0, with a major improvement in multiple imputation__ 
 
 <a href="https://github.com/haghish/mlim"><img src='man/figures/mlim.png' align="right" height="200" /></a>
 
-**`mlim`** : Single and Multiple Imputation with Automated Machine Learning for _R_ and _Stata_
+**`mlim`** : Single and Multiple Imputation with Automated Machine Learning
 ================================================================
 
 <!--<a href="https://github.com/haghish/mlim"><img src="./web/mlim.png" align="left" width="140" hspace="10" vspace="6"></a> -->

@@ -2,45 +2,43 @@
 % Please edit documentation in R/mlim.mids.R
 \name{mlim.mids}
 \alias{mlim.mids}
-\title{convert multiple imputations to a mids object}
+\title{prepare "mids" class object}
 \usage{
 mlim.mids(mlim, incomplete)
 }
 \arguments{
-\item{mlim}{An object of class \code{"mlim.mi"} returned
-by \code{mlim()}, or a compatible MI object.}
+\item{mlim}{array of class "mlim", returned by "mlim" function}
 
-\item{incomplete}{The original incomplete data frame.}
+\item{incomplete}{the original data.frame with NAs}
 }
 \value{
-An object of class \code{"mids"}.
+object of class 'mids', as required by 'mice' package for analyzing
+        multiple imputation data
 }
 \description{
-converts multiply imputed datasets to a
-\code{mids} object for analysis with \code{mice}.
-}
-\details{
-The original data are stored as imputation 0
-and completed datasets as imputations 1, ..., m.
-The function verifies dataset dimensions, variable order,
-observed values, and completion of originally missing
-values before conversion.
+takes "mlim" object and prepares a "mids" class for data analysis with
+             multiple imputation.
 }
 \examples{
+
 \dontrun{
 data(iris)
+require(mice)
 irisNA <- mlim.na(iris, p = 0.1, seed = 2022)
-imp <- mlim(
-  irisNA, m = 5, tuning_time = 180, seed = 2022
-)
-mids <- mlim.mids(imp, irisNA)
-fit <- with(
-  mids,
-  lm(Sepal.Length ~ Sepal.Width + Petal.Length)
-)
-summary(mice::pool(fit))
+
+# adding unstratified NAs to all variables of a data.frame
+MLIM <- mlim(irisNA, m=5, tuning_time = 180, doublecheck = T, seed = 2022)
+
+# create the mids object for MICE package
+mids <- mlim.mids(MLIM, irisNA)
+
+# run an analysis on the mids data (just as example)
+fit <- with(data=mids, exp=glm(Species~ Sepal.Length, family = "binomial"))
+
+# then, pool the results!
+summary(pool(fit))
 }
 }
 \author{
-E. F. Haghish
+E. F. Haghish, based on code from 'prelim' frunction in missMDA R package
 }

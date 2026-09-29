@@ -11,7 +11,7 @@
 #' @param format Character string specifying the Stata multiple imputation
 #'   format. Currently, only \code{"flong"} is supported.
 #' @param filename Optional character string specifying the file name or path
-#'   for saving the prepared dataset as a Stata \code{.dta} file.
+#'   for saving the prepared dataset as a Stata \code{.dta} file. 
 #'
 #' @details
 #' For the \code{flong} format, the original unimputed dataset is assigned
@@ -39,33 +39,32 @@
 #' )
 #' }
 #'
-#' @importFrom readstata13 save.dta13
 #' @export
 
 mlim.stata <- function(mlim, df, format = "flong", filename = NULL) {
-
+  
   format <- tolower(format)
   if (!format %in% "flong") stop("currently, only 'flong' format is supported!")
-
+  
   if (!inherits(mlim, "mlim.mi")) stop("'mlim' must be of class mlim.mi")
   if (!is.data.frame(df)) stop("'df' must be the original unimputed data.frame.")
-
+  
   if (!is.null(filename) && nzchar(filename)) {
     if (!requireNamespace("readstata13", quietly = TRUE)) {
       stop("The 'readstata13' package is required to save a Stata file.")
     }
   }
-
+  
   # Avoid overwriting existing variables called "m" and "id"
   if (any(c("m", "id") %in% names(df))) {
     stop("The variables 'm' and 'id' already exist in the dataset.")
   }
-
+  
   # Add m = 0 original dataset
   n <- nrow(df)
   df$m  <- 0L
   df$id <- seq_len(n)
-
+  
   # add "m" and "id" to each imputed dataset and rbind them into flong format
   imputations <- lapply(seq_along(mlim), function(i) {
     x <- mlim[[i]]
@@ -73,17 +72,17 @@ mlim.stata <- function(mlim, df, format = "flong", filename = NULL) {
     x$id <- seq_len(n)
     x
   })
-
+  
   stata.data <- do.call(rbind, c(list(df), imputations))
   rownames(stata.data) <- NULL
-
+  
   # Save Stata file if requested
   # ============================================================
   if (!is.null(filename) && nzchar(filename)) {
     if (!grepl("\\.dta$", filename, ignore.case = TRUE)) {
       filename <- paste0(filename, ".dta")
     }
-
+    
     readstata13::save.dta13(
       data = stata.data,
       file = filename,
@@ -91,6 +90,6 @@ mlim.stata <- function(mlim, df, format = "flong", filename = NULL) {
       add.rownames = FALSE
     )
   }
-
+  
   return(stata.data)
 }

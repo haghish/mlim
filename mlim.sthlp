@@ -1,5 +1,5 @@
 {smcl}
-{it:v. 1.0.0}
+{it:v. 01}
 
 
 {title:mlim}
@@ -11,11 +11,11 @@
 {title:Syntax}
 
 {p 8 8 2} {bf:mlim} [, {it:m(#)} {it:algos(string)} {it:stochastic} {it:nostochastic}
-{it:ignore(varlist)} {it:hierarchy(varlist)} {it:tuningtime(#)} {it:maxmodels(#)} {it:maxiter(#)}
-{it:cv(#)} {it:nomatching} {it:noautobalance} {it:seed(#)}
+{it:ignore(varlist)} {it:tuningtime(#)} {it:maxmodels(#)} {it:maxiter(#)}
+{it:cv(#)} {it:matching} {it:noautobalance} {it:balance(varlist)} {it:seed(#)}
 {it:verbosity(string)} {it:report(string)} {it:tolerance(#)} 
-{it:preimpute(string)} {it:cpu(#)} {it:ram(#)} {it:port(#)} {it:flush} {it:save(string)}
-{it:load(string)} {it:preimputed(string)} {it:noshutdown} {it:java(string)} {it:filename(string)}
+{it:preimpute(string)} {it:cpu(#)} {it:ram(#)} {it:flush} {it:save(string)}
+{it:load(string)} {it:java(string)} {it:filename(string)}
 {it:debug} ]
 
 
@@ -64,13 +64,13 @@ R and Java Runtime should also be accessible via path environment.
 {col 5}{bf:stochastic}{col 26}Passes {bf:stochastic = TRUE} to R. Experimental in this source.
 {col 5}{bf:nostochastic}{col 26}Passes {bf:stochastic = FALSE} to R. May not be combined with {bf:stochastic}. Experimental feature.
 {col 5}{bf:ignore(varlist)}{col 26}Excludes variables from the set of variables to be imputed
-{col 5}{bf:hierarchy(varlist)}{col 26}Specifies nested hierarchy variables from highest to lowest level and passes them to R as {bf:hierarchy}.
 {col 5}{bf:tuningtime(#)}{col 26}Passes {bf:tuning_time = #} to R.
 {col 5}{bf:maxmodels(#)}{col 26}Passes {bf:max_models = #} to R.
 {col 5}{bf:maxiter(#)}{col 26}Passes {bf:maxiter = #} to R.
 {col 5}{bf:cv(#)}{col 26}Passes {bf:cv = #} to R.
-{col 5}{bf:nomatching}{col 26}Disables predictive matching by passing {bf:matching = FALSE} to R. By default, R uses {bf:matching = "AUTO"}.
+{col 5}{bf:matching}{col 26}Experimental option related to predictive matching. See Remarks below.
 {col 5}{bf:noautobalance}{col 26}Turns off class imbalance correction in single imputation
+{col 5}{bf:balance(varlist)}{col 26}Passes the listed variables to R as {bf:balance}. Experimental in this source.
 {col 5}{bf:seed(#)}{col 26}Passes the integer random-number seed to R.
 {col 5}{bf:verbosity(string)}{col 26}Passes {bf:verbosity} to R.
 {col 5}{bf:report(string)}{col 26}Passes a report path or report specification to R.
@@ -78,12 +78,9 @@ R and Java Runtime should also be accessible via path environment.
 {col 5}{bf:preimpute(string)}{col 26}Passes {bf:preimpute} to R.
 {col 5}{bf:cpu(#)}{col 26}Passes the requested number of CPUs to R.
 {col 5}{bf:ram(#)}{col 26}Passes the requested RAM value to R.
-{col 5}{bf:port(#)}{col 26}Specifies the local H2O server port and passes {bf:port = #} to R. The default is 54321.
 {col 5}{bf:flush}{col 26}Passes {bf:flush = TRUE} to R, requesting cleanup of H2O models.
 {col 5}{bf:save(string)}{col 26}Passes {bf:save} to the R package to save its imputation state (recommended).
 {col 5}{bf:load(string)}{col 26}Passes {bf:load} to the R package to load a previously saved imputation state.
-{col 5}{bf:preimputed(string)}{col 26}Specifies a Stata dataset containing preimputed values and passes it to R as {bf:preimputed.data}.
-{col 5}{bf:noshutdown}{col 26}Keeps the H2O server running after imputation by passing {bf:shutdown = FALSE} to R.
 {col 5}{bf:java(string)}{col 26}Passes a Java path to R. Backslashes are converted to forward slashes.
 {col 5}{bf:filename(string)}{col 26}Saves the imputed data to a Stata {bf:.dta} file (recommended).
 {col 5}{bf:debug}{col 26}Used for debugging the program.
@@ -127,11 +124,15 @@ Before calling R, the command uses {bf:preserve}. If R execution or the subseque
 {bf:mi import flong} fails, the original data are restored. On success, the command
 uses {bf:restore, not}, retaining the imputed dataset loaded by R.
 
-{p 4 4 2}{bf:Predictive matching}
+{p 4 4 2}{bf:Experimental matching option}
 
 {p 4 4 2}
-By default, the R package uses {bf:matching = "AUTO"}. Specify {bf:nomatching} to
-disable predictive matching and pass {bf:matching = FALSE} to R.
+The current syntax declares {bf:matching} as a switch. The implementation then treats
+its local macro as though it could contain values such as TRUE, FALSE, or AUTO.
+Consequently, in this development snapshot, specifying {bf:matching} does not enable
+matching; the generated R argument falls through to {bf:matching = FALSE}. This option
+should therefore be regarded as under development until its syntax and implementation
+are reconciled.
 
 {p 4 4 2}{bf:Reserved names}
 
@@ -175,24 +176,9 @@ Ignore a variable and use a reproducible seed:
 {p 8 8 2} . {bf:mlim, m(5) ignore(length) seed(2026)}
 
 {p 4 4 2}
-Specify a nested hierarchical structure from highest to lowest level:
-
-{p 8 8 2} . {bf:mlim, m(5) hierarchy(school classroom student)}
-
-{p 4 4 2}
 Limit computational resources to 4 CPU and 8GB of RAM:
 
 {p 8 8 2} . {bf:mlim, m(5) cpu(4) ram(8)}
-
-{p 4 4 2}
-Use a specific H2O port:
-
-{p 8 8 2} . {bf:mlim, m(5) port(54325)}
-
-{p 4 4 2}
-Keep the H2O server running after imputation:
-
-{p 8 8 2} . {bf:mlim, m(5) noshutdown}
 
 {p 4 4 2}
 Spend up to 10 minutes on hyperparameter tuning for each variable in each itteration:
@@ -200,9 +186,9 @@ Spend up to 10 minutes on hyperparameter tuning for each variable in each ittera
 {p 8 8 2} . {bf:mlim, m(5) tuningtime(600) maxmodels(200) maxiter(10) cv(5)}
 
 {p 4 4 2}
-Disable automatic balancing:
+Disable automatic balancing and request balancing for selected variables:
 
-{p 8 8 2} . {bf:mlim, m(5) noautobalance}
+{p 8 8 2} . {bf:mlim, m(5) noautobalance balance(outcome group)}
 
 {p 4 4 2}
 Save the imputed dataset to disk:

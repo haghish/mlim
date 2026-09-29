@@ -1,5 +1,5 @@
 /***
-_v. 1.0.0_
+_v. 01_
 
 mlim
 ====
@@ -10,11 +10,11 @@ Syntax
 ------
 
 > __mlim__ [, _m(#)_ _algos(string)_ _stochastic_ _nostochastic_
-_ignore(varlist)_ _hierarchy(varlist)_ _tuningtime(#)_ _maxmodels(#)_ _maxiter(#)_
-_cv(#)_ _nomatching_ _noautobalance_ _seed(#)_
+_ignore(varlist)_ _tuningtime(#)_ _maxmodels(#)_ _maxiter(#)_
+_cv(#)_ _matching_ _noautobalance_ _balance(varlist)_ _seed(#)_
 _verbosity(string)_ _report(string)_ _tolerance(#)_ 
-_preimpute(string)_ _cpu(#)_ _ram(#)_ _port(#)_ _flush_ _save(string)_
-_load(string)_ _preimputed(string)_ _noshutdown_ _java(string)_ _filename(string)_
+_preimpute(string)_ _cpu(#)_ _ram(#)_ _flush_ _save(string)_
+_load(string)_ _java(string)_ _filename(string)_
 _debug_ ]
 
 Description
@@ -58,13 +58,13 @@ Options
 | __stochastic__      | Passes __stochastic = TRUE__ to R. Experimental in this source. |
 | __nostochastic__    | Passes __stochastic = FALSE__ to R. May not be combined with __stochastic__. Experimental feature.     |
 | __ignore(varlist)__ | Excludes variables from the set of variables to be imputed |
-| __hierarchy(varlist)__ | Specifies nested hierarchy variables from highest to lowest level and passes them to R as __hierarchy__. |
 | __tuningtime(#)__   | Passes __tuning_time = #__ to R. |
 | __maxmodels(#)__    | Passes __max_models = #__ to R. |
 | __maxiter(#)__      | Passes __maxiter = #__ to R. |
 | __cv(#)__           | Passes __cv = #__ to R. |
-| __nomatching__      | Disables predictive matching by passing __matching = FALSE__ to R. By default, R uses __matching = "AUTO"__. |
+| __matching__        | Experimental option related to predictive matching. See Remarks below. |
 | __noautobalance__   | Turns off class imbalance correction in single imputation |
+| __balance(varlist)__ | Passes the listed variables to R as __balance__. Experimental in this source. |
 | __seed(#)__         | Passes the integer random-number seed to R. |
 | __verbosity(string)__ | Passes __verbosity__ to R. |
 | __report(string)__    | Passes a report path or report specification to R. |
@@ -72,12 +72,9 @@ Options
 | __preimpute(string)__ | Passes __preimpute__ to R. |
 | __cpu(#)__ | Passes the requested number of CPUs to R. |
 | __ram(#)__ | Passes the requested RAM value to R. |
-| __port(#)__ | Specifies the local H2O server port and passes __port = #__ to R. The default is 54321. |
 | __flush__ | Passes __flush = TRUE__ to R, requesting cleanup of H2O models. |
 | __save(string)__    | Passes __save__ to the R package to save its imputation state (recommended). |
 | __load(string)__    | Passes __load__ to the R package to load a previously saved imputation state. |
-| __preimputed(string)__ | Specifies a Stata dataset containing preimputed values and passes it to R as __preimputed.data__. |
-| __noshutdown__      | Keeps the H2O server running after imputation by passing __shutdown = FALSE__ to R. |
 | __java(string)__    | Passes a Java path to R. Backslashes are converted to forward slashes.              |
 | __filename(string)__ | Saves the imputed data to a Stata __.dta__ file (recommended).                  |
 | __debug__           |                                                  Used for debugging the program.|
@@ -115,10 +112,14 @@ Before calling R, the command uses __preserve__. If R execution or the subsequen
 __mi import flong__ fails, the original data are restored. On success, the command
 uses __restore, not__, retaining the imputed dataset loaded by R.
 
-### Predictive matching
+### Experimental matching option
 
-By default, the R package uses __matching = "AUTO"__. Specify __nomatching__ to
-disable predictive matching and pass __matching = FALSE__ to R.
+The current syntax declares __matching__ as a switch. The implementation then treats
+its local macro as though it could contain values such as TRUE, FALSE, or AUTO.
+Consequently, in this development snapshot, specifying __matching__ does not enable
+matching; the generated R argument falls through to __matching = FALSE__. This option
+should therefore be regarded as under development until its syntax and implementation
+are reconciled.
 
 ### Reserved names
 
@@ -155,29 +156,17 @@ Ignore a variable and use a reproducible seed:
 
 > . __mlim, m(5) ignore(length) seed(2026)__
 
-Specify a nested hierarchical structure from highest to lowest level:
-
-> . __mlim, m(5) hierarchy(school classroom student)__
-
 Limit computational resources to 4 CPU and 8GB of RAM:
 
 > . __mlim, m(5) cpu(4) ram(8)__
-
-Use a specific H2O port:
-
-> . __mlim, m(5) port(54325)__
-
-Keep the H2O server running after imputation:
-
-> . __mlim, m(5) noshutdown__
 
 Spend up to 10 minutes on hyperparameter tuning for each variable in each itteration:
 
 > . __mlim, m(5) tuningtime(600) maxmodels(200) maxiter(10) cv(5)__
 
-Disable automatic balancing:
+Disable automatic balancing and request balancing for selected variables:
 
-> . __mlim, m(5) noautobalance__
+> . __mlim, m(5) noautobalance balance(outcome group)__
 
 Save the imputed dataset to disk:
 
@@ -228,7 +217,7 @@ After saving the program as __mlim.ado__, generate the Stata help file with:
 ***/
 
 
-*capture program drop mlim
+capture program drop mlim
 program define mlim
     version 14
 
@@ -237,12 +226,11 @@ program define mlim
 		STOCHASTIC                                          /// UNDER TESTING
 		NOSTOCHASTIC                                        /// UNDER TESTING
 		IGNORE(varlist)                                     ///
-		HIERARCHY(varlist)                                  ///
 		TUNINGTime(numlist integer max=1)                   ///
 		MAXModels(numlist integer max=1)                    ///
 		MAXITER(numlist integer max=1)                      ///
 		CV(numlist integer max=1)                           ///
-		NOMATCHING                                          ///
+		MATCHING                                            /// UNDER TESTING
 		NOAUTOBALANCE                                       /// UNDER TESTING
 		SEED(numlist integer max=1)                         ///
 		VERBOSITY(string)                                   ///
@@ -251,16 +239,18 @@ program define mlim
 		PREIMPUTE(string)                                   ///
 		CPU(numlist integer max=1)                          ///
 		RAM(numlist max=1)                                  ///
-		PORT(integer 54321)                                 ///
 		FLUSH                                               ///
 		SAVE(string)                                        ///
 		LOAD(string)                                        ///
-		PREIMPUTED(string asis)                             ///
-		NOSHUTDOWN                                          ///
 		JAVA(string)                                        ///
 		FILENAME(string)                                    ///
 		DEBUG                                               ///
-		]
+		]                                  
+		      
+		///POSTIMPUTE                                          ///
+		///PREIMPUTED(string asis)                             ///
+		///NOSHUTDOWN                                          /// NOT APPLICABLE
+		///BALANCE(varlist)                                    /// UNDER TESTING
 
     // SYntax check
     // ============================================================
@@ -271,11 +261,6 @@ program define mlim
 	
     if "`stochastic'" != "" & "`nostochastic'" != "" {
         display as error "stochastic and nostochastic cannot be specified together"
-        exit 198
-    }
-
-    if `port' < 1 | `port' > 65535 {
-        display as error "port must be between 1 and 65535"
         exit 198
     }
 	
@@ -303,7 +288,7 @@ program define mlim
         exit 198
     }
 	
-    rcall_check mlim>=0.4.0 readstata13>=0.11.0
+    rcall_check mlim>=0.3.0 readstata13>=0.11.0  //UPDATE mlim to 0.4.0
 
     // Identify variables with missing observations that should be imputed
     // ============================================================
@@ -359,20 +344,37 @@ program define mlim
     // variables to ignore
     if "`ignore'" != "" local rargs `"`rargs', ignore = scan(text = "`ignore'", what = character(), quiet = TRUE)"'
 
-    // hierarchical structure
-    if "`hierarchy'" != "" local rargs `"`rargs', hierarchy = scan(text = "`hierarchy'", what = character(), quiet = TRUE)"'
-
     // tuning
     if "`tuningtime'" != "" local rargs `"`rargs', tuning_time = `tuningtime'"'
     if "`maxmodels'" != "" local rargs `"`rargs', max_models = `maxmodels'"'
     if "`maxiter'" != "" local rargs `"`rargs', maxiter = `maxiter'"'
     if "`cv'" != "" local rargs `"`rargs', cv = `cv'"'
 
-    // disable predictive matching
-    if "`nomatching'" != "" local rargs `"`rargs', matching = FALSE"'
+    // matching (must be specified because it is an experimental feature)
+    if `"`matching'"' != "" {
+        local matching_upper = upper(`"`matching'"')
+
+        if "`matching_upper'" == "TRUE" | "`matching_upper'" == "T" {
+            local rargs `"`rargs', matching = TRUE"'
+        }
+        else if "`matching_upper'" == "FALSE" | "`matching_upper'" == "F" {
+            local rargs `"`rargs', matching = FALSE"'
+        }
+		else if "`matching_upper'" == "AUTO" | "`matching_upper'" == "auto" {
+            local rargs `"`rargs', matching = AUTO"'
+        }
+		
+		// if matching is not specified, turn it off! 
+        else {
+            local rargs `"`rargs', matching = FALSE"'
+        }
+    }
 
     // automatic class balancing
     if "`noautobalance'" != "" local rargs `"`rargs', autobalance = FALSE"'
+	
+    // variables to balance
+    //if "`balance'" != "" local rargs `"`rargs', balance = scan(text = "`balance'", what = character(), quiet = TRUE)"'
 
     // random seed
     if "`seed'" != "" local rargs `"`rargs', seed = `seed'"'
@@ -397,12 +399,6 @@ program define mlim
 
     // RAM
     if "`ram'" != "" local rargs `"`rargs', ram = `ram'"'
-
-    // H2O server port
-    local rargs `"`rargs', port = `port'"'
-
-    // H2O shutdown behavior
-    if "`noshutdown'" != "" local rargs `"`rargs', shutdown = FALSE"'
 
     // flush H2O models
     if "`flush'" != "" local rargs `"`rargs', flush = TRUE"'
@@ -452,37 +448,25 @@ program define mlim
 
 	if `"`verbosity'"' != "" display "calling mlim via Rcall..."
 
-    // Reset Rcall's error flag before starting the R transaction
-    // ============================================================
-    global RcallError 0
-
     // Single imputation
     // ============================================================
     if `m' == 1 {
         if `"`filename'"' == "" {
             capture noisily rcall vanilla:                    ///
-                options("prefer_RCurl" = TRUE);               ///
+			    options(prefer_RCurl = TRUE);                 ///
                 df <- st.data();                              ///
                 `precode'                                     ///
-                imp <- tryCatch(                             ///
-                    mlim::mlim(data = df, `rargs'),            ///
-                    error = function(e) e                      ///
-                );                                             ///
-                if (inherits(imp, "error")) stop(imp);        ///
+                imp <- mlim::mlim(data = df, `rargs');        ///
                 st.load(imp);                                 ///
                 st.return <- "rc"
         }
 
         else {
             capture noisily rcall vanilla:                    ///
-                options("prefer_RCurl" = TRUE);               ///
+			    options(prefer_RCurl = TRUE);                 ///
                 df <- st.data();                              ///
                 `precode'                                     ///
-                imp <- tryCatch(                             ///
-                    mlim::mlim(data = df, `rargs'),            ///
-                    error = function(e) e                      ///
-                );                                             ///
-                if (inherits(imp, "error")) stop(imp);        ///
+                imp <- mlim::mlim(data = df, `rargs');        ///
                 outfile <- "`filename_r'";                    ///
                 if (!endsWith(tolower(outfile), ".dta"))      ///
                     outfile <- paste0(outfile, ".dta");       ///
@@ -502,49 +486,29 @@ program define mlim
     else {
         if `"`filename'"' == "" {
             capture noisily rcall vanilla:                    ///
-                options("prefer_RCurl" = TRUE);               ///
+			    options(prefer_RCurl = TRUE);                 ///
                 df <- st.data();                              ///
                 `precode'                                     ///
-                imp <- tryCatch(                             ///
-                    mlim::mlim(data = df, `rargs'),            ///
-                    error = function(e) e                      ///
-                );                                             ///
-                if (inherits(imp, "error")) stop(imp);        ///
-                stata.data <- tryCatch(                      ///
-                    mlim::mlim.stata(                          ///
-                        mlim = imp,                            ///
-                        df = df,                               ///
-                        format = "flong"                       ///
-                    ),                                         ///
-                    error = function(e) e                      ///
-                );                                             ///
-                if (inherits(stata.data, "error"))            ///
-                    stop(stata.data);                          ///
+                imp <- mlim::mlim(data = df, `rargs');        ///
+                stata.data <- mlim::mlim.stata(               ///
+                    mlim = imp,                               ///
+                    df = df,                                  ///
+                    format = "flong");                        ///
                 st.load(stata.data);                          ///
                 st.return <- "rc"
         }
 
         else {
             capture noisily rcall vanilla:                    ///
-                options("prefer_RCurl" = TRUE);               ///
+			    options(prefer_RCurl = TRUE);                 ///
                 df <- st.data();                              ///
                 `precode'                                     ///
-                imp <- tryCatch(                             ///
-                    mlim::mlim(data = df, `rargs'),            ///
-                    error = function(e) e                      ///
-                );                                             ///
-                if (inherits(imp, "error")) stop(imp);        ///
-                stata.data <- tryCatch(                      ///
-                    mlim::mlim.stata(                          ///
-                        mlim = imp,                            ///
-                        df = df,                               ///
-                        format = "flong",                      ///
-                        filename = "`filename_r'"              ///
-                    ),                                         ///
-                    error = function(e) e                      ///
-                );                                             ///
-                if (inherits(stata.data, "error"))            ///
-                    stop(stata.data);                          ///
+                imp <- mlim::mlim(data = df, `rargs');        ///
+                stata.data <- mlim::mlim.stata(               ///
+                    mlim = imp,                               ///
+                    df = df,                                  ///
+                    format = "flong",                         ///
+                    filename = "`filename_r'");               ///
                 st.load(stata.data);                          ///
                 st.return <- "rc"
         }
@@ -554,12 +518,8 @@ program define mlim
     // Check R execution
     // ============================================================
     local rc = _rc
-
-    // Rcall can report an R-side failure through $RcallError even
-    // when Stata's _rc remains zero. Do not continue to MI import.
-    if `rc' | "$RcallError" == "1" {
+    if `rc' {
         restore
-        if `rc' == 0 local rc = 498
         exit `rc'
     }
 
@@ -575,9 +535,6 @@ program define mlim
             restore
             exit `rc'
         }
-
-        // m and id are only transport variables used to import flong data
-        capture drop m id
     }
 
     // Keep the imputed dataset in memory
