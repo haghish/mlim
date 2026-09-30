@@ -1,47 +1,107 @@
-#' @title prepare "mids" class object
-#' @description takes "mlim" object and prepares a "mids" class for data analysis with
-#'              multiple imputation.
+#' @title convert multiple imputations to a mids object
+#' @description converts multiply imputed datasets to a
+#' \code{mids} object for analysis with \code{mice}.
 #' @importFrom mice as.mids
-#' @param mlim array of class "mlim", returned by "mlim" function
-#' @param incomplete the original data.frame with NAs
-#' @author E. F. Haghish, based on code from 'prelim' frunction in missMDA R package
+#' @param mlim An object of class \code{"mlim.mi"} returned
+#' by \code{mlim()}, or a compatible MI object.
+#' @param incomplete The original incomplete data frame.
+#' @return An object of class \code{"mids"}.
+#' @details The original data are stored as imputation 0
+#' and completed datasets as imputations 1, ..., m.
+#' The function verifies dataset dimensions, variable order,
+#' observed values, and completion of originally missing
+#' values before conversion.
+#' @author E. F. Haghish
 #' @examples
-#'
 #' \dontrun{
 #' data(iris)
-#' require(mice)
 #' irisNA <- mlim.na(iris, p = 0.1, seed = 2022)
-#'
-#' # adding unstratified NAs to all variables of a data.frame
-#' MLIM <- mlim(irisNA, m=5, tuning_time = 180, doublecheck = T, seed = 2022)
-#'
-#' # create the mids object for MICE package
-#' mids <- mlim.mids(MLIM, irisNA)
-#'
-#' # run an analysis on the mids data (just as example)
-#' fit <- with(data=mids, exp=glm(Species~ Sepal.Length, family = "binomial"))
-#'
-#' # then, pool the results!
-#' summary(pool(fit))
+#' imp <- mlim(
+#'   irisNA, m = 5, tuning_time = 180, seed = 2022
+#' )
+#' mids <- mlim.mids(imp, irisNA)
+#' fit <- with(
+#'   mids,
+#'   lm(Sepal.Length ~ Sepal.Width + Petal.Length)
+#' )
+#' summary(mice::pool(fit))
 #' }
-#' @return object of class 'mids', as required by 'mice' package for analyzing
-#'         multiple imputation data
 #' @export
 
-mlim.mids <- function (mlim, incomplete) {
-    if (any(c("MIMCA", "MIFAMD", "MIPCA", "mlim.mi") %in% class(mlim))) {
-      longformat <- rbind(incomplete, do.call(rbind, mlim))
-      longformat <- cbind(.imp = rep(0:length(mlim), each = nrow(incomplete)),
-                          .id = rep(1:nrow(incomplete), (length(mlim) + 1)), longformat)
-      rownames(longformat) <- NULL
-      mids <- as.mids(longformat)
-    }
-    else {
-      stop("Objects of class mlim.mi, MIPCA, MIFAMD, or MIMCA are required.")
+mlim.mids <- function(mlim, incomplete) {
+
+  # Syntax processing
+  valid_classes <- c("mlim.mi", "MIMCA", "MIFAMD", "MIPCA")
+
+  if (!any(valid_classes %in% class(mlim))) {
+    stop(paste("'mlim' must have class 'mlim.mi',","'MIMCA', 'MIFAMD', or 'MIPCA'."), call. = FALSE)
+  }
+
+  if (!is.data.frame(incomplete)) {stop("'incomplete' must be a data.frame.", call. = FALSE)}
+  if (length(mlim) < 1L) {stop("'mlim' contains no imputations.", call. = FALSE)}
+
+  n <- nrow(incomplete)
+
+  for (i in seq_along(mlim)) {
+    current <- mlim[[i]]
+    if (!is.data.frame(current)) {
+      stop(paste("Imputation", i, "is not a data.frame."), call. = FALSE)
     }
 
-    return(mids)
+    if (nrow(current) != n) {
+      stop(paste("Imputation", i, "has different rows."), call. = FALSE)
+    }
+
+    if (!identical(names(current), names(incomplete))) {
+      stop(paste("Imputation", i, "has different variables or variable order."), call. = FALSE)
+    }
+
+    for (j in seq_along(incomplete)) {
+      observed <- !is.na(incomplete[[j]])
+      missing <- !observed
+      original <- incomplete[[j]][observed]
+      completed <- current[[j]][observed]
+
+      if (is.factor(original) || is.factor(completed)) {
+        same <- identical(as.character(original), as.character(completed))
+      }
+      else {
+        same <- isTRUE(all.equal(original, completed, check.attributes = FALSE))
+      }
+
+      if (!same) {
+        stop(paste("Imputation", i, "changes observed values in", paste0("'", names(incomplete)[j], "'.")),
+             call. = FALSE)
+      }
+
+      if (any(missing) &&
+          anyNA(current[[j]][missing])) {
+        stop(paste("Imputation", i, "has missing imputed values in",
+                   paste0("'", names(incomplete)[j], "'.")),
+             call. = FALSE
+        )
+      }
+    }
+  }
+
+  longformat <- rbind(incomplete, do.call(rbind, mlim))
+
+  imp_name <- ".mlim_imp"
+  id_name <- ".mlim_id"
+
+  while (imp_name %in% names(longformat)) {
+    imp_name <- paste0(imp_name, "_")
+  }
+
+  while (id_name %in% names(longformat)) {
+    id_name <- paste0(id_name, "_")
+  }
+
+  m <- length(mlim)
+  longformat[[imp_name]] <- rep(seq.int(0L, m), each = n)
+  longformat[[id_name]] <- rep(seq_len(n), times = m + 1L)
+
+  rownames(longformat) <- NULL
+  mids <- as.mids(longformat, .imp = imp_name, .id = id_name)
+  return(mids)
 }
-
-
-#mid <- mlim.mids(ELNET, irisNA)
