@@ -1,5 +1,5 @@
 {smcl}
-{it:v. 01}
+{it:v. 0.6.0}
 
 
 {title:mlim}
