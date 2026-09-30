@@ -1,5 +1,5 @@
 /***
-_v. 01_
+_v. 0.6.0_
 
 mlim
 ====
@@ -77,7 +77,7 @@ Options
 | __load(string)__    | Passes __load__ to the R package to load a previously saved imputation state. |
 | __java(string)__    | Passes a Java path to R. Backslashes are converted to forward slashes.              |
 | __filename(string)__ | Saves the imputed data to a Stata __.dta__ file (recommended).                  |
-| __debug__           |                                                  Used for debugging the program.|
+| __debug__           | Used for debugging the program.|
 
 Remarks
 -------
@@ -244,6 +244,7 @@ program define mlim
 		LOAD(string)                                        ///
 		JAVA(string)                                        ///
 		FILENAME(string)                                    ///
+		VERBOSITY(string)                                    ///
 		DEBUG                                               ///
 		]                                  
 		      
@@ -439,14 +440,19 @@ program define mlim
     // ============================================================
     preserve
 	
+	if `"`verbosity'"' != "" {
+		display "calling mlim via Rcall..."
+		local rargs `"`rargs', verbosity = "debug""'
+	}
 	
 	// TEST THE CODE
 	if "`debug'" != "" {
+		local rargs `"`rargs', debug = TRUE"'
 		display `"`precode'"'
 		display `"`rargs'"'
 	}
 
-	if `"`verbosity'"' != "" display "calling mlim via Rcall..."
+	
 
     // Single imputation
     // ============================================================
