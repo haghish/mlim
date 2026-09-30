@@ -10,6 +10,7 @@ mlim(
   algos = c("ELNET"),
   stochastic = m > 1,
   ignore = NULL,
+  hierarchy = NULL,
   tuning_time = 3600,
   max_models = 100,
   maxiter = 10L,
@@ -63,12 +64,24 @@ imputed. if \code{'load'} argument is provided, this argument will be ignored.}
              other algorithms need for developing a single model, which is why "ELNET"
              is work horse of the mlim imputation package.}
 
-\item{stochastic}{logical. by default it is set to TRUE for multiple imputation and FALSE for
-single imputation. stochastic argument is currently under testing and is intended to
-avoid inflating the correlation between imputed valuables.}
+\item{stochastic}{Logical. If \code{TRUE}, stochastic variation is added after each
+accepted variable-specific imputation update. For continuous variables, values
+are drawn from a normal distribution centered on the model prediction with the
+current cross-validation RMSE as the standard deviation. For categorical
+variables, values are sampled from the predicted class probabilities. The
+default is \code{FALSE} for single imputation and \code{TRUE} for multiple
+imputation.}
 
 \item{ignore}{character vector of column names or index of columns that should
 should be ignored in the process of imputation.}
+
+\item{hierarchy}{Character vector specifying the clustering variables from the
+highest to the lowest level. For example,
+\code{hierarchy = c("city", "school", "classroom", "student")} specifies
+students nested within classrooms, classrooms nested within schools, and schools
+nested within cities. Hierarchy variables must exist in \code{data} and cannot
+contain missing values. The default is \code{NULL}, which assumes no
+hierarchical structure.}
 
 \item{tuning_time}{Numeric. Maximum runtime in seconds for AutoML tuning of each
 variable in each iteration. The default is \code{3600} seconds.
@@ -95,8 +108,8 @@ if set to "AUTO", 'mlim' decides whether to match
 or not, based on the variable classes. the default is "AUTO".}
 
 \item{autobalance}{logical. if TRUE (default), binary and multinomial factor variables
-will be balanced before single imputation. This argument
-is currently only implemented for single imputation.}
+are balanced during single imputation. During multiple imputation,
+balancing weights are combined with bootstrap multiplicity weights.}
 
 \item{seed}{integer. specify the random generator seed}
 
@@ -170,7 +183,7 @@ the imputation and is particularly recommended for large datasets
 or when the user specifies a computationally extensive settings
 (e.g. specifying several algorithms, increasing tuning time, etc.).}
 
-\item{...}{arguments that are used internally between 'mlim' and 'mlim.postimpute'.
+\item{...}{arguments that are used internally between 'mlim'
 these arguments are not documented in the help file and are not
 intended to be used by end user.}
 }

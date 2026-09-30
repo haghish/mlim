@@ -1,10 +1,6 @@
 #' @title iterate
 #' @description runs imputation iterations for different settings, both single
-#'              imputation and multiple imputation.in addition, it can do iterations
-#'              for both "imputation" and "postimputation". postimputation begins if
-#'              a powerful algorithm - that requires a lot of time for fine-tuning -
-#'              is specified for the imputation. such algorithms are used last in the imputation
-#'              to save time.
+#'              imputation and multiple imputation.
 #' @importFrom utils setTxtProgressBar txtProgressBar capture.output packageVersion
 #' @importFrom h2o h2o.init as.h2o h2o.automl h2o.predict h2o.ls h2o.getId
 #'             h2o.removeAll h2o.rm h2o.shutdown h2o.load_frame h2o.save_frame
@@ -16,15 +12,14 @@
 #' @keywords Internal
 #' @noRd
 
-# NOTE 1: stochastic is disabled in this function and i
-iterate <- function(procedure,
-                    MI, dataNA, bdataNA,
+iterate <- function(MI, dataNA, bdataNA,
                     preimputed.data, data, bdata, boot, hex, bhex, metrics, tolerance,
                     m, k, X, Y, z, m.it,
 
                     # loop data
                     ITERATIONVARS, vars2impute,
-                    allPredictors, preimpute, impute, postimputealgos,
+                    allPredictors, preimpute, impute,
+                    hierarchy = NULL,
 
                     # settings
                     error_metric, FAMILY, cv, tuning_time,
@@ -38,8 +33,9 @@ iterate <- function(procedure,
                     mem, orderedCols, ignore, maxiter,
                     miniter, matching, ignore.rank,
                     verbosity, error, cpu, max_ram, min_ram,
-                    stochastic
-                    ) {
+                    stochastic, port, insecure, https,
+                    bind_to_localhost, ignore_config, java
+) {
 
   # Update the report
   # ============================================================
@@ -77,10 +73,6 @@ iterate <- function(procedure,
     # update bootstrap data
   }
 
-  # Do you need to generate stochastic binomial/multinomial predictions?
-  # ============================================================
-  factorPred <- NULL                   # default is NULL for all
-
   # ============================================================
   # If predictors are NULL, randomly fill the missing values
   # ELSE continue with the main procedure
@@ -104,6 +96,10 @@ iterate <- function(procedure,
     # sort_metric specifications
     # ============================================================
     sort_metric <- "AUTO"
+    project_name <- paste0(
+      "mlim_", m.it, "_", k, "_", z, "_",
+      gsub("[^A-Za-z0-9_]", "_", Y)
+    )
     #if (FAMILY[z] == 'binomial') {
     #  # check if Y is imbalanced
     #  if (is.imbalanced(data[[Y]])) sort_metric <- "AUCPR"
@@ -113,21 +109,41 @@ iterate <- function(procedure,
     #  sort_metric <- "AUTO"
     #}
 
-    # specify "imputation" or "postimputation" procedure
-    # ============================================================
-    usedalgorithms <- NULL
-    if (procedure == "impute") usedalgorithms <- impute
-    else usedalgorithms <- postimputealgos
-    # if (debug) message(paste("usedalgorithms", usedalgorithms))
-    # message("X:", X, "\n")
-    # message("Y:", Y, "\n")
-    # message("sort_metric:", sort_metric, "\n")
-    # message("usedalgorithms:", usedalgorithms, "\n")
-    # message("cv:", cv, "\n")
-    # message("tuning_time:", tuning_time, "\n")
-    # message("max_models:", max_models, "\n")
-    # message("keep_cv:", keep_cv, "\n")
-    # message("seed:", seed, "\n")
+    weights_column <- if (is.null(bhex)) NULL else "mlim_bootstrap_weights_column_"
+
+    if (boot && autobalance &&
+        (FAMILY[z] %in% c("binomial", "multinomial") ||
+         (!ignore.rank && Y %in% colnames(data)[orderedCols]))) {
+
+      bootstrap_weight <- bdata[["mlim_bootstrap_weights_column_"]]
+      target <- as.character(bdata[[Y]][!b.na])
+      weighted_count <- tapply(bootstrap_weight[!b.na], target, sum)
+      balance_weight <- sum(weighted_count) /
+        (length(weighted_count) * weighted_count)
+
+      bdata[["mlim_model_weights_column_"]] <- bootstrap_weight
+      bdata[["mlim_model_weights_column_"]][!b.na] <-
+        bootstrap_weight[!b.na] * as.numeric(balance_weight[target])
+
+      tryCatch(
+        bhex[["mlim_model_weights_column_"]] <-
+          h2o::as.h2o(bdata[["mlim_model_weights_column_"]]),
+        error = function(cond) {
+          message("Balancing weights could not be uploaded to Java server.\n")
+          return(stop(cond))
+        }
+      )
+      Sys.sleep(sleep)
+
+      weights_column <- "mlim_model_weights_column_"
+    }
+
+    if (debug) {
+      message("tuning the model...")
+    }
+
+    # set fit to be NULL
+    fit <- NULL
 
     # ------------------------------------------------------------
     # fine-tune a gaussian model
@@ -137,15 +153,15 @@ iterate <- function(procedure,
       tryCatch(fit <- h2o::h2o.automl(x = setdiff(X, Y), y = Y,
                                       training_frame = if (is.null(bhex)) hex[which(!v.na), ] else bhex[which(!b.na), ],
                                       sort_metric = sort_metric,
-                                      project_name = "mlim",
-                                      include_algos = usedalgorithms,
+                                      project_name = project_name,
+                                      include_algos = impute,
                                       nfolds = cv,
                                       exploitation_ratio = 0.1,
                                       max_runtime_secs = tuning_time,
                                       max_models = max_models,
-                                      weights_column = if (is.null(bhex)) NULL else "mlim_bootstrap_weights_column_", #adjusted_weight_column[which(!v.na)],
+                                      weights_column = weights_column,
                                       #fold_column = if (is.null(bhex)) NULL else "mlim_bootstrap_fold_assignment_",
-                                      keep_cross_validation_predictions = keep_cv,
+                                      keep_cross_validation_predictions = FALSE,
                                       #verbosity = if (debug) "debug" else NULL,
                                       seed = seed
                                       # #stopping_metric = stopping_metric,
@@ -156,6 +172,7 @@ iterate <- function(procedure,
         message(paste("\nModel training for variable", Y, "failed... see the Java server error below:\n"));
         return(stop(cond))})
 
+      Sys.sleep(sleep)
     }
 
     # ------------------------------------------------------------
@@ -163,14 +180,9 @@ iterate <- function(procedure,
     # ============================================================
     else if (FAMILY[z] == 'binomial' || FAMILY[z] == 'multinomial') {
 
-      # check balance argument (default is FALSE)
-      balance_classes <- FALSE
+      # use H2O class balancing for single imputation only
+      balance_classes <- autobalance && !boot
       #sort_metric <- "mean_per_class_error" #"RMSE" #this is the default metric, not mean_per_class
-
-      # if (Y %in% balance | autobalance) {
-      #   balance_classes <- TRUE
-      # }
-      if (autobalance) balance_classes <- TRUE
 
       ## SHOULD MLIM INCLUDE DIFFERENT MODEL EVALUATION METRICS BASED ON VARTYPE?
       ## FOR NOW, KEEP IT TO THE DEFAULT
@@ -194,15 +206,15 @@ iterate <- function(procedure,
                                       sort_metric = sort_metric,
                                       training_frame = if (is.null(bhex)) hex[which(!v.na), ] else bhex[which(!b.na), ],
                                       #validation_frame = bhex[vdFrame, ],
-                                      project_name = "mlim",
-                                      include_algos = usedalgorithms,
+                                      project_name = project_name,
+                                      include_algos = impute,
                                       nfolds = cv,
                                       exploitation_ratio = 0.1,
                                       max_runtime_secs = tuning_time,
                                       max_models = max_models,
-                                      weights_column = if (!balance_classes) {if (is.null(bhex)) NULL else "mlim_bootstrap_weights_column_"} else NULL, #adjusted_weight_column[which(!v.na)],
+                                      weights_column = weights_column,
                                       #fold_column = if (is.null(bhex)) NULL else "mlim_bootstrap_fold_assignment_",
-                                      keep_cross_validation_predictions = keep_cv,
+                                      keep_cross_validation_predictions = FALSE,
                                       #verbosity = if (debug) "debug" else NULL,
                                       seed = seed
                                       #stopping_metric = stopping_metric,
@@ -212,7 +224,15 @@ iterate <- function(procedure,
       error = function(cond) {
         message("\nmodel training failed...see the server's error below:\n");
         if (fit@leader@model_id == "dummy") message("Multinomial coefficents cannot be null... this can be caused by having factor variables with many levels, but no observations in some dummy variables. Add 'RF' to the list of 'algos' arguments to impute this variable...");
-        return(stop(cond))})
+        return(stop(cond))
+      })
+
+      Sys.sleep(sleep)
+
+      if (debug) {
+        message("tuning is over...")
+        message(paste("the leader is:", fit@leader@model_id))
+      }
 
       # # make sure that the model is not failed with a "dummy"
       # if (fit@leader@model_id == "dummy" & ! "DRF" %in% usedalgorithms) {
@@ -231,7 +251,7 @@ iterate <- function(procedure,
       #                                   max_runtime_secs = tuning_time,
       #                                   max_models = max_models,
       #                                   weights_column = if (!balance_classes) {if (is.null(bhex)) NULL else "mlim_bootstrap_weights_column_"} else NULL, #adjusted_weight_column[which(!v.na)],
-      #                                   keep_cross_validation_predictions = keep_cv,
+      #                                   keep_cross_validation_predictions = FALSE,
       #                                   verbosity = if (debug) "debug" else NULL,
       #                                   seed = seed
       #                                   #stopping_metric = stopping_metric,
@@ -261,12 +281,6 @@ iterate <- function(procedure,
 
     Sys.sleep(sleep)
 
-    # update metrics, and if there is an improvement, update the data
-    # ------------------------------------------------------------
-    #Note: if tolerance is NULL, getDigits returns zero
-    roundRMSE <- getDigits(tolerance) + 1
-    if (roundRMSE == 1) roundRMSE <- 4
-
     iterationMetric <- extractMetrics(if (is.null(bdata)) data else bdata, k, Y, perf, FAMILY[z])
 
     #> h2o requires numeric subsetting, NOT logical
@@ -284,71 +298,100 @@ iterate <- function(procedure,
       Sys.sleep(sleep)
       if (debug) md.log("predictions were generated", date=debug, time=debug, trace=FALSE)
 
-      # if the variable is a factor and stochastic process is activated, store the predictions
-      if (stochastic) {
-        if (FAMILY[z] == 'binomial' || FAMILY[z] == 'multinomial') {
-          tryCatch(factorPred <- as.data.frame(pred),
-                   error = function(cond) {
-                     message("\npredictions could not be converted to dataframe...\n see the error below:");
-                     return(stop(cond))})
+      if (stochastic && (FAMILY[z] == 'binomial' || FAMILY[z] == 'multinomial')) {
+        tryCatch(predDF <- as.data.frame(pred),
+                 error = function(cond) {
+                   message("\npredictions could not be converted to dataframe...\n see the error below:");
+                   return(stop(cond))})
+        VEK <- stochasticFactorImpute(
+          levels = levels(data[[Y]]),
+          probMat = as.matrix(predDF[, -1, drop = FALSE])
+        )
+      }
+      else {
+        pred <- pred[,1]
+        tryCatch(VEK <- as.vector(pred[,1]),
+                 error = function(cond) {
+                   message("\ndata could not be updated with the new predictions...\n see the error below:");
+                   return(stop(cond))})
+
+        if (stochastic) {
+          VEK <- rnorm(n = length(VEK), mean = VEK,
+                       sd = iterationMetric[, "RMSE"])
         }
       }
-
-      # THEN, MAKE SURE 'pred' is only including the actual predictions
-      pred <- pred[,1]
-
-      tryCatch(VEK <- as.vector(pred[,1]),
-               error = function(cond) {
-                 message("\ndata could not be updated with the new predictions...\n see the error below:");
-                 return(stop(cond))})
 
       tryCatch(data[which(v.na), Y] <- VEK,
                error = function(cond) {
                  message("\ndata could not be updated with the new predictions...\n see the error below:");
                  return(stop(cond))})
 
-
-
       if (!flush) {
-        tryCatch(hex[which(v.na), Y] <- pred[,1],
-                 error = function(cond) {
-                   message("\nupdating the data on the java server failed...\nSee the error below:");
-                   return(stop(cond))})
+        if (stochastic) {
+          tryCatch(hex[[Y]] <- h2o::as.h2o(data[[Y]]),
+                   error = function(cond) {
+                     message("\nupdating the data on the java server failed...\nSee the error below:");
+                     return(stop(cond))})
+        }
+        else {
+          tryCatch(hex[which(v.na), Y] <- pred[,1],
+                   error = function(cond) {
+                     message("\nupdating the data on the java server failed...\nSee the error below:");
+                     return(stop(cond))})
+        }
+        Sys.sleep(sleep)
       }
 
       # also update the bootstraped data
       # ------------------------------------------------------------
       if (boot) {
-        tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = bhex[which(b.na), X])[,1],
+        tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = bhex[which(b.na), X]),
                  error = function(cond) {
                    message("\nGenerating the predictions on bootstrap data failed...\nSee the server's error:");
                    return(stop(cond))})
+        Sys.sleep(sleep)
 
-        tryCatch(BEK <- as.vector(pred[,1]),
-                 error = function(cond) {
-                   message("\ndata predictions could not be converted to a vector...\n see the error below:");
-                   return(stop(cond))})
+        if (stochastic && (FAMILY[z] == 'binomial' || FAMILY[z] == 'multinomial')) {
+          tryCatch(predDF <- as.data.frame(pred),
+                   error = function(cond) {
+                     message("\npredictions could not be converted to dataframe...\n see the error below:");
+                     return(stop(cond))})
+          BEK <- stochasticFactorImpute(
+            levels = levels(bdata[[Y]]),
+            probMat = as.matrix(predDF[, -1, drop = FALSE])
+          )
+        }
+        else {
+          pred <- pred[,1]
+          tryCatch(BEK <- as.vector(pred[,1]),
+                   error = function(cond) {
+                     message("\ndata predictions could not be converted to a vector...\n see the error below:");
+                     return(stop(cond))})
+
+          if (stochastic) {
+            BEK <- rnorm(n = length(BEK), mean = BEK,
+                         sd = iterationMetric[, "RMSE"])
+          }
+        }
 
         tryCatch(bdata[which(b.na), Y] <- BEK,
                  error = function(cond) {
                    message("data could not be updated with the new predictions...\n see the error below:");
                    return(stop(cond))})
 
-        # if (stochastic) {
-        #   if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer' || FAMILY[z] == 'quasibinomial') {
-        #     bdata[which(b.na), Y] <- rnorm(
-        #       n = length(BEK),
-        #       mean = BEK,
-        #       sd = iterationMetric[, "RMSE"])
-        #   }
-        # }
-
-
         if (!flush) {
-          tryCatch(bhex[which(b.na), Y] <- pred[,1],
-                   error = function(cond) {
-                     message("\nUpdating the server's bootstrap data failed...\nSee the server's error:");
-                     return(stop(cond))})
+          if (stochastic) {
+            tryCatch(bhex[[Y]] <- h2o::as.h2o(bdata[[Y]]),
+                     error = function(cond) {
+                       message("\nUpdating the server's bootstrap data failed...\nSee the server's error:");
+                       return(stop(cond))})
+          }
+          else {
+            tryCatch(bhex[which(b.na), Y] <- pred[,1],
+                     error = function(cond) {
+                       message("\nUpdating the server's bootstrap data failed...\nSee the server's error:");
+                       return(stop(cond))})
+          }
           Sys.sleep(sleep)
         }
       }
@@ -380,28 +423,41 @@ iterate <- function(procedure,
       # get the previous estimated imputation error of the variable
       # ------------------------------------------------------------
       errPrevious <- min(metrics[metrics$variable == Y, error_metric], na.rm = TRUE)
+      errPrevious <- errPrevious[is.finite(errPrevious)]
       # if (!is.null(errPrevious)) {
       #   if (is.na(errPrevious)) {
       #     errPrevious <- 1
       #   }
       # }
       # else errPrevious <- 1
-      errPrevious <- round(errPrevious, digits = 5)
 
       # get iteration metric
       # ------------------------------------------------------------
       checkMetric <- iterationMetric[iterationMetric$variable == Y, error_metric]
-      checkMetric <- round(checkMetric, digits = 5)
+
 
       # calculate the relative improvement of the prediction
       # ------------------------------------------------------------
-      errImprovement <- checkMetric - errPrevious
-      percentImprove <- (errImprovement / errPrevious)
+      if (length(errPrevious) == 0L) {
+        percentImprove <- -Inf
+      }
+      else {
+        errPrevious <- min(errPrevious)
+        if (errPrevious == 0) {
+          percentImprove <- Inf
+        }
+        else {
+          errImprovement <- checkMetric - errPrevious
+          percentImprove <- errImprovement / errPrevious
+        }
+      }
+      # errImprovement <- checkMetric - errPrevious
+      # percentImprove <- (errImprovement / errPrevious)
 
       # ------------------------------------------------------------
       # IF ERROR DECREASED, REPLACE IMPUTED VALUES WITH NEW ONES
       # ------------------------------------------------------------
-      if (percentImprove < - (if (is.null(tolerance)) 0.001 else tolerance)) {
+      if (percentImprove < - tolerance) {
         if (debug) md.log("imputation was improved, new values are replaced", date=debug, time=debug, trace=FALSE)
         if (debug) md.log(paste(round(percentImprove, 6), "<", - (if (is.null(tolerance)) 0.001 else tolerance)),
                           date=debug, time=debug, trace=FALSE)
@@ -414,23 +470,28 @@ iterate <- function(procedure,
         Sys.sleep(sleep)
         if (debug) md.log("predictions were generated", date=debug, time=debug, trace=FALSE)
 
-        # if the variable is a factor and stochastic process is activated, store the predictions
-        if (stochastic) {
-          if (FAMILY[z] == 'binomial' || FAMILY[z] == 'multinomial') {
-            tryCatch(factorPred <- as.data.frame(pred),
-                     error = function(cond) {
-                       message("\npredictions could not be converted to dataframe...\n see the error below:");
-                       return(stop(cond))})
+        if (stochastic && (FAMILY[z] == 'binomial' || FAMILY[z] == 'multinomial')) {
+          tryCatch(predDF <- as.data.frame(pred),
+                   error = function(cond) {
+                     message("\npredictions could not be converted to dataframe...\n see the error below:");
+                     return(stop(cond))})
+          VEK <- stochasticFactorImpute(
+            levels = levels(data[[Y]]),
+            probMat = as.matrix(predDF[, -1, drop = FALSE])
+          )
+        }
+        else {
+          pred <- pred[,1]
+          tryCatch(VEK <- as.vector(pred[,1]),
+                   error = function(cond) {
+                     message("\ndata could not be updated with the new predictions...\n see the error below:");
+                     return(stop(cond))})
+
+          if (stochastic) {
+            VEK <- rnorm(n = length(VEK), mean = VEK,
+                         sd = iterationMetric[, "RMSE"])
           }
         }
-
-        # THEN, MAKE SURE 'pred' is only including the actual predictions
-        pred <- pred[,1]
-
-        tryCatch(VEK <- as.vector(pred[,1]),
-                 error = function(cond) {
-                   message("\ndata could not be updated with the new predictions...\n see the error below:");
-                   return(stop(cond))})
 
         # update the dataset
         tryCatch(data[which(v.na), Y] <- VEK,
@@ -439,22 +500,19 @@ iterate <- function(procedure,
                    return(stop(cond))})
         Sys.sleep(sleep)
 
-        # I can alternatively, draw values from a normal distributions centered on the
-        # predicted values by the model:
-        # if (stochastic) {
-        #   if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer' || FAMILY[z] == 'quasibinomial') {
-        #     data[which(v.na), Y] <- rnorm(
-        #       n = length(VEK),
-        #       mean = VEK,
-        #       sd = iterationMetric[, "RMSE"])
-        #   }
-        # }
-
         if (!flush) {
-          tryCatch(hex[which(v.na), Y] <- pred, #h2o requires numeric subsetting
-                   error = function(cond) {
-                     message("\nServer's data could not be updated with the new predictions...\n see the error below:");
-                     return(stop(cond))})
+          if (stochastic) {
+            tryCatch(hex[[Y]] <- h2o::as.h2o(data[[Y]]),
+                     error = function(cond) {
+                       message("\nServer's data could not be updated with the new predictions...\n see the error below:");
+                       return(stop(cond))})
+          }
+          else {
+            tryCatch(hex[which(v.na), Y] <- pred, #h2o requires numeric subsetting
+                     error = function(cond) {
+                       message("\nServer's data could not be updated with the new predictions...\n see the error below:");
+                       return(stop(cond))})
+          }
           if (debug) md.log("data was updated in h2o cloud", date=debug, time=debug, trace=FALSE)
           Sys.sleep(sleep)
         }
@@ -462,36 +520,53 @@ iterate <- function(procedure,
         # also update the bootstraped data
         # ================================
         if (boot) {
-          tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = bhex[which(b.na), X])[,1],
+          tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = bhex[which(b.na), X]),
                    error = function(cond) {
                      message("predictions could not be generated from the model...\nsee the server's error below:");
                      return(stop(cond))})
+          Sys.sleep(sleep)
 
-          # UPDATE THE DATAFRAME
-          tryCatch(BEK <- as.vector(pred[,1]),
-                   error = function(cond) {
-                     message("\ndata predictions could not be converted to a vector...\n see the error below:");
-                     return(stop(cond))})
+          if (stochastic && (FAMILY[z] == 'binomial' || FAMILY[z] == 'multinomial')) {
+            tryCatch(predDF <- as.data.frame(pred),
+                     error = function(cond) {
+                       message("\npredictions could not be converted to dataframe...\n see the error below:");
+                       return(stop(cond))})
+            BEK <- stochasticFactorImpute(
+              levels = levels(bdata[[Y]]),
+              probMat = as.matrix(predDF[, -1, drop = FALSE])
+            )
+          }
+          else {
+            pred <- pred[,1]
+            tryCatch(BEK <- as.vector(pred[,1]),
+                     error = function(cond) {
+                       message("\ndata predictions could not be converted to a vector...\n see the error below:");
+                       return(stop(cond))})
+
+            if (stochastic) {
+              BEK <- rnorm(n = length(BEK), mean = BEK,
+                           sd = iterationMetric[, "RMSE"])
+            }
+          }
 
           tryCatch(bdata[which(b.na), Y] <- BEK,
                    error = function(cond) {
                      message("data could not be updated with the new predictions...\n see the error below:");
                      return(stop(cond))})
 
-          # if (stochastic) {
-          #   if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer' || FAMILY[z] == 'quasibinomial') {
-          #     bdata[which(b.na), Y] <- rnorm(
-          #       n = length(BEK),
-          #       mean = BEK,
-          #       sd = iterationMetric[, "RMSE"])
-          #   }
-          # }
-
           if (!flush) {
-            tryCatch(bhex[which(b.na), Y] <- pred,
-                     error = function(cond) {
-                       message("Server's data could not be updated with the new predictions...\n see the error below:");
-                       return(stop(cond))})
+            if (stochastic) {
+              tryCatch(bhex[[Y]] <- h2o::as.h2o(bdata[[Y]]),
+                       error = function(cond) {
+                         message("Server's data could not be updated with the new predictions...\n see the error below:");
+                         return(stop(cond))})
+            }
+            else {
+              tryCatch(bhex[which(b.na), Y] <- pred,
+                       error = function(cond) {
+                         message("Server's data could not be updated with the new predictions...\n see the error below:");
+                         return(stop(cond))})
+            }
             Sys.sleep(sleep)
           }
         }
@@ -523,62 +598,14 @@ iterate <- function(procedure,
       # ------------------------------------------------------------
       else {
         if (debug) md.log("imputation was NOT improved, new values are rejected", date=debug, time=debug, trace=FALSE)
-        if (debug) md.log(paste(round(percentImprove, 6), ">", - (if (is.null(tolerance)) 0.001 else tolerance)),
+        if (debug) md.log(paste(round(percentImprove, 6), ">", - tolerance),
                           date=debug, time=debug, trace=FALSE)
-        #if (debug) message(paste("INCREASED", errImprovement, percentImprove, -(if (is.null(tolerance)) 0.001 else tolerance)))
 
-        # IF STOCHASTIC IS ACTIVATED, AVOID EARLY STOPPING
-        # ------------------------------------------------------------
-        # if (!stochastic) {
-          iterationMetric[, error_metric] <- NA
-        # }
+        #iterationMetric[, error_metric] <- NA
+        iterationMetric[iterationMetric$variable == Y, error_metric] <- Inf
+        #iterationMetric <- extractMetrics(if (is.null(bdata)) data else bdata, k, Y, perf, FAMILY[z])
+
         metrics <- rbind(metrics, iterationMetric)
-
-        # ONCE THE MODEL IS OPTIMIZED...
-        # ------------------------------------------------------------
-        # if (stochastic) {
-        #   print("FINAL STOCKASTIC TIME")
-        #   if (boot) {
-        #     tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = bhex[which(b.na), X])[,1],
-        #              error = function(cond) {
-        #                message("predictions could not be generated from the model...\nsee the server's error below:");
-        #                return(stop(cond))})
-        #
-        #     # UPDATE THE DATAFRAME
-        #     tryCatch(BEK <- as.vector(pred[,1]),
-        #              error = function(cond) {
-        #                message("\ndata predictions could not be converted to a vector...\n see the error below:");
-        #                return(stop(cond))})
-        #
-        #     if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer' || FAMILY[z] == 'quasibinomial') {
-        #       bdata[which(b.na), Y] <- rnorm(
-        #         n = length(BEK),
-        #         mean = BEK,
-        #         sd = iterationMetric[, "RMSE"])
-        #     }
-        #   }
-        #   else {
-        #     tryCatch(pred <- h2o::h2o.predict(fit@leader, newdata = hex[which(v.na), X])[,1],
-        #              error = function(cond) {
-        #                message("\ngenerating the missing data predictions failed... see the Java server error below:\n");
-        #                return(stop(cond))})
-        #     Sys.sleep(sleep)
-        #     if (debug) md.log("predictions were generated", date=debug, time=debug, trace=FALSE)
-        #
-        #     tryCatch(VEK <- as.vector(pred[,1]),
-        #              error = function(cond) {
-        #                message("\ndata could not be updated with the new predictions...\n see the error below:");
-        #                return(stop(cond))})
-        #
-        #     if (FAMILY[z] == 'gaussian' || FAMILY[z] == 'gaussian_integer' || FAMILY[z] == 'quasibinomial') {
-        #       data[which(v.na), Y] <- rnorm(
-        #         n = length(VEK),
-        #         mean = VEK,
-        #         sd = iterationMetric[, "RMSE"])
-        #     }
-        #   }
-        #
-        # }
 
         # clean the model & predictions
         # ------------------------------------------------------------
@@ -600,7 +627,6 @@ iterate <- function(procedure,
     #           FLUSH = FALSE, retained_elements = c(hexID), md.log = md.log)
 
     gc()
-    gc()
     # tell back-end cluster nodes to do three back-to-back JVM full GCs.
     #h2o:::.h2o.garbageCollect()
     #h2o:::.h2o.garbageCollect()
@@ -617,7 +643,7 @@ iterate <- function(procedure,
   }
 
   # .........................................................
-  # POSTIMPUTATION PREPARATION
+  # SAVE CURRENT STATE
   # .........................................................
   if (!is.null(save)) {
     if (debug) md.log("Saving the status", date=debug, time=debug, trace=FALSE)
@@ -628,7 +654,7 @@ iterate <- function(procedure,
       MI = MI,
       dataNA = dataNA,
       preimputed.data = preimputed.data,
-      data = data, #as.data.frame(hex), #??? update this to only download the imputed vector
+      data = data[, setdiff(names(data), attr(data, "mlim.multilevel.variables")), drop = FALSE],
       #bdata=as.data.frame(bhex),
       # hexID   = h2o.getId(hex),
       # hexPATH = paste0(getwd(), "/.flush"),
@@ -639,16 +665,19 @@ iterate <- function(procedure,
       # Loop data
       # ----------------------------------
       m = m , k = k, z= z ,
-      X=X, Y=Y, m.it = m.it,
+      X=setdiff(X, attr(data, "mlim.multilevel.variables")), Y=Y, m.it = m.it,
       vars2impute=vars2impute, FAMILY=FAMILY,
+      allPredictors=setdiff(allPredictors, attr(data, "mlim.multilevel.variables")),
 
       # settings
       # ----------------------------------
       ITERATIONVARS=ITERATIONVARS,
+      preimpute=preimpute,
       impute=impute,
-      postimputealgos=postimputealgos,
       ignore=ignore,
       autobalance = autobalance,
+      hierarchy = hierarchy,
+      stochastic = stochastic,
       #balance = balance,
       save = save,
       maxiter = maxiter,
@@ -673,7 +702,14 @@ iterate <- function(procedure,
       cpu = cpu,
       max_ram=max_ram,
       min_ram = min_ram,
-      keep_cv = keep_cv,
+      keep_cv = keep_cv, #should be removed
+      port = port,
+      insecure = insecure,
+      https = https,
+      bind_to_localhost = bind_to_localhost,
+      ignore_config = ignore_config,
+      java = java,
+      sleep = sleep,
 
       # save the package version used for the imputation
       pkg=packageVersion("mlim")
@@ -683,7 +719,7 @@ iterate <- function(procedure,
     class(savestate) <- "mlim"
     saveRDS(savestate, save)
   }
-
+  Sys.sleep(sleep)
   if (debug) md.log("saving done!", date=debug, time=debug, trace=FALSE)
 
   # Flush the Java server to regain RAM
@@ -756,13 +792,13 @@ iterate <- function(procedure,
     Sys.sleep(sleep)
     gc()
     try(eval(parse(text=javaServer("flush"))), silent = TRUE)
-    try(eval(parse(text=javaServer("flush"))), silent = TRUE)
-    try(eval(parse(text=javaServer("flush"))), silent = TRUE)
-    gc()
+    # try(eval(parse(text=javaServer("flush"))), silent = TRUE)
+    # try(eval(parse(text=javaServer("flush"))), silent = TRUE)
+    # gc()
     if (debug) md.log("server flushed", date=debug, time=debug, trace=FALSE)
     hex  <- NULL
     bhex <- NULL
-
+    Sys.sleep(sleep)
 
     # ####### SOLUTION 2: save on disk > flush Java > reupload
     # ####### =================================================
@@ -899,6 +935,5 @@ iterate <- function(procedure,
               hex = hex,
               bhex = bhex,
               data = data,
-              bdata = bdata,
-              factorPred = factorPred))
+              bdata = bdata))
 }

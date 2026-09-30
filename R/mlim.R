@@ -37,11 +37,22 @@
 #'   random sampling from each feature. The alternative is \code{"mm"},
 #'   which performs median/mode preimputation.
 #                   feature is currently experimental, prone to over-fitting, and highly computationally extensive.
-#' @param stochastic logical. by default it is set to TRUE for multiple imputation and FALSE for
-#'                   single imputation. stochastic argument is currently under testing and is intended to
-#'                   avoid inflating the correlation between imputed valuables.
+#' @param stochastic Logical. If \code{TRUE}, stochastic variation is added after each
+#'   accepted variable-specific imputation update. For continuous variables, values
+#'   are drawn from a normal distribution centered on the model prediction with the
+#'   current cross-validation RMSE as the standard deviation. For categorical
+#'   variables, values are sampled from the predicted class probabilities. The
+#'   default is \code{FALSE} for single imputation and \code{TRUE} for multiple
+#'   imputation.
 #' @param ignore character vector of column names or index of columns that should
 #'               should be ignored in the process of imputation.
+#' @param hierarchy Character vector specifying the clustering variables from the
+#'   highest to the lowest level. For example,
+#'   \code{hierarchy = c("city", "school", "classroom", "student")} specifies
+#'   students nested within classrooms, classrooms nested within schools, and schools
+#'   nested within cities. Hierarchy variables must exist in \code{data} and cannot
+#'   contain missing values. The default is \code{NULL}, which assumes no
+#'   hierarchical structure.
 #' @param tuning_time Numeric. Maximum runtime in seconds for AutoML tuning of each
 #'   variable in each iteration. The default is \code{3600} seconds.
 #'   this argument is influenced by \code{max_models}, see below.
@@ -54,8 +65,8 @@
 #'   with missing values. mlim trains models until either max_models or tuning_time is
 #'   reached.
 #' @param autobalance logical. if TRUE (default), binary and multinomial factor variables
-#'                    will be balanced before single imputation. This argument
-#'                    is currently only implemented for single imputation.
+#'                    are balanced during single imputation. During multiple imputation,
+#'                    balancing weights are combined with bootstrap multiplicity weights.
 #                    if FALSE, imputation fairness will be sacrificed for overall accuracy, which
 #                    is not recommended, although it is commonly practiced in other missing data
 #                    imputation software. MLIM is highly concerned with imputation fairness for
@@ -66,13 +77,8 @@
 #                    factor variables, you can manually specify the variables
 #                    that should be balanced using the 'balance' argument (see below).
 #
-#                    NOTE: when a variable is balanced prior to the imputation, a different
-#                    bootstrap sampling procedure will be used. in doing so, instead of
-#                    carrying out bootstrap subsamples with replacement and adding the
-#                    duplicated observations as weights in the imputation, undersampling
-#                    bootstrap procedure without replacement is performed because the weights
-#                    of the artificially balanced data will conflicts the weights of the
-#                    bootstrap data.
+#                    NOTE: during multiple imputation, target-specific balancing weights are
+#                    combined with bootstrap multiplicity weights.
 # @param balance character vector, specifying variable names that should be
 #                balanced before imputation. balancing the prevalence might
 #                decrease the overall accuracy of the imputation, because it
@@ -95,8 +101,6 @@
 #                    recommended that you set this argument to FALSE.
 #' @param maxiter integer. maximum number of iterations. the default value is \code{15},
 #'        but it can be reduced to \code{3} (not recommended, see below).
-# @param miniter integer. minimum number of iterations. the default value is
-#                2.
 #' @param port Object of class numeric representing the port number of the H2O server. The default is 54321.
 #' @param cv Integer specifying the number of cross-validation folds. Values of
 #'   \code{5} or higher are required. the default is \code{5}.
@@ -179,7 +183,7 @@
 #' @param https logical. argument for h2o.init to initiate the Java server. default is FALSE
 #' @param bind_to_localhost logical. argument for h2o.init to initiate the Java server. default is FALSE
 #' @param ignore_config logical. argument for h2o.init to initiate the Java server. default is TRUE
-#' @param ... arguments that are used internally between 'mlim' and 'mlim.postimpute'.
+#' @param ... arguments that are used internally between 'mlim'
 #'            these arguments are not documented in the help file and are not
 #'            intended to be used by end user.
 #' @return a \code{data.frame}, showing the
@@ -229,16 +233,15 @@
 
 mlim <- function(data = NULL,
                  m = 1,
-                 algos = c("ELNET"), #impute, postimpute
-                 #postimpute = FALSE, Experimental feature
+                 algos = c("ELNET"),
                  stochastic = m > 1,
                  ignore = NULL,
+                 hierarchy = NULL,
 
                  # computational resources
                  tuning_time = 3600,
                  max_models = 100, # run all that you can
                  maxiter = 10L,
-                 #miniter = 2L,
                  cv = 5L,
 
                  matching = "AUTO",    #EXPERIMENTAL
@@ -280,13 +283,7 @@ mlim <- function(data = NULL,
                  load = NULL,
                  #force.load = TRUE,
                  ...
-                 ) {
-
-  # CHANGE IN SYNTAX
-  ##################
-
-  if (m > 1) autobalance <- FALSE # balancing for multiple imputation is not yet implemented
-  postimpute <- FALSE # should be removed in the next update
+) {
 
   # improvements for the next release
   # ============================================================
@@ -295,12 +292,10 @@ mlim <- function(data = NULL,
   #    perhaps this will help optimizing, while reducing the computation burdon
   # h2o DRF does not give OOB error, so initial comparison preimputation is not possible
   #    HOWEVER, I can estimate the CV for the preimputation procedure
-  #
-  # instead of adding postimpute_algos, extract it from specified algorithms
 
   # check the ... arguments
   # ============================================================
-  hidden_args <- c("superdebug", "ignore.rank", "sleep", "stochastic")
+  hidden_args <- c("superdebug", "ignore.rank", "sleep", "debug")
   stopifnot("incompatible '...' arguments" = (names(list(...)) %in% hidden_args))
 
   # Simplify the syntax by taking arguments that are less relevant to the majority
@@ -313,11 +308,10 @@ mlim <- function(data = NULL,
   bdata       <- NULL
   metrics     <- NULL
   error       <- NULL
-  debug       <- FALSE
-  miniter     <- 2L
-  init        <- threeDots(name = "init", ..., default = TRUE)
-  # cv          <- threeDots(name = "cv", ..., default = 10L)
-  # flush       <- threeDots(name = "flush", ..., default = TRUE)
+  running     <- TRUE
+  debug       <- threeDots(name = "debug", ..., default = FALSE)
+  miniter     <- 2L #this is the minimum number of iterations
+  # init        <- threeDots(name = "init", ..., default = TRUE)
   verbose     <- 0
   error_metric<- "RMSE"
   ignore.rank <- threeDots(name = "ignore.rank", ..., default = FALSE)  #EXPERIMENTAL
@@ -359,12 +353,21 @@ mlim <- function(data = NULL,
     vars2impute    <- load$vars2impute
     FAMILY         <- load$FAMILY
 
+    if (!is.null(load$allPredictors)) {
+      allPredictors <- load$allPredictors
+    }
+    else {
+      allPredictors <- colnames(data)[!colnames(data) %in% load$ignore]
+    }
+
     # settings
     # ----------------------------------
     ITERATIONVARS  <- load$ITERATIONVARS# variables to be imputed
     impute         <- load$impute       # reimputation algorithm(s)
-    postimputealgos<- load$postimputealgos
     autobalance    <- load$autobalance #EXPERIMENTAL
+    if ("preimpute" %in% names(load)) preimpute <- load$preimpute
+    if ("hierarchy" %in% names(load)) hierarchy <- load$hierarchy
+    if ("stochastic" %in% names(load)) stochastic <- load$stochastic
     #balance        <- load$balance #EXPERIMENTAL
     ignore         <- load$ignore
     save           <- load$save
@@ -389,17 +392,36 @@ mlim <- function(data = NULL,
     max_ram        <- load$max_ram
     min_ram        <- load$min_ram #KEEP IT HIDDEN
     keep_cv        <- load$keep_cv
+    if ("port" %in% names(load)) port <- load$port
+    if ("insecure" %in% names(load)) insecure <- load$insecure
+    if ("https" %in% names(load)) https <- load$https
+    if ("bind_to_localhost" %in% names(load)) bind_to_localhost <- load$bind_to_localhost
+    if ("ignore_config" %in% names(load)) ignore_config <- load$ignore_config
+    if ("java" %in% names(load)) java <- load$java
+    if ("sleep" %in% names(load)) sleep <- load$sleep
     pkg            <- load$pkg #KEEP IT HIDDEN
 
 
     # MOVE-ON to the next variable after loading an mlim object
     # ---------------------------------------------------------
-    moveOn <- iterationNextVar(m, m.it, k, z, Y, ITERATIONVARS, maxiter)
-    m    <- moveOn$m
-    m.it <- moveOn$m.it
-    k    <- moveOn$k
-    z    <- moveOn$z
-    Y    <- moveOn$Y
+    if (z == length(ITERATIONVARS)) {
+      SC <- stoppingCriteria(method="varwise_NA", miniter, maxiter,
+                             metrics, k, vars2impute,
+                             error_metric,
+                             tolerance,
+                             md.log = report)
+      running <- SC$running
+      error <- SC$error
+    }
+
+    if (running) {
+      moveOn <- iterationNextVar(m, m.it, k, z, Y, ITERATIONVARS, maxiter)
+      m    <- moveOn$m
+      m.it <- moveOn$m.it
+      k    <- moveOn$k
+      z    <- moveOn$z
+      Y    <- moveOn$Y
+    }
   }
 
   # ============================================================
@@ -410,16 +432,26 @@ mlim <- function(data = NULL,
   else {
     if (!is.null(seed)) set.seed(seed) # avoid setting seed by default if it is a continuation
 
-    alg <- algoSelector(algos, postimpute)
-    impute <- alg$impute
-    postimputealgos <- alg$postimpute
+    supportedAlgos <- c("ELNET","RF","DL","GBM","XGB", "Ensemble")
+    actualNames <- c("GLM","DRF","DeepLearning","GBM","XGBoost", "StackedEnsemble")
 
-    synt <- syntaxProcessing(data, preimpute, impute, ram,
-                             matching=matching, miniter, maxiter, max_models,
+    for (i in supportedAlgos) {
+      if (i %in% algos) algos[which(algos == i)] <- actualNames[which(supportedAlgos == i)]
+    }
+
+    if (length(setdiff(x=algos, y=c("GLM","DRF","DeepLearning",
+                                    "GBM","XGBoost","StackedEnsemble"))) > 0) {
+      stop("some of the 'algos' are not recognised")
+    }
+
+    impute <- algos
+
+    synt <- syntaxProcessing(data, hierarchy, preimpute, impute, ram,
+                             matching=matching, maxiter, max_models,
                              tuning_time, cv, verbosity=verbosity, report, save)
     min_ram <- synt$min_ram
     max_ram <- synt$max_ram
-    keep_cv <- synt$keep_cross_validation_predictions
+    keep_cv <- synt$keep_cross_validation_predictions #???should be removed
     verbose <- synt$verbose
     debug <- synt$debug
   }
@@ -432,15 +464,15 @@ mlim <- function(data = NULL,
   # Initialize the Markdown report
   # ============================================================
   if (is.null(report)) md.log("System information", file=tempfile(),
-           trace=TRUE, sys.info = TRUE, date=TRUE, time=TRUE)
+                              trace=TRUE, sys.info = TRUE, date=TRUE, time=TRUE)
 
   else if (is.null(load)) md.log("System information", file=report,
                                  append = FALSE, trace=TRUE, sys.info = TRUE,
                                  date=TRUE, time=TRUE) #, print=TRUE
 
   else if (!is.null(load)) md.log("\nContinuing from where it was left...", file=report,
-              append = TRUE, trace=TRUE, sys.info = TRUE,
-              date=TRUE, time=TRUE)
+                                  append = TRUE, trace=TRUE, sys.info = TRUE,
+                                  date=TRUE, time=TRUE)
 
   # Run H2O on the statistics server¤
   # ============================================================
@@ -448,7 +480,9 @@ mlim <- function(data = NULL,
   # If an older H2O cluster is already running there, shut it down
   # and wait until the port is released before starting a new one.
   stopH2o(port = port)
+  connection <- NULL
   Sys.sleep(1)
+
   capture.output(
     connection <- init(nthreads = cpu,
                        min_mem_size = min_ram,
@@ -471,17 +505,13 @@ mlim <- function(data = NULL,
     dataNA <- VARS$dataNA # the missing data placeholder
     allPredictors <- VARS$allPredictors
     vars2impute <- VARS$vars2impute
-    vars2postimpute <- VARS$vars2impute
-    storeVars2impute <- vars2impute
     X <- VARS$X
     bdata <- NULL
 
     # if there is only one variable to impute, there is no need to iterate!
     if (length(vars2impute) < 1) stop("\nthere is nothing to impute!\n")
     else if (length(vars2impute) == 1) {
-      if (!is.valid(postimputealgos)) {
-        maxiter <- 1
-      }
+      maxiter <- 1
     }
 
     # .........................................................
@@ -588,8 +618,9 @@ mlim <- function(data = NULL,
                                metrics, tolerance,
                                m, k, X, Y, z, m.it,
                                # loop data
-                               vars2impute, vars2postimpute, storeVars2impute,
-                               allPredictors, preimpute, impute, postimputealgos,
+                               vars2impute,
+                               allPredictors, preimpute, impute,
+                               hierarchy = hierarchy,
                                # settings
                                error_metric, FAMILY=FAMILY, cv, tuning_time,
                                max_models,
@@ -603,10 +634,26 @@ mlim <- function(data = NULL,
                                verbosity, error, cpu, max_ram=max_ram, min_ram=min_ram,
                                #??? shutdown has to be fixed in future updates
                                shutdown=FALSE, clean = TRUE,
-                               stochastic=stochastic)
+                               stochastic=stochastic,
+                               connection=connection,
+                               port=port,
+                               insecure=insecure,
+                               https=https,
+                               bind_to_localhost=bind_to_localhost,
+                               ignore_config=ignore_config,
+                               java=java,
+                               running=running)
+
+    connection <- h2o::h2o.getConnection()
 
     if (m > 1) MI[[m.it]] <- dataLast
     else MI <- dataLast
+
+    if (!running) {
+      k <- 1L
+      z <- 1L
+      running <- TRUE
+    }
   }
 
   message("\n")
@@ -622,7 +669,3 @@ mlim <- function(data = NULL,
 
   return(MI)
 }
-
-
-
-
