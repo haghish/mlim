@@ -13,7 +13,6 @@ stoppingCriteria <- function(method = "iteration_RMSE",
                              metrics, k, vars2impute,
                              error_metric,
                              tolerance,
-                             postimpute, runpostimpute,
                              md.log) {
 
   # keep running unless...
@@ -28,31 +27,17 @@ stoppingCriteria <- function(method = "iteration_RMSE",
   # the rest of the iterations
   # ............................................................
   if (method == "varwise_NA") {
-    # as long as there is a variable that it's RMSE is not NA, keep going!
+
     if (running) {
-      error <- mean(metrics[metrics$iteration == k,
-                            error_metric], na.rm = TRUE)
+
+      current <- metrics[metrics$iteration == k, error_metric]
+      current <- current[is.finite(current)]
+
+      error <- if (length(current)) mean(current) else NA_real_
 
       if (is.na(error)) {
-
-        # if all values were NA, well, stop then, if there is no postimpute!
-        if (is.null(postimpute)) {
-          if (is.na(error)) running <- FALSE
-        }
-        else {
-          if (!runpostimpute) {
-            runpostimpute <- TRUE
-            vars2impute <- NULL #avoid the loops on the base imputer
-          }
-          else {
-            running <- FALSE
-            runpostimpute <- FALSE
-          }
-        }
+        running <- FALSE
       }
-
-
-
     }
   }
 
@@ -68,7 +53,7 @@ stoppingCriteria <- function(method = "iteration_RMSE",
                             error_metric], na.rm = TRUE)
 
       if (k == 1) message("\n   ",error_metric,
-                      " = ", round(error,4), "\n", sep = "")
+                          " = ", round(error,4), "\n", sep = "")
 
       if (k >= 2) {
         # get the rmse's that made NA, because of saturation
@@ -85,13 +70,13 @@ stoppingCriteria <- function(method = "iteration_RMSE",
         if (!is.na(errImprovement)) {
           if (percentImprove < 0) {
             message("\n   ",error_metric,
-                " = ", round(error,4), " (improved by ",
-                round(-percentImprove*100, 3),"%)", "\n", sep = "")
+                    " = ", round(error,4), " (improved by ",
+                    round(-percentImprove*100, 3),"%)", "\n", sep = "")
           }
           else {
             message("\n   ",error_metric,
-                " = ", round(error,4), " (increased by ",
-                round(percentImprove*100, 3),"%)", "\n", sep = "")
+                    " = ", round(error,4), " (increased by ",
+                    round(percentImprove*100, 3),"%)", "\n", sep = "")
           }
 
           #message(paste0(error_metric,
@@ -114,11 +99,9 @@ stoppingCriteria <- function(method = "iteration_RMSE",
   # ------------------------------------------------------------
   if (k == maxiter) running <- FALSE
 
-  if (!running) runpostimpute <- FALSE
 
   return(list(running = running,
               error = error,
               vars2impute = vars2impute,
-              improvement = errImprovement,
-              runpostimpute = runpostimpute))
+              improvement = errImprovement))
 }
