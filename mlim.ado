@@ -578,6 +578,9 @@ program define mlim
             m(m)                                           ///
             id(id)                                         ///
             imputed(`imputed')
+		
+		// erase the helper features
+		capture drop m id
 
         local rc = _rc
         if `rc' {
