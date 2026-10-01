@@ -1,4 +1,4 @@
-v 0.1
+v 0.6.0
 d Materials by E. F. Haghish
 d Department of Psychological Sciences, University of Bergen
 d haghish@uib.no

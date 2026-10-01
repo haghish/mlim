@@ -11,12 +11,10 @@
 {title:Syntax}
 
 {p 8 8 2} {bf:mlim} [, {it:m(#)} {it:algos(string)} {it:stochastic} {it:nostochastic}
-{it:ignore(varlist)} {it:tuningtime(#)} {it:maxmodels(#)} {it:maxiter(#)}
-{it:cv(#)} {it:matching} {it:noautobalance} {it:balance(varlist)} {it:seed(#)}
-{it:verbosity(string)} {it:report(string)} {it:tolerance(#)} 
-{it:preimpute(string)} {it:cpu(#)} {it:ram(#)} {it:flush} {it:save(string)}
-{it:load(string)} {it:java(string)} {it:filename(string)}
-{it:debug} ]
+{it:ignore(varlist)} {it:hierarchy(varlist)} {it:tuningtime(#)} {it:maxmodels(#)} {it:maxiter(#)}
+{it:cv(#)} {it:nomatching} {it:noautobalance} {it:seed(#)}
+{it:verbosity(string)} {it:report(string)} {it:tolerance(#)} {it:preimpute(string)}
+{it:cpu(#)} {it:save(string)} {it:load(string)} {it:filename(string)} {it:debug} ]
 
 
 {title:Description}
@@ -27,17 +25,15 @@ R package {bf:mlim} through {bf:rcall}. By default, it performs a single imputat
 Specify {bf:m(#)} with a value larger than 1 to carry out multiple imputations.
 
 {p 4 4 2}
-The command first identifies variables containing missing observations. Variables
-listed in {bf:ignore()} are excluded from imputation. If string variables are present,
-{bf:mlim} returns an error and requests encoding them as numeric categorical variables
-or placing them in {bf:ignore()}.
+For a single imputation ({it:_m(1)_}), the completed dataset returned by R replaces
+the dataset in memory. For multiple imputation ({it:_m()>1_}), {bf:mlim} converts the
+R result to Stata{c 39}s {bf:flong} format and then runs {bf:mi import flong}. The variables
+that were imputed are registered with Stata as imputed variables.
 
 {p 4 4 2}
-For a single imputation ({it:_m(1)_}), the imputed dataset returned by R replaces the
-dataset in memory. For multiple imputation ({it:_m()>1_}), the R result is converted to
-{bf:flong} form with and then imported with Stata{c 39}s {bf:mi import flong}. 
-In this case, {bf:mlim} reserves the variable names {bf:m} and
-{bf:id} for appending the imputed datasets. 
+The wrapper follows the current R {bf:mlim::mlim()} interface. Options that control
+model fitting, stochastic imputation, matching, hierarchy, convergence, and
+reproducibility are passed directly to R.
 
 
 {title:Requirements}
@@ -47,106 +43,157 @@ In this case, {bf:mlim} reserves the variable names {bf:m} and
 
 {col 5}Requirement{col 22}Minimum version
 {space 4}{hline 34}
-{col 5}{bf:mlim}{col 22}0.4.0
+{col 5}{bf:mlim}{col 22}0.6.0
 {col 5}{bf:readstata13}{col 22}0.11.0
-{col 5}{bf:h2o}{col 22}-
 {space 4}{hline 34}
 {p 4 4 2}
-R and Java Runtime should also be accessible via path environment.
+R version 4.1.0 or newer is required. The current R implementation uses {bf:mlr3}
+and {bf:mlr3tuning} rather than {bf:h2o}, so Java and an H2O server are not required.
+Additional learner packages are required only when their corresponding optional
+algorithms are selected.
 
 
 {title:Options}
 
-{col 5}{it:Option}{col 26}{it:Description}
-{space 4}{hline}
-{col 5}{bf:m(#)}{col 26}Number of imp utations. The default is 1 and values must be at least 1.
-{col 5}{bf:algos(string)}{col 26}Passes a space-separated set of algorithm names to the R argument {bf:algos}.
-{col 5}{bf:stochastic}{col 26}Passes {bf:stochastic = TRUE} to R. Experimental in this source.
-{col 5}{bf:nostochastic}{col 26}Passes {bf:stochastic = FALSE} to R. May not be combined with {bf:stochastic}. Experimental feature.
-{col 5}{bf:ignore(varlist)}{col 26}Excludes variables from the set of variables to be imputed
-{col 5}{bf:tuningtime(#)}{col 26}Passes {bf:tuning_time = #} to R.
-{col 5}{bf:maxmodels(#)}{col 26}Passes {bf:max_models = #} to R.
-{col 5}{bf:maxiter(#)}{col 26}Passes {bf:maxiter = #} to R.
-{col 5}{bf:cv(#)}{col 26}Passes {bf:cv = #} to R.
-{col 5}{bf:matching}{col 26}Experimental option related to predictive matching. See Remarks below.
-{col 5}{bf:noautobalance}{col 26}Turns off class imbalance correction in single imputation
-{col 5}{bf:balance(varlist)}{col 26}Passes the listed variables to R as {bf:balance}. Experimental in this source.
-{col 5}{bf:seed(#)}{col 26}Passes the integer random-number seed to R.
-{col 5}{bf:verbosity(string)}{col 26}Passes {bf:verbosity} to R.
-{col 5}{bf:report(string)}{col 26}Passes a report path or report specification to R.
-{col 5}{bf:tolerance(#)}{col 26}Passes the convergence {bf:tolerance} to R.
-{col 5}{bf:preimpute(string)}{col 26}Passes {bf:preimpute} to R.
-{col 5}{bf:cpu(#)}{col 26}Passes the requested number of CPUs to R.
-{col 5}{bf:ram(#)}{col 26}Passes the requested RAM value to R.
-{col 5}{bf:flush}{col 26}Passes {bf:flush = TRUE} to R, requesting cleanup of H2O models.
-{col 5}{bf:save(string)}{col 26}Passes {bf:save} to the R package to save its imputation state (recommended).
-{col 5}{bf:load(string)}{col 26}Passes {bf:load} to the R package to load a previously saved imputation state.
-{col 5}{bf:java(string)}{col 26}Passes a Java path to R. Backslashes are converted to forward slashes.
-{col 5}{bf:filename(string)}{col 26}Saves the imputed data to a Stata {bf:.dta} file (recommended).
-{col 5}{bf:debug}{col 26}Used for debugging the program.
-{space 4}{hline}
+{col 5}{it:Option}{col 15}{it:Description}
+{space 4}{hline 25}
+{col 5}{bf:m(#)}{col 15}Number of imputations. The default is 1. Values must be at least 1.
+{col 5}{bf:algos(string)}{col 15}Space-separated machine-learning algorithms passed to R. Supported algorithms include {bf:ELNET}, {bf:RF}, {bf:CRF}, {bf:GBM}, {bf:XGB}, {bf:LGBM}, {bf:CAT}, {bf:NNET}, {bf:SVM}, {bf:KNN}, and {bf:ENSEMBLE}. The default is {bf:ELNET}. Optional algorithms may require additional R packages.
+{col 5}{bf:stochastic}{col 15}Sets {bf:stochastic = TRUE}. For multiple imputation, stochastic imputation is TRUE by default.
+{col 5}{bf:nostochastic}{col 15}Sets {bf:stochastic = FALSE}. May not be combined with {bf:stochastic}.
+{col 5}{bf:ignore(varlist)}{col 15}Excludes variables from the imputation process.
+{col 5}{bf:hierarchy(varlist)}{col 15}Specifies clustering variables from the highest to the lowest level. The order is passed directly to R.
+{col 5}{bf:tuningtime(#)}{col 15}Sets {bf:tuning_time = #}, the maximum tuning time per variable and iteration.
+{col 5}{bf:maxmodels(#)}{col 15}Sets {bf:max_models = #}, the maximum number of hyperparameter evaluations per variable and iteration.
+{col 5}{bf:maxiter(#)}{col 15}Sets the maximum number of imputation iterations.
+{col 5}{bf:cv(#)}{col 15}Sets the number of cross-validation folds.
+{col 5}{bf:nomatching}{col 15}Sets {bf:matching = FALSE}. By default, the R package uses {bf:matching = TRUE}.
+{col 5}{bf:noautobalance}{col 15}Sets {bf:autobalance = FALSE}.
+{col 5}{bf:seed(#)}{col 15}Sets the R random-number seed.
+{col 5}{bf:verbosity(string)}{col 15}Passes {bf:verbosity} to R. The R package accepts {bf:warn}, {bf:info}, {bf:debug}, or NULL.
+{col 5}{bf:report(string)}{col 15}Passes a report filename to R.
+{col 5}{bf:tolerance(#)}{col 15}Sets the convergence {bf:tolerance}.
+{col 5}{bf:preimpute(string)}{col 15}Sets the initial preimputation method, such as {bf:random} or {bf:mm}.
+{col 5}{bf:cpu(#)}{col 15}Sets the number of CPU threads supplied to learners that support internal multithreading.
+{col 5}{bf:save(string)}{col 15}Saves the current imputation state to an {bf:.mlim} RDS file after variable-level updates.
+{col 5}{bf:load(string)}{col 15}Resumes an imputation from a previously saved {bf:.mlim} state. The saved state determines the imputation settings and number of imputations. For multiple imputation, the current Stata data must correspond to the original dataset used to create the saved state because it is used as the original ({it:_m = 0_}) dataset when constructing the Stata {bf:flong} data. For single imputation, the current Stata data are ignored by the R imputation.
+{col 5}{bf:filename(string)}{col 15}Saves the completed data to the specified Stata {bf:.dta} file in addition to loading it into Stata.
+{col 5}{bf:debug}{col 15}Passes the hidden R argument {bf:debug = TRUE}.
+{space 4}{hline 25}
 
 {title:Remarks}
+
+{p 4 4 2}{bf:Algorithms}
+
+{p 4 4 2}
+The current R implementation supports the following algorithm names:
+
+{break}    * {bf:ELNET}: elastic net
+{break}    * {bf:RF}: random forest
+{break}    * {bf:CRF}: conditional random forest
+{break}    * {bf:GBM}: gradient boosting
+{break}    * {bf:XGB}: XGBoost
+{break}    * {bf:LGBM}: LightGBM
+{break}    * {bf:CAT}: CatBoost
+{break}    * {bf:NNET}: single-hidden-layer neural network
+{break}    * {bf:SVM}: kernel support vector machine
+{break}    * {bf:KNN}: k-nearest neighbors
+{break}    * {bf:ENSEMBLE}: stacked ensemble using the successfully tuned base learners
+
+{p 4 4 2}
+Some algorithms are provided through {bf:mlr3extralearners} and therefore require
+that package and the corresponding learner package to be installed. For example,
+{bf:LGBM}, {bf:CAT}, and {bf:SVM} use optional learner extensions. {bf:KNN} is not
+available for multiple imputation when bootstrap observation weights are required,
+because its current learner does not support observation weights. {bf:GBM} is also
+skipped for multinomial targets when its current learner does not support multiclass
+classification.
+
+{p 4 4 2}{bf:Stochastic imputation and matching}
+
+{p 4 4 2}
+When {bf:stochastic} is TRUE, continuous numeric predictions receive stochastic
+variation based on the model{c 39}s cross-validation RMSE, whereas categorical predictions
+are sampled from their predicted class-probability vectors. Numeric matching is enabled
+by default in R. The Stata option {bf:nomatching} sets {bf:matching = FALSE}. When
+matching is enabled and stochastic imputation is used, integer-valued numeric predictions
+are stochastically mapped to neighboring observed integer values after the stochastic
+numeric value has been generated.
+
+{p 4 4 2}{bf:Hierarchical imputation}
+
+{p 4 4 2}
+The {bf:hierarchy()} option specifies nested clustering variables from the highest
+to the lowest level. For example, {bf:hierarchy(city school classroom student)}
+represents students nested within classrooms, classrooms nested within schools, and
+schools nested within cities. Hierarchy variables must exist in the data and cannot
+contain missing values.
 
 {p 4 4 2}{bf:Variables selected for imputation}
 
 {p 4 4 2}
-The command scans all variables in the dataset and selects every variable containing
-at least one missing observation. Variables specified in {bf:ignore()} are then removed
-from that list. If no variables remain, the command exits with an error.
-
-{p 4 4 2}
-String variables are not automatically encoded. The command warns when string
-variables remain outside {bf:ignore()}, but the current source does not stop execution
-after that warning.
+For a new imputation, the R package selects variables that contain missing values
+but are not completely missing, excluding variables specified in {bf:ignore()}. The
+Stata wrapper uses the same criterion when preparing the variable list needed by
+{bf:mi import flong}. String variables are reported to the user; they should be
+encoded as numeric categorical variables or placed in {bf:ignore()}.
 
 {p 4 4 2}{bf:Single versus multiple imputation}
 
 {p 4 4 2}
-With {bf:m(1)}, {bf:mlim::mlim()} returns one completed dataset and {bf:rcall} loads
-that dataset into Stata.
+With {bf:m(1)}, {bf:mlim::mlim()} returns one completed data frame and {bf:rcall} loads
+it into Stata.
 
 {p 4 4 2}
-With {bf:m()>1}, the command asks {bf:mlim::mlim.stata()} to create data in
-{bf:flong} format. Stata then runs:
+With {bf:m()>1}, the R result is converted by {bf:mlim::mlim.stata()} to {bf:flong}
+format. Stata then runs:
 
 {p 8 8 2} {bf:mi import flong, m(m) id(id) imputed(varlist)}
 
 {p 4 4 2}
-where {it:varlist} is the set of variables that had missing values before imputation,
-after exclusions in {bf:ignore()}. The resulting data remain in memory and
-{bf:mi describe} is displayed.
+where {it:varlist} contains the variables imputed by {bf:mlim}. The resulting data are
+registered as a Stata multiple-imputation dataset and {bf:mi describe} is displayed.
+
+{p 4 4 2}{bf:Loading a saved imputation}
+
+{p 4 4 2}
+{bf:load()} is different from starting a new imputation. The R package reads the
+saved {bf:mlim} state and restores its data, iteration position, model settings,
+number of imputations, and other saved options. Therefore, options such as
+{bf:algos()}, {bf:m()}, {bf:tuningtime()}, and {bf:maxmodels()} do not override the
+saved state when {bf:load()} is used.
+
+{p 4 4 2}
+For a loaded multiple-imputation state, the wrapper determines the number of
+imputations from the saved object before deciding whether to run {bf:mi import flong}.
+This is important because {bf:m()} defaults to 1 in the Stata syntax but a saved
+state may contain multiple imputations.
+
+{p 4 4 2}
+{bf:save()} and {bf:load()} cannot be specified together. A loaded state restores its
+saved {bf:save} setting, so a new {bf:save()} path cannot be supplied by the wrapper
+when resuming an existing state.
 
 {p 4 4 2}{bf:Protecting the dataset}
 
 {p 4 4 2}
-Before calling R, the command uses {bf:preserve}. If R execution or the subsequent
-{bf:mi import flong} fails, the original data are restored. On success, the command
-uses {bf:restore, not}, retaining the imputed dataset loaded by R.
-
-{p 4 4 2}{bf:Experimental matching option}
-
-{p 4 4 2}
-The current syntax declares {bf:matching} as a switch. The implementation then treats
-its local macro as though it could contain values such as TRUE, FALSE, or AUTO.
-Consequently, in this development snapshot, specifying {bf:matching} does not enable
-matching; the generated R argument falls through to {bf:matching = FALSE}. This option
-should therefore be regarded as under development until its syntax and implementation
-are reconciled.
+The command uses {bf:preserve} before the R call. If R execution or the subsequent
+{bf:mi import flong} fails, the original dataset is restored. On success, the command
+uses {bf:restore, not}, retaining the completed data returned by R.
 
 {p 4 4 2}{bf:Reserved names}
 
 {p 4 4 2}
-When {bf:m()>1}, variables named {bf:m} and {bf:id} are reserved for conversion to
-Stata{c 39}s flong MI representation. Rename existing variables with those names before
-calling {bf:mlim}.
+For multiple imputation, variables named {bf:m} and {bf:id} are reserved for the
+Stata {bf:flong} representation. Rename existing variables with these names before
+running a multiple imputation.
 
 {p 4 4 2}{bf:R execution}
 
 {p 4 4 2}
-The program checks for {bf:rcall.ado} and calls {bf:rcall_check} before imputation.
-All imputation calls use {bf:rcall vanilla}, which starts a fresh R session for the call.
-Errors returned by R are propagated to Stata after the original dataset is restored.
+The program checks for {bf:rcall.ado} and verifies the required R and package versions
+with {bf:rcall_check}. R is called in {bf:vanilla} mode. Errors returned by R are
+propagated to Stata after the original dataset is restored.
 
 
 {title:Examples}
@@ -157,18 +204,33 @@ Let{c 39}s first prepare a dataset with missing values
     . sysuse auto, clear
     . replace mpg = . if mod(_n, 7) == 0
     . replace weight = . if mod(_n, 9) == 0
-    . encode make, gen(make_cat)              // note that the make variable is encoded
+    . encode make, gen(make_cat)
     . drop make
 
 {p 4 4 2}
-Single imputation using default arguments:
+Single imputation using the default algorithm:
 
 {p 8 8 2} . {bf:mlim}
 
 {p 4 4 2}
-Impute five datasets:
+Multiple imputation with five datasets:
 
 {p 8 8 2} . {bf:mlim, m(5)}
+
+{p 4 4 2}
+Use several algorithms and allow up to 10 minutes of tuning per variable and iteration:
+
+{p 8 8 2} . {bf:mlim, m(5) algos(ELNET RF XGB) tuningtime(600) maxmodels(50)}
+
+{p 4 4 2}
+Use a hierarchical structure:
+
+{p 8 8 2} . {bf:mlim, m(5) hierarchy(schoolid childid)}
+
+{p 4 4 2}
+Disable stochastic imputation and numeric matching:
+
+{p 8 8 2} . {bf:mlim, m(1) nostochastic nomatching}
 
 {p 4 4 2}
 Ignore a variable and use a reproducible seed:
@@ -176,22 +238,22 @@ Ignore a variable and use a reproducible seed:
 {p 8 8 2} . {bf:mlim, m(5) ignore(length) seed(2026)}
 
 {p 4 4 2}
-Limit computational resources to 4 CPU and 8GB of RAM:
+Use four CPU threads:
 
-{p 8 8 2} . {bf:mlim, m(5) cpu(4) ram(8)}
-
-{p 4 4 2}
-Spend up to 10 minutes on hyperparameter tuning for each variable in each itteration:
-
-{p 8 8 2} . {bf:mlim, m(5) tuningtime(600) maxmodels(200) maxiter(10) cv(5)}
+{p 8 8 2} . {bf:mlim, m(5) cpu(4)}
 
 {p 4 4 2}
-Disable automatic balancing and request balancing for selected variables:
+Save an imputation state:
 
-{p 8 8 2} . {bf:mlim, m(5) noautobalance balance(outcome group)}
+{p 8 8 2} . {bf:mlim, m(5) save("my_imputation.mlim")}
 
 {p 4 4 2}
-Save the imputed dataset to disk:
+Continue a previously saved imputation:
+
+{p 8 8 2} . {bf:mlim, load("my_imputation.mlim")}
+
+{p 4 4 2}
+Save the completed data to a Stata file:
 
 {p 8 8 2} . {bf:mlim, m(5) filename("imputed_data.dta")}
 
@@ -204,18 +266,18 @@ Inspect the R arguments generated by the Stata wrapper:
 {title:Stored results}
 
 {p 4 4 2}
-This Stata wrapper does not explicitly store documented {bf:r()}, {bf:e()}, or {bf:s()}
-results. Its primary result is the imputed dataset left in memory. With multiple
-imputation, the dataset is registered as Stata MI data in flong form.
+The wrapper does not define a separate documented {bf:r()}, {bf:e()}, or {bf:s()}
+result. The primary result is the completed dataset left in memory. The internal
+R result indicating the number of imputations is used by the wrapper to decide
+whether Stata{c 39}s {bf:mi import flong} step is required.
 
 
 {title:Acknowledgments}
 
 {p 4 4 2}
-{bf:mlim} is a Stata interface to the R package  {browse "http://github.com/haghish/mlim":{bf:mlim}} 
-and uses  {browse "http://github.com/haghish/rcall":{bf:rcall}} for 
-communication between Stata and R. Dataset exchange also relies on the R package
-{bf:readstata13} in the single-imputation file-writing path.
+{bf:mlim} is a Stata interface to the R package  {browse "http://github.com/haghish/mlim":{bf:mlim}}
+and uses  {browse "http://github.com/haghish/rcall":{bf:rcall}} for communication between Stata
+and R. Dataset exchange relies on the R package {bf:readstata13}.
 
 
 {title:Author}
