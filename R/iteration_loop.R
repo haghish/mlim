@@ -1,8 +1,6 @@
 #' @title iteration_loop
 #' @description runs imputation iteration loop to fully impute a dataframe
 #' @importFrom utils setTxtProgressBar txtProgressBar capture.output packageVersion
-#' @importFrom h2o h2o.init as.h2o h2o.predict h2o.ls
-#'             h2o.removeAll h2o.rm h2o.shutdown h2o.getId
 #' @importFrom md.log md.log
 #' @importFrom memuse Sys.meminfo
 #' @importFrom stats var setNames na.omit
@@ -22,17 +20,15 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
                            # settings
                            error_metric, FAMILY, cv, tuning_time,
                            max_models,
-                           keep_cv, #should be removed
-                           autobalance, #balance,
-                           seed, save, flush,
+                           autobalance,
+                           seed, save,
                            verbose, debug, report, sleep,
 
                            # saving settings
                            mem, orderedCols, ignore, maxiter,
                            miniter, matching, ignore.rank,
-                           verbosity, error, cpu, max_ram, min_ram, shutdown, clean,
-                           stochastic, connection, port, insecure, https,
-                           bind_to_localhost, ignore_config, java,
+                           verbosity, error, cpu, clean,
+                           stochastic,
                            running = TRUE) {
 
   # ------------------------------------------------------------
@@ -51,6 +47,7 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
   # Bootstrap duplicates are represented through observation weights.
   # When autobalance is requested, iterate() combines these multiplicity
   # weights with outcome-balancing weights for multiple imputation.
+  # Learner-specific support for these weights is handled inside iterate().
 
   if (boot) {
     rownames(data) <- 1:nrow(data) #remember the rows that are missing
@@ -77,6 +74,11 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
     bdata <- mlim.preimpute(data=bdata, preimpute=preimpute, seed = NULL)
     bdata[, "mlim_bootstrap_weights_column_"] <- dups[,2] #OR ALTERNATIVELY #dups[,2] / sum(dups[,2])
 
+    # mlr3 learners require complete predictor matrices. Keep dataNA as the
+    # original missingness mask, but initialize the working data before
+    # model.matrix() is constructed in iterate().
+    data <- mlim.preimpute(data=data, preimpute=preimpute, seed = NULL)
+
     ## SOLUTION 3: Assign CV folding manually instead of weight_column
     ## ----------------------------------------------------
     # bdata <- data[sampling_index, ]
@@ -93,7 +95,7 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
   # update the fresh data
   # ------------------------------------------------------------
 
-  if (debug) md.log("data was sent to h2o cloud", date=debug, time=debug, trace=FALSE)
+  if (debug) md.log("iteration data prepared", date=debug, time=debug, trace=FALSE)
 
   # define iteration var. this is a vector of varnames that should be imputed
   ITERATIONVARS <- vars2impute
@@ -116,78 +118,6 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
   }
   else {
     multilevel_source_variables <- character(0)
-  }
-
-  # Update or add one column in an existing H2O working frame.
-  syncH2OColumn <- function(frame, source, variable) {
-    if (is.null(frame)) return(NULL)
-
-    updateFrame <- tryCatch(
-      h2o::as.h2o(source[, variable, drop = FALSE]),
-      error = function(cond) {
-        message(
-          paste0(
-            "Variable '", variable,
-            "' could not be uploaded to the Java server.\n"
-          )
-        )
-        stop(cond)
-      }
-    )
-
-    frame <- tryCatch({
-      frame[, variable] <- updateFrame[, 1]
-      h2o::h2o.getId(frame)
-      frame
-    }, error = function(cond) {
-      message(
-        paste0(
-          "Variable '", variable,
-          "' could not be updated on the Java server.\n"
-        )
-      )
-      stop(cond)
-    })
-
-    tryCatch(
-      h2o::h2o.rm(updateFrame),
-      error = function(cond) {
-        message(
-          paste0(
-            "H2O cleanup failed while removing the temporary update frame for variable '",
-            variable, "'.\n",
-            "Error: ", conditionMessage(cond)
-          )
-        )
-        NULL
-      }
-    )
-
-    frame
-  }
-
-  # ------------------------------------------------------------
-  # Generate the HEX datasets if there is NO FLUSHING
-  # ------------------------------------------------------------
-  if (!flush) {
-    tryCatch(hex <- h2o::as.h2o(data),
-             error = function(cond) {
-               message("trying to upload data to JAVA server...\n");
-               message("ERROR: Data could not be uploaded to the Java Server\nJava server returned the following error:\n")
-               return(stop(cond))})
-
-    bhex <- NULL
-    if (!is.null(bdata)) {
-      tryCatch(bhex<- h2o::as.h2o(bdata),
-               error = function(cond) {
-                 message("trying to upload data to JAVA server...\n");
-                 message("ERROR: Data could not be uploaded to the Java Server\nJava server returned the following error:\n")
-                 return(stop(cond))})
-    }
-  }
-  else {
-    hex  <- NULL
-    bhex <- NULL
   }
 
   # ============================================================
@@ -223,6 +153,17 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
 
       multilevel_variables <- attr(data, "mlim.multilevel.variables")
 
+      # Leave-one-out cluster summaries can be undefined for singleton
+      # clusters. H2O previously tolerated missing predictors, whereas the
+      # current mlr3 learners use complete model matrices. Fill only these
+      # generated summary predictors before model fitting.
+      if (length(multilevel_variables) > 0L &&
+          anyNA(data[, multilevel_variables, drop = FALSE])) {
+        data[, multilevel_variables] <- medianmode(
+          data[, multilevel_variables, drop = FALSE]
+        )
+      }
+
       # Multiple imputation uses a separate bootstrap working dataset.
       if (!is.null(bdata)) {
 
@@ -250,6 +191,17 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
           weights = bdata[["mlim_bootstrap_weights_column_"]]
         )
 
+        b_multilevel_variables <- attr(
+          bdata,
+          "mlim.multilevel.variables"
+        )
+
+        if (length(b_multilevel_variables) > 0L &&
+            anyNA(bdata[, b_multilevel_variables, drop = FALSE])) {
+          bdata[, b_multilevel_variables] <- medianmode(
+            bdata[, b_multilevel_variables, drop = FALSE]
+          )
+        }
 
       }
 
@@ -260,33 +212,11 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
 
       X <- unique(c(baseX, multilevel_variables))
 
-      # With flush = FALSE, keep the existing H2O frames and update
-      # only the regenerated summary columns.
-      if (!flush && length(multilevel_variables) > 0L) {
-
-        for (v in multilevel_variables) {
-          hex <- syncH2OColumn(hex, data, v)
-        }
-
-        if (!is.null(bdata)) { b_multilevel_variables <- attr(bdata, "mlim.multilevel.variables")
-
-        for (v in b_multilevel_variables) {
-          bhex <- syncH2OColumn(bhex, bdata, v)
-        }
-        }
-      }
     }
 
     # always print the iteration
     message(paste0("\ndata ", m.it, ", iteration ", k, " (RAM = ", memuse::Sys.meminfo()$freeram,")", ":"), sep = "") #":\t"
     md.log(paste("Iteration", k), section="subsection")
-
-    # ## AVOID THIS PRACTICE BECAUSE DOWNLOADING DATA FROM THE SERVER IS SLOW
-    # # store the last data
-    # if (debug) md.log("store last data", date=debug, time=debug, trace=FALSE)
-    # dataLast <- as.data.frame(hex)
-    # attr(dataLast, "metrics") <- metrics
-    # attr(dataLast, "rmse") <- error
 
     for (Y in ITERATIONVARS[z:length(ITERATIONVARS)]) {
       start <- as.integer(Sys.time())
@@ -300,27 +230,25 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
       tryCatch(capture.output(
         it <- iterate(
           MI, dataNA, bdataNA,
-          preimputed.data, data, bdata, boot, hex, bhex, metrics, tolerance,
-          m, k, X, Y, z=which(ITERATIONVARS == Y), m.it,
+          preimputed.data, data, bdata, boot, metrics, tolerance,
+          m, k, X, Y, z = which(ITERATIONVARS == Y), m.it,
           # loop data
           ITERATIONVARS, vars2impute,
           allPredictors, preimpute, impute,
           hierarchy = hierarchy,
           # settings
-          error_metric, FAMILY=FAMILY, cv, tuning_time,
+          error_metric, FAMILY = FAMILY, cv, tuning_time,
           max_models,
-          keep_cv,
-          autobalance, #balance,
-          seed, save, flush,
+          autobalance,
+          seed, save,
           verbose, debug, report, sleep,
           # saving settings
           mem, orderedCols, ignore, maxiter,
           miniter, matching, ignore.rank,
-          verbosity, error, cpu, max_ram, min_ram, stochastic,
-          port, insecure, https, bind_to_localhost, ignore_config, java)
+          verbosity, error, cpu, stochastic)
         , file = report, append = TRUE)
         , error = function(cond) {
-          message(paste0("\nReimputing '", Y, "' with the current specified algorithms failed and this variable will be skipped! \nSee Java server's error below:"));
+          message(paste0("\nReimputing '", Y, "' with the current specified algorithms failed and this variable will be skipped! \nSee error below:"));
           md.log(paste("Reimputing", Y, "failed and the variable will be skipped!"),
                  date = TRUE, time = TRUE, print = TRUE)
           message(cond)
@@ -346,38 +274,7 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
         metrics       <- it$metrics
         data          <- it$data
         bdata         <- it$bdata
-        hex           <- it$hex
-        bhex          <- it$bhex
 
-      }
-
-      # Check the H2O server after each variable-specific iteration.
-      # --------------------------------------------------------------
-      if (!server.check(connection)) {
-        message("H2O server is unavailable. Restarting the server...\n")
-        connection <- NULL
-        try(stopH2o(port = port), silent = TRUE)
-        Sys.sleep(0.25)
-
-        capture.output(
-          connection <- init(nthreads = cpu,
-                             min_mem_size = min_ram,
-                             max_mem_size = max_ram,
-                             ignore_config = ignore_config,
-                             java = java,
-                             report,
-                             debug,
-                             port = port,
-                             insecure = insecure,
-                             https = https,
-                             bind_to_localhost = bind_to_localhost),
-          file = report, append = TRUE
-        )
-
-        if (!flush) {
-          hex <- h2o::as.h2o(data)
-          bhex <- if (is.null(bdata)) NULL else h2o::as.h2o(bdata)
-        }
       }
 
       # log & statusbar
@@ -420,42 +317,15 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
   # if (k == miniter || (k == maxiter && running) || maxiter == 1) {
   ###### ALWAYS RETURN THE LAST DATA. THIS WAS A BUG, REMAINING AFTER I INDIVIDUALIZED IMPUTATION EVALUATION
 
-  ### Workaround for buggy 'as.data.frame' function
-  ### =============================================
+  # Always return the current R data.frame. mlr3 works directly with R data,
+  # so no backend frame conversion is required here.
 
-  # INSTEAD OF DEFINING A NEW VARIABLE 'dataLast', just use the 'data' returned
-  # FROM iteration and most importantly, AVOID THE BLOODY 'as.data.frame' function
-  # which IS SO BUGGY
-  # dataLast <- as.data.frame(hex)
-  # Sys.sleep(sleep)
-  # attr(dataLast, "metrics") <- metrics
-  # attr(dataLast, error_metric) <- error
-  # }
-  # else {
-  #   md.log("return previous iteration's data", date=debug, time=debug, trace=FALSE)
-  # }
-
-  if (clean) {
-    tryCatch(h2o::h2o.removeAll(),
-             error = function(cond) {
-               message("trying to connect to JAVA server...\n");
-               return(stop("Java server has crashed (low RAM?)"))})
-    md.log("server was cleaned", section="paragraph", trace=FALSE)
-  }
-
-  if (shutdown) {
-    md.log("shutting down the server", section="paragraph", trace=FALSE)
-    tryCatch(h2o::h2o.shutdown(prompt = FALSE),
-             error = function(cond) {
-               message("trying to connect to JAVA server...\n");
-               return(warning("Java server has crashed (low RAM?)"))})
-    Sys.sleep(sleep)
-  }
+  if (clean) gc()
 
   # ------------------------------------------------------------
   # Auto-Matching specifications
   # ============================================================
-  if (matching == "AUTO") {
+  if (isTRUE(matching) && isTRUE(stochastic)) {
     mtc <- 0
     for (Y in vars2impute) {
       mtc <- mtc + 1
@@ -464,9 +334,10 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
       if ((FAMILY[mtc] == 'gaussian_integer') | (FAMILY[mtc] == 'quasibinomial')) {
         if (debug) md.log(paste("matching", Y), section="paragraph")
 
-        matchedVal <- matching(imputed=data[v.na, Y],
-                               nonMiss=unique(data[!v.na,Y]),
-                               md.log)
+        matchedVal <- matching(
+          imputed = data[v.na, Y],
+          observed = unique(data[!v.na, Y])
+        )
         #message(matchedVal)
         if (!is.null(matchedVal)) data[v.na, Y] <- matchedVal
         else {
