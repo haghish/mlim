@@ -7,31 +7,22 @@
 mlim(
   data = NULL,
   m = 1,
-  algos = c("ELNET"),
-  stochastic = m > 1,
+  algos = c("ELNET", "SVM", "XGB"),
+  preimpute = "random",
   ignore = NULL,
   hierarchy = NULL,
-  tuning_time = 3600,
-  max_models = 100,
-  maxiter = 10L,
+  tolerance = 0.001,
+  tuning_time = 300,
+  max_models = 50,
+  maxiter = 15L,
   cv = 5L,
-  matching = "AUTO",
+  cpu = 1,
+  stochastic = m > 1,
+  matching = TRUE,
   autobalance = TRUE,
   seed = NULL,
   verbosity = NULL,
   report = NULL,
-  tolerance = 0.001,
-  preimpute = "random",
-  cpu = 1,
-  ram = NULL,
-  flush = FALSE,
-  port = 54321,
-  insecure = TRUE,
-  https = FALSE,
-  bind_to_localhost = FALSE,
-  ignore_config = TRUE,
-  java = NULL,
-  preimputed.data = NULL,
   save = NULL,
   load = NULL,
   ...
@@ -44,33 +35,42 @@ imputed. if \code{'load'} argument is provided, this argument will be ignored.}
 \item{m}{integer, specifying number of multiple imputations. the default value is
 1, carrying out a single imputation.}
 
-\item{algos}{character vector, specifying algorithms to be used for missing data
-             imputation. supported algorithms are "ELNET", "RF", "GBM", "DL",
-             "XGB", and "Ensemble". if more than one algorithm is specified,
-             mlim changes behavior to save on runtime. for example,
-             the default is "ELNET", which fine-tunes an Elastic Net model.
-             In general, "ELNET" is expected to
-             be the best algorithm because it fine-tunes very fast, it is
-             very robust to over-fitting, and hence, it generalizes very well.
-             However, if your data has many factor variables, each with several
-             levels, it is recommended to have c("ELNET", "RF") as your imputation
-             algorithms (and possibly add "Ensemble" as well, to make the most out
-             of tuning the models).
+\item{algos}{character vector specifying the machine-learning algorithms used
+  for imputation. Supported algorithms are \code{"ELNET"} (elastic net via
+  \code{glmnet}), \code{"RF"} (random forest via \code{ranger}),
+  \code{"CRF"} (conditional random forest via \code{partykit::cforest}),
+  \code{"GBM"} (classical gradient boosting via \code{gbm}),
+  \code{"XGB"} (XGBoost), \code{"LGBM"} (LightGBM), \code{"CAT"}
+  (CatBoost), \code{"NNET"} (single-hidden-layer neural network via
+  \code{nnet}), \code{"SVM"} (kernel support vector machine via
+  \code{kernlab::ksvm}), \code{"KNN"} (k-nearest neighbors), and
+  \code{"ENSEMBLE"}.
+  The default is \code{"ELNET"}.
 
-             Note that "XGB" is only available in Mac OS and Linux. moreover,
-             "GBM", "DL" and "XGB" take the full given "tuning_time" (see below) to
-             tune the best model for imputing he given variable, whereas "ELNET"
-             will produce only one fine-tuned model, often at less time than
-             other algorithms need for developing a single model, which is why "ELNET"
-             is work horse of the mlim imputation package.}
+  When several base algorithms are supplied, \code{max_models} and
+  \code{tuning_time} are divided across the base algorithms and the
+  best-performing candidate is used. If \code{"ENSEMBLE"} is included,
+  at least two additional base algorithms must also be supplied. The ensemble
+  is a stacked model constructed with \code{mlr3pipelines} using
+  cross-validated predictions from the successfully tuned base learners and
+  is evaluated as an additional candidate after base-learner tuning.
 
-\item{stochastic}{Logical. If \code{TRUE}, stochastic variation is added after each
-accepted variable-specific imputation update. For continuous variables, values
-are drawn from a normal distribution centered on the model prediction with the
-current cross-validation RMSE as the standard deviation. For categorical
-variables, values are sampled from the predicted class probabilities. The
-default is \code{FALSE} for single imputation and \code{TRUE} for multiple
-imputation.}
+  The current \code{mlr3extralearners} \code{classif.gbm} wrapper supports
+  two-class classification but not multiclass classification; therefore
+  \code{"GBM"} is skipped for multinomial targets when other learners are
+  available.
+
+  \code{"KNN"} does not support observation weights in its current mlr3
+  learner. It can therefore be evaluated in single imputation, but is skipped
+  during multiple imputation because bootstrap multiplicity weights are
+  required for model fitting. When class balancing is requested in single
+  imputation, KNN is fitted without learner weights, although balancing
+  weights are retained for performance assessment.}
+
+\item{preimpute}{Character specifying the initial treatment of missing values before
+iterative model-based imputation. The default is \code{"random"}, which performs
+random sampling from each feature. The alternative is \code{"mm"},
+which performs median/mode preimputation.}
 
 \item{ignore}{character vector of column names or index of columns that should
 should be ignored in the process of imputation.}
@@ -83,18 +83,27 @@ nested within cities. Hierarchy variables must exist in \code{data} and cannot
 contain missing values. The default is \code{NULL}, which assumes no
 hierarchical structure.}
 
-\item{tuning_time}{Numeric. Maximum runtime in seconds for AutoML tuning of each
-variable in each iteration. The default is \code{3600} seconds.
-this argument is influenced by \code{max_models}, see below.
-mlim trains models until either max_models or tuning_time is
-reached.}
+\item{tolerance}{numeric. the minimum rate of improvement in estimated error metric
+of a variable to qualify the imputation for another round of iteration,
+if the \code{maxiter} is not yet reached. any improvement of imputation
+is desirable.  however, specifying values above 0 can reduce the number
+of required iterations at a marginal increase of imputation error.
+for larger datasets, value of "1e-3" is recommended to reduce number
+of iterations. the default value is '1e-3'.}
 
-\item{max_models}{Integer or \code{NULL}. Maximum number of models that mlim may
-fit for each variable and iteration. If \code{NULL}, no explicit model-count
-limit is supplied by \code{mlim}. For algorithms other than ELNET and RF,
-this argument is strongly recommended.the default is 100 models per feature
-with missing values. mlim trains models until either max_models or tuning_time is
-reached.}
+\item{tuning_time}{Numeric. Maximum base-learner tuning runtime in seconds for
+each variable and iteration. The default is \code{3600}. When several base
+algorithms are selected, this budget is divided across them. Tuning stops
+when the applicable time or evaluation limit is reached. A requested stacked
+ensemble is evaluated after base-learner tuning and does not consume this
+base-learner tuning-time allocation.}
+
+\item{max_models}{Integer or \code{NULL}. Maximum number of hyperparameter
+evaluations across the base algorithms for each variable and iteration.
+The default is \code{100}. When several base algorithms are selected, this
+budget is divided across them. If \code{NULL}, no explicit evaluation-count
+limit is supplied by \code{mlim}. \code{"ENSEMBLE"} does not count as a base
+algorithm for this allocation.}
 
 \item{maxiter}{integer. maximum number of iterations. the default value is \code{15},
 but it can be reduced to \code{3} (not recommended, see below).}
@@ -102,10 +111,29 @@ but it can be reduced to \code{3} (not recommended, see below).}
 \item{cv}{Integer specifying the number of cross-validation folds. Values of
 \code{5} or higher are required. the default is \code{5}.}
 
-\item{matching}{logical. if \code{TRUE}, imputed values are coerced to the
-closest value to the non-missing values of the variable.
-if set to "AUTO", 'mlim' decides whether to match
-or not, based on the variable classes. the default is "AUTO".}
+\item{cpu}{Integer specifying the number of CPU threads supplied to learners that support internal multithreading. The default is \code{1}.}
+
+\item{stochastic}{Logical. If \code{TRUE}, stochastic variation is added after each
+accepted variable-specific imputation update. For continuous variables, values
+are drawn from a normal distribution centered on the model prediction with the
+current cross-validation RMSE as the standard deviation. For categorical
+variables, values are sampled from the predicted class probabilities. The
+default is \code{FALSE} for single imputation and \code{TRUE} for multiple
+imputation.}
+
+\item{matching}{Logical. If \code{TRUE}, post-processing is applied to
+imputed values for integer-valued numeric variables when \code{stochastic}
+is also \code{TRUE}. Fractional predictions are stochastically matched
+between the two bounding observed values. The probability of selecting
+each value is based on its distance from the prediction, so that the
+expected matched value equals the original prediction. If the prediction
+falls outside the observed range, the nearest boundary value is used. If
+there is a gap in the observed values, the nearest lower and upper observed
+values are used. Matching is applied after stochastic variation has been
+added to the numeric prediction. Set to \code{FALSE} to disable numeric
+matching. For categorical variables, stochastic matching to the observed
+categories is handled by \code{stochastic}; see the \code{stochastic}
+argument for details.}
 
 \item{autobalance}{logical. if TRUE (default), binary and multinomial factor variables
 are balanced during single imputation. During multiple imputation,
@@ -114,8 +142,7 @@ balancing weights are combined with bootstrap multiplicity weights.}
 \item{seed}{integer. specify the random generator seed}
 
 \item{verbosity}{character. controls how much information is printed to console.
-     the value can be "warn" (default), "info", "debug", or NULL.
-to FALSE.}
+the value can be "warn" (default), "info", "debug", or NULL.}
 
 \item{report}{filename. if a filename is specified (e.g. report = "mlim.md"), the \code{"md.log"} R
 package is used to generate a Markdown progress report for the
@@ -125,48 +152,6 @@ technical the report becomes. if verbosity equals "debug", then
 a log file is generated, which includes time stamp and shows
 the function that has generated the message. otherwise, a
 reduced markdown-like report is generated. default is NULL.}
-
-\item{tolerance}{numeric. the minimum rate of improvement in estimated error metric
-of a variable to qualify the imputation for another round of iteration,
-if the \code{maxiter} is not yet reached. any improvement of imputation
-is desirable.  however, specifying values above 0 can reduce the number
-of required iterations at a marginal increase of imputation error.
-for larger datasets, value of "1e-3" is recommended to reduce number
-of iterations. the default value is '1e-3'.}
-
-\item{preimpute}{Character specifying the initial treatment of missing values before
-iterative model-based imputation. The default is \code{"random"}, which performs
-random sampling from each feature. The alternative is \code{"mm"},
-which performs median/mode preimputation.}
-
-\item{cpu}{Integer specifying the number of CPU threads available to H2O. The
-default, \code{1}, which uses only one threads.}
-
-\item{ram}{Numeric or \code{NULL}. Maximum memory, in gigabytes, allocated to the
-H2O Java server. If \code{NULL}, H2O's default memory allocation is used.}
-
-\item{flush}{Logical. If \code{TRUE}, H2O objects are removed after each
-variable-specific imputation to reduce memory use. This can increase runtime
-because the working data must be uploaded again. The default is \code{FALSE}.}
-
-\item{port}{Object of class numeric representing the port number of the H2O server. The default is 54321.}
-
-\item{insecure}{logical. argument for h2o.init to initiate the Java server. default is TRUE}
-
-\item{https}{logical. argument for h2o.init to initiate the Java server. default is FALSE}
-
-\item{bind_to_localhost}{logical. argument for h2o.init to initiate the Java server. default is FALSE}
-
-\item{ignore_config}{logical. argument for h2o.init to initiate the Java server. default is TRUE}
-
-\item{java}{Character or \code{NULL}. Optional path to a 64-bit Java executable,
-primarily for systems where Java is installed but is not available on the system
-path.}
-
-\item{preimputed.data}{data.frame. if you have used another software for missing
-data imputation, you can still optimize the imputation
-by handing the data.frame to this argument, which will
-bypass the "preimpute" procedure.}
 
 \item{save}{filename (with .mlim extension). if a filename is specified, an \code{mlim} object is
 saved after the end of each variable imputation. this object not only

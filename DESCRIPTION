@@ -41,6 +41,10 @@ Imports:
     mice,
     missRanger,
     memuse,
+    mlr3,
+    mlr3pipelines,
+    mlr3tuning,
+    paradox,
     md.log (>= 0.2.0),
     readstata13 (>= 0.11.0)
 LazyData: true

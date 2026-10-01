@@ -95,11 +95,11 @@ Below are some comparisons between different R packages for carrying out multipl
 R Installation
 --------------
 
-To install the latest development version from GitHub:
+To install the latest version from GitHub:
 
 ``` r
 library(devtools)
-install_github("haghish/mlim@dev")
+install_github("haghish/mlim")
 ```
 
 Depending on the learners you wish to use for imputation, there will be other dependencies. For installing all learners supported by __`mlim`__, you will need the following R dependencies:
