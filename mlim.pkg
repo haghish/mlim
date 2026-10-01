@@ -1,7 +1,7 @@
-v 0.1
+v 0.6.0
 d 'MLIM': Single and Multiple Imputation with Automated Machine Learning
 d 
-d Distribution-Date:   20260923
+d Distribution-Date:   20260930
 d License: MIT
 d 
 F mlim.ado
