@@ -108,7 +108,7 @@ Depending on the learners you wish to use for imputation, there will be other de
 # Required packages
 install.packages(c("partykit", "sandwich", "coin", "gbm", "lightgbm", "kernlab", "kknn", "readstata13"))
 
-# Optional packages
+# Optional packages fot catBoost imputation
 remotes::install_url("https://github.com/catboost/catboost/releases/download/v1.2.10/catboost-R-darwin-universal2-1.2.10.tgz",
   INSTALL_opts = c("--no-multiarch", "--no-test-load", "--no-staged-install"))
 install.packages("mlr3extralearners", repos = c(mlrorg = "https://mlr-org.r-universe.dev"))
