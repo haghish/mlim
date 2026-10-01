@@ -44,6 +44,7 @@
 #' A hierarchy level for which every cluster contains only one observation is
 #' ignored because no within-cluster information can be calculated.
 #'
+#' @importFrom stats ave
 #' @return
 #' A data frame containing the original variables together with the generated
 #' cluster-level variables.

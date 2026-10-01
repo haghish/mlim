@@ -36,8 +36,6 @@ Description: Machine learning algorithms have been used for performing
 License: MIT + file LICENSE
 Encoding: UTF-8
 Imports:
-    h2o (>= 3.34.0.0),
-    curl (>= 8.0.0),
     mice,
     missRanger,
     memuse,
@@ -47,6 +45,8 @@ Imports:
     paradox,
     md.log (>= 0.2.0),
     readstata13 (>= 0.11.0)
+Suggests:
+    mlr3learners
 LazyData: true
 URL: https://github.com/haghish/mlim, https://www.sv.uio.no/psi/english/people/academic/haghish/
 BugReports: https://github.com/haghish/mlim/issues
