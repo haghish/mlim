@@ -1,5 +1,5 @@
 /***
-_v. 0.6.0_
+_v. 0.6.1_
 
 mlim
 ====
@@ -19,12 +19,17 @@ Description
 -----------
 
 __mlim__ imputes missing values in the dataset currently in memory by calling the
-R package __mlim__ through __rcall__. 
+R package __mlim__ through __rcall__. By default, it performs a single imputation.
+Specify __m(#)__ with a value larger than 1 to carry out multiple imputations.
 
-For a single imputation, the imputed dataset returned replaces
-the dataset in memory. For multiple imputation, __mlim__ converts the
+For a single imputation (__m(1)__), the completed dataset returned by R replaces
+the dataset in memory. For multiple imputation (__m()>1__), __mlim__ converts the
 R result to Stata's __flong__ format and then runs __mi import flong__. The variables
 that were imputed are registered with Stata as imputed variables.
+
+The wrapper follows the current R __mlim::mlim()__ interface. Options that control
+model fitting, stochastic imputation, matching, hierarchy, convergence, and
+reproducibility are passed directly to R.
 
 Requirements
 ------------
@@ -37,43 +42,44 @@ __mlim__ requires the Stata package __rcall__ and the following R packages:
 | __readstata13__ | 0.11.0          |
 
 R version 4.1.0 or newer is required. The current R implementation uses __mlr3__
-and __mlr3tuning__ rather than __h2o__, which was the engine of the former versions. 
+and __mlr3tuning__ rather than __h2o__, so Java and an H2O server are not required.
 Additional learner packages are required only when their corresponding optional
 algorithms are selected.
 
 Options
 -------
 
-| _Option_              | _Description_                                                            |
-|:----------------------|:--------------------------------------------------------------------------|
-| __m(#)__              | Number of imputations.                               |
-| __algos(string)__     | Supported learners: __ELNET__, __RF__, __CRF__, __GBM__, __XGB__, __LGBM__, __CAT__, __NNET__, __SVM__, __KNN__, and __ENSEMBLE__ |
-| __nostochastic__      | Sets __stochastic = FALSE__. Should be avoided in multiple imputation |
-| __ignore(varlist)__   | Excludes variables from the imputation.   |
-| __hierarchy(varlist)__ | Specifies clustering variables from the highest to the lowest level.    |
-| __tuningtime(#)__     | The maximum tuning time per variable and iteration.                          |
-| __maxmodels(#)__      | Sets __max_models = #__, the maximum number of hyperparameter evaluations per variable and iteration. |
-| __maxiter(#)__        | Sets the maximum number of imputation iterations.                               |
-| __cv(#)__             | Sets the number of cross-validation folds. |                                          
-| __nomatching__        | Sets __matching = FALSE__. By default, the R package uses __matching = TRUE__. |
-| __noautobalance__     | Sets __autobalance = FALSE__. |
-| __seed(#)__           | Sets the R random-number seed. |
-| __verbosity(string)__ | Specifies __verbosity__, which can be __warn__, __info__, __debug__, or NULL. |
-| __report(string)__.   | Specifies report filename  |
-| __tolerance(#)__      | Sets the convergence __tolerance__ (minimum relative improvement). |
+| _Option_ | _Description_ |
+|:---------|:--------------|
+| __m(#)__ | Number of imputations. The default is 1. Values must be at least 1. |
+| __algos(string)__ | Space-separated machine-learning algorithms passed to R. Supported algorithms include __ELNET__, __RF__, __CRF__, __GBM__, __XGB__, __LGBM__, __CAT__, __NNET__, __SVM__, __KNN__, and __ENSEMBLE__. The default is __ELNET__. Optional algorithms may require additional R packages. |
+| __stochastic__ | Sets __stochastic = TRUE__. For multiple imputation, stochastic imputation is TRUE by default. |
+| __nostochastic__ | Sets __stochastic = FALSE__. May not be combined with __stochastic__. |
+| __ignore(varlist)__ | Excludes variables from the imputation process. |
+| __hierarchy(varlist)__ | Specifies clustering variables from the highest to the lowest level. The order is passed directly to R. |
+| __tuningtime(#)__ | Sets __tuning_time = #__, the maximum tuning time per variable and iteration. |
+| __maxmodels(#)__ | Sets __max_models = #__, the maximum number of hyperparameter evaluations per variable and iteration. |
+| __maxiter(#)__ | Sets the maximum number of imputation iterations. |
+| __cv(#)__ | Sets the number of cross-validation folds. |
+| __nomatching__ | Sets __matching = FALSE__. By default, the R package uses __matching = TRUE__. |
+| __noautobalance__ | Sets __autobalance = FALSE__. |
+| __seed(#)__ | Sets the R random-number seed. |
+| __verbosity(string)__ | Passes __verbosity__ to R. The R package accepts __warn__, __info__, __debug__, or NULL. |
+| __report(string)__ | Passes a report filename to R. |
+| __tolerance(#)__ | Sets the convergence __tolerance__. |
 | __preimpute(string)__ | Sets the initial preimputation method, such as __random__ or __mm__. |
-| __cpu(#)__            | Sets the number of CPU threads supplied to learners that support internal multithreading. |
-| __save(string)__      | Saves the current imputation state to an __.mlim__ RDS file after variable-level updates. |
-| __load(string)__      | Resumes an imputation from a previously saved __.mlim__ state.  |
-| __filename(string)__  | Saves the completed data to the specified Stata __.dta__ file in addition to loading it into Stata. |
-| __debug__             | Activates debug logging in the report.                                                              |
+| __cpu(#)__ | Sets the number of CPU threads supplied to learners that support internal multithreading. |
+| __save(string)__ | Saves the current imputation state to an __.mlim__ RDS file after variable-level updates. |
+| __load(string)__ | Resumes an imputation from a previously saved __.mlim__ state. The saved state determines the imputation settings and number of imputations. For multiple imputation, the current Stata data must correspond to the original dataset used to create the saved state because it is used as the original (__m = 0__) dataset when constructing the Stata __flong__ data. For single imputation, the current Stata data are ignored by the R imputation. |
+| __filename(string)__ | Saves the completed data to the specified Stata __.dta__ file in addition to loading it into Stata. |
+| __debug__ | Passes the hidden R argument __debug = TRUE__. |
 
 Remarks
 -------
 
 ### Algorithms
 
-The current implementation supports the following algorithm names:
+The current R implementation supports the following algorithm names:
 
 * __ELNET__: elastic net
 * __RF__: random forest
@@ -89,7 +95,9 @@ The current implementation supports the following algorithm names:
 
 Some algorithms are provided through __mlr3extralearners__ and therefore require
 that package and the corresponding learner package to be installed. For example,
-__LGBM__, __CAT__, and __SVM__ use optional learner extensions. __GBM__ is also
+__LGBM__, __CAT__, and __SVM__ use optional learner extensions. __KNN__ is not
+available for multiple imputation when bootstrap observation weights are required,
+because its current learner does not support observation weights. __GBM__ is also
 skipped for multinomial targets when its current learner does not support multiclass
 classification.
 
@@ -102,8 +110,6 @@ by default in R. The Stata option __nomatching__ sets __matching = FALSE__. When
 matching is enabled and stochastic imputation is used, integer-valued numeric predictions
 are stochastically mapped to neighboring observed integer values after the stochastic
 numeric value has been generated.
-
-Note that matching is currently in experimental stage!
 
 ### Hierarchical imputation
 
@@ -123,8 +129,10 @@ encoded as numeric categorical variables or placed in __ignore()__.
 
 ### Single versus multiple imputation
 
-With __m(1)__, __mlim__ returns one imputed dataset and __rcall__ loads
-it into Stata. For multiple imputation (higher values of m), the result is converted to __flong__
+With __m(1)__, __mlim::mlim()__ returns one completed data frame and __rcall__ loads
+it into Stata.
+
+With __m()>1__, the R result is converted by __mlim::mlim.stata()__ to __flong__
 format. Stata then runs:
 
 > __mi import flong, m(m) id(id) imputed(varlist)__
@@ -222,6 +230,13 @@ Inspect the R arguments generated by the Stata wrapper:
 
 > . __mlim, debug__
 
+Stored results
+--------------
+
+The wrapper does not define a separate documented __r()__, __e()__, or __s()__
+result. The primary result is the completed dataset left in memory. The internal
+R result indicating the number of imputations is used by the wrapper to decide
+whether Stata's __mi import flong__ step is required.
 
 Acknowledgments
 ---------------
@@ -344,7 +359,7 @@ program define mlim
             loaded_m <- as.integer(load_state$m);             ///
             loaded_imputed <- paste(load_state$vars2impute,   ///
                                     collapse = " ");           ///
-            st.return <- "rc"
+            st.return <- c("loaded_m", "loaded_imputed")
 
         local rc = _rc
         if `rc' {
@@ -492,51 +507,58 @@ program define mlim
         display as txt `"`rargs'"'
     }
 
-    // The R result determines whether this is a single or multiple imputation.
-    // This also makes load() work correctly when the saved state has m > 1.
+    // Run R and load the result back into Stata.
+    // Stata already knows whether this is single or multiple imputation.
+    // For load(), m was recovered from the saved R object above.
     // ============================================================
-    if `"`filename'"' == "" {
-        capture noisily rcall vanilla:                    ///
-            df <- st.data();                              ///
-            imp <- mlim::mlim(data = df, `rargs');         ///
-            if (inherits(imp, "mlim.mi")) {               ///
-                stata.data <- mlim::mlim.stata(            ///
-                    mlim = imp,                           ///
-                    df = df,                              ///
-                    format = "flong");                    ///
-                st.load(stata.data);                      ///
-                mlim_m <- as.integer(length(imp));        ///
-            } else {                                       ///
+    if `m' == 1 {
+        if `"`filename'"' == "" {
+            capture noisily rcall vanilla:                 ///
+                df <- st.data();                           ///
+                imp <- mlim::mlim(data = df, `rargs');    ///
                 st.load(imp);                              ///
-                mlim_m <- 1L;                              ///
-            }                                              ///
-            st.return <- "rc"
-    }
-    else {
-        capture noisily rcall vanilla:                    ///
-            df <- st.data();                              ///
-            imp <- mlim::mlim(data = df, `rargs');         ///
-            if (inherits(imp, "mlim.mi")) {               ///
-                stata.data <- mlim::mlim.stata(            ///
-                    mlim = imp,                           ///
-                    df = df,                              ///
-                    format = "flong",                     ///
-                    filename = "`filename_r'");            ///
-                st.load(stata.data);                      ///
-                mlim_m <- as.integer(length(imp));        ///
-            } else {                                       ///
+                st.return <- "rc"
+        }
+        else {
+            capture noisily rcall vanilla:                 ///
+                df <- st.data();                           ///
+                imp <- mlim::mlim(data = df, `rargs');    ///
                 outfile <- "`filename_r'";                 ///
                 if (!endsWith(tolower(outfile), ".dta"))  ///
                     outfile <- paste0(outfile, ".dta");   ///
-                readstata13::save.dta13(                   ///
-                    data = imp,                            ///
-                    file = outfile,                        ///
-                    convert.factors = TRUE,                ///
-                    add.rownames = FALSE);                 ///
+                readstata13::save.dta13(                  ///
+                    data = imp,                           ///
+                    file = outfile,                       ///
+                    convert.factors = TRUE,               ///
+                    add.rownames = FALSE);                ///
                 st.load(imp);                              ///
-                mlim_m <- 1L;                              ///
-            }                                              ///
-            st.return <- "rc"
+                st.return <- "rc"
+        }
+    }
+    else {
+        if `"`filename'"' == "" {
+            capture noisily rcall vanilla:                 ///
+                df <- st.data();                           ///
+                imp <- mlim::mlim(data = df, `rargs');    ///
+                stata.data <- mlim::mlim.stata(           ///
+                    mlim = imp,                           ///
+                    df = df,                              ///
+                    format = "flong");                   ///
+                st.load(stata.data);                      ///
+                st.return <- "rc"
+        }
+        else {
+            capture noisily rcall vanilla:                 ///
+                df <- st.data();                           ///
+                imp <- mlim::mlim(data = df, `rargs');    ///
+                stata.data <- mlim::mlim.stata(           ///
+                    mlim = imp,                           ///
+                    df = df,                              ///
+                    format = "flong",                    ///
+                    filename = "`filename_r'");           ///
+                st.load(stata.data);                      ///
+                st.return <- "rc"
+        }
     }
 
     // Check R execution
@@ -547,13 +569,13 @@ program define mlim
         exit `rc'
     }
 
-    // Use the actual number of imputations returned by R.
+    // Register the returned long-format data as Stata MI data.
+    // The m() option takes the name of the imputation-number variable,
+    // not the number of imputations.
     // ============================================================
-    local returned_m = r(mlim_m)
-
-    if `returned_m' > 1 {
+    if `m' > 1 {
         capture noisily mi import flong,                  ///
-            m(`returned_m')                               ///
+            m(m)                                           ///
             id(id)                                         ///
             imputed(`imputed')
 
@@ -570,7 +592,7 @@ program define mlim
 
     // Describe multiple imputation data
     // ============================================================
-    if `returned_m' > 1 {
+    if `m' > 1 {
         mi describe
     }
 
