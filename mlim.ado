@@ -10,12 +10,10 @@ Syntax
 ------
 
 > __mlim__ [, _m(#)_ _algos(string)_ _stochastic_ _nostochastic_
-_ignore(varlist)_ _tuningtime(#)_ _maxmodels(#)_ _maxiter(#)_
-_cv(#)_ _matching_ _noautobalance_ _balance(varlist)_ _seed(#)_
-_verbosity(string)_ _report(string)_ _tolerance(#)_ 
-_preimpute(string)_ _cpu(#)_ _ram(#)_ _flush_ _save(string)_
-_load(string)_ _java(string)_ _filename(string)_
-_debug_ ]
+_ignore(varlist)_ _hierarchy(varlist)_ _tuningtime(#)_ _maxmodels(#)_ _maxiter(#)_
+_cv(#)_ _nomatching_ _noautobalance_ _seed(#)_
+_verbosity(string)_ _report(string)_ _tolerance(#)_ _preimpute(string)_
+_cpu(#)_ _save(string)_ _load(string)_ _filename(string)_ _debug_ ]
 
 Description
 -----------
@@ -24,16 +22,14 @@ __mlim__ imputes missing values in the dataset currently in memory by calling th
 R package __mlim__ through __rcall__. By default, it performs a single imputation.
 Specify __m(#)__ with a value larger than 1 to carry out multiple imputations.
 
-The command first identifies variables containing missing observations. Variables
-listed in __ignore()__ are excluded from imputation. If string variables are present,
-__mlim__ returns an error and requests encoding them as numeric categorical variables
-or placing them in __ignore()__.
+For a single imputation (__m(1)__), the completed dataset returned by R replaces
+the dataset in memory. For multiple imputation (__m()>1__), __mlim__ converts the
+R result to Stata's __flong__ format and then runs __mi import flong__. The variables
+that were imputed are registered with Stata as imputed variables.
 
-For a single imputation (__m(1)__), the imputed dataset returned by R replaces the
-dataset in memory. For multiple imputation (__m()>1__), the R result is converted to
-__flong__ form with and then imported with Stata's __mi import flong__. 
-In this case, __mlim__ reserves the variable names __m__ and
-__id__ for appending the imputed datasets. 
+The wrapper follows the current R __mlim::mlim()__ interface. Options that control
+model fitting, stochastic imputation, matching, hierarchy, convergence, and
+reproducibility are passed directly to R.
 
 Requirements
 ------------
@@ -42,96 +38,142 @@ __mlim__ requires the Stata package __rcall__ and the following R packages:
 
 | Requirement     | Minimum version |
 |:----------------|:----------------|
-| __mlim__        | 0.4.0           |
+| __mlim__        | 0.6.0           |
 | __readstata13__ | 0.11.0          |
-| __h2o__         | -               |
 
-R and Java Runtime should also be accessible via path environment.
+R version 4.1.0 or newer is required. The current R implementation uses __mlr3__
+and __mlr3tuning__ rather than __h2o__, so Java and an H2O server are not required.
+Additional learner packages are required only when their corresponding optional
+algorithms are selected.
 
 Options
 -------
 
-| _Option_            | _Description_                                                                |
-|:--------------------|:-----------------------------------------------------------------------------|
-| __m(#)__            | Number of imp utations. The default is 1 and values must be at least 1. |
-| __algos(string)__   | Passes a space-separated set of algorithm names to the R argument __algos__. |
-| __stochastic__      | Passes __stochastic = TRUE__ to R. Experimental in this source. |
-| __nostochastic__    | Passes __stochastic = FALSE__ to R. May not be combined with __stochastic__. Experimental feature.     |
-| __ignore(varlist)__ | Excludes variables from the set of variables to be imputed |
-| __tuningtime(#)__   | Passes __tuning_time = #__ to R. |
-| __maxmodels(#)__    | Passes __max_models = #__ to R. |
-| __maxiter(#)__      | Passes __maxiter = #__ to R. |
-| __cv(#)__           | Passes __cv = #__ to R. |
-| __matching__        | Experimental option related to predictive matching. See Remarks below. |
-| __noautobalance__   | Turns off class imbalance correction in single imputation |
-| __balance(varlist)__ | Passes the listed variables to R as __balance__. Experimental in this source. |
-| __seed(#)__         | Passes the integer random-number seed to R. |
-| __verbosity(string)__ | Passes __verbosity__ to R. |
-| __report(string)__    | Passes a report path or report specification to R. |
-| __tolerance(#)__    | Passes the convergence __tolerance__ to R. |
-| __preimpute(string)__ | Passes __preimpute__ to R. |
-| __cpu(#)__ | Passes the requested number of CPUs to R. |
-| __ram(#)__ | Passes the requested RAM value to R. |
-| __flush__ | Passes __flush = TRUE__ to R, requesting cleanup of H2O models. |
-| __save(string)__    | Passes __save__ to the R package to save its imputation state (recommended). |
-| __load(string)__    | Passes __load__ to the R package to load a previously saved imputation state. |
-| __java(string)__    | Passes a Java path to R. Backslashes are converted to forward slashes.              |
-| __filename(string)__ | Saves the imputed data to a Stata __.dta__ file (recommended).                  |
-| __debug__           | Used for debugging the program.|
+| _Option_ | _Description_ |
+|:---------|:--------------|
+| __m(#)__ | Number of imputations. The default is 1. Values must be at least 1. |
+| __algos(string)__ | Space-separated machine-learning algorithms passed to R. Supported algorithms include __ELNET__, __RF__, __CRF__, __GBM__, __XGB__, __LGBM__, __CAT__, __NNET__, __SVM__, __KNN__, and __ENSEMBLE__. The default is __ELNET__. Optional algorithms may require additional R packages. |
+| __stochastic__ | Sets __stochastic = TRUE__. For multiple imputation, stochastic imputation is TRUE by default. |
+| __nostochastic__ | Sets __stochastic = FALSE__. May not be combined with __stochastic__. |
+| __ignore(varlist)__ | Excludes variables from the imputation process. |
+| __hierarchy(varlist)__ | Specifies clustering variables from the highest to the lowest level. The order is passed directly to R. |
+| __tuningtime(#)__ | Sets __tuning_time = #__, the maximum tuning time per variable and iteration. |
+| __maxmodels(#)__ | Sets __max_models = #__, the maximum number of hyperparameter evaluations per variable and iteration. |
+| __maxiter(#)__ | Sets the maximum number of imputation iterations. |
+| __cv(#)__ | Sets the number of cross-validation folds. |
+| __nomatching__ | Sets __matching = FALSE__. By default, the R package uses __matching = TRUE__. |
+| __noautobalance__ | Sets __autobalance = FALSE__. |
+| __seed(#)__ | Sets the R random-number seed. |
+| __verbosity(string)__ | Passes __verbosity__ to R. The R package accepts __warn__, __info__, __debug__, or NULL. |
+| __report(string)__ | Passes a report filename to R. |
+| __tolerance(#)__ | Sets the convergence __tolerance__. |
+| __preimpute(string)__ | Sets the initial preimputation method, such as __random__ or __mm__. |
+| __cpu(#)__ | Sets the number of CPU threads supplied to learners that support internal multithreading. |
+| __save(string)__ | Saves the current imputation state to an __.mlim__ RDS file after variable-level updates. |
+| __load(string)__ | Resumes an imputation from a previously saved __.mlim__ state. The saved state determines the imputation settings and number of imputations. For multiple imputation, the current Stata data must correspond to the original dataset used to create the saved state because it is used as the original (__m = 0__) dataset when constructing the Stata __flong__ data. For single imputation, the current Stata data are ignored by the R imputation. |
+| __filename(string)__ | Saves the completed data to the specified Stata __.dta__ file in addition to loading it into Stata. |
+| __debug__ | Passes the hidden R argument __debug = TRUE__. |
 
 Remarks
 -------
 
+### Algorithms
+
+The current R implementation supports the following algorithm names:
+
+* __ELNET__: elastic net
+* __RF__: random forest
+* __CRF__: conditional random forest
+* __GBM__: gradient boosting
+* __XGB__: XGBoost
+* __LGBM__: LightGBM
+* __CAT__: CatBoost
+* __NNET__: single-hidden-layer neural network
+* __SVM__: kernel support vector machine
+* __KNN__: k-nearest neighbors
+* __ENSEMBLE__: stacked ensemble using the successfully tuned base learners
+
+Some algorithms are provided through __mlr3extralearners__ and therefore require
+that package and the corresponding learner package to be installed. For example,
+__LGBM__, __CAT__, and __SVM__ use optional learner extensions. __KNN__ is not
+available for multiple imputation when bootstrap observation weights are required,
+because its current learner does not support observation weights. __GBM__ is also
+skipped for multinomial targets when its current learner does not support multiclass
+classification.
+
+### Stochastic imputation and matching
+
+When __stochastic__ is TRUE, continuous numeric predictions receive stochastic
+variation based on the model's cross-validation RMSE, whereas categorical predictions
+are sampled from their predicted class-probability vectors. Numeric matching is enabled
+by default in R. The Stata option __nomatching__ sets __matching = FALSE__. When
+matching is enabled and stochastic imputation is used, integer-valued numeric predictions
+are stochastically mapped to neighboring observed integer values after the stochastic
+numeric value has been generated.
+
+### Hierarchical imputation
+
+The __hierarchy()__ option specifies nested clustering variables from the highest
+to the lowest level. For example, __hierarchy(city school classroom student)__
+represents students nested within classrooms, classrooms nested within schools, and
+schools nested within cities. Hierarchy variables must exist in the data and cannot
+contain missing values.
+
 ### Variables selected for imputation
 
-The command scans all variables in the dataset and selects every variable containing
-at least one missing observation. Variables specified in __ignore()__ are then removed
-from that list. If no variables remain, the command exits with an error.
-
-String variables are not automatically encoded. The command warns when string
-variables remain outside __ignore()__, but the current source does not stop execution
-after that warning.
+For a new imputation, the R package selects variables that contain missing values
+but are not completely missing, excluding variables specified in __ignore()__. The
+Stata wrapper uses the same criterion when preparing the variable list needed by
+__mi import flong__. String variables are reported to the user; they should be
+encoded as numeric categorical variables or placed in __ignore()__.
 
 ### Single versus multiple imputation
 
-With __m(1)__, __mlim::mlim()__ returns one completed dataset and __rcall__ loads
-that dataset into Stata.
+With __m(1)__, __mlim::mlim()__ returns one completed data frame and __rcall__ loads
+it into Stata.
 
-With __m()>1__, the command asks __mlim::mlim.stata()__ to create data in
-__flong__ format. Stata then runs:
+With __m()>1__, the R result is converted by __mlim::mlim.stata()__ to __flong__
+format. Stata then runs:
 
 > __mi import flong, m(m) id(id) imputed(varlist)__
 
-where _varlist_ is the set of variables that had missing values before imputation,
-after exclusions in __ignore()__. The resulting data remain in memory and
-__mi describe__ is displayed.
+where _varlist_ contains the variables imputed by __mlim__. The resulting data are
+registered as a Stata multiple-imputation dataset and __mi describe__ is displayed.
+
+### Loading a saved imputation
+
+__load()__ is different from starting a new imputation. The R package reads the
+saved __mlim__ state and restores its data, iteration position, model settings,
+number of imputations, and other saved options. Therefore, options such as
+__algos()__, __m()__, __tuningtime()__, and __maxmodels()__ do not override the
+saved state when __load()__ is used.
+
+For a loaded multiple-imputation state, the wrapper determines the number of
+imputations from the saved object before deciding whether to run __mi import flong__.
+This is important because __m()__ defaults to 1 in the Stata syntax but a saved
+state may contain multiple imputations.
+
+__save()__ and __load()__ cannot be specified together. A loaded state restores its
+saved __save__ setting, so a new __save()__ path cannot be supplied by the wrapper
+when resuming an existing state.
 
 ### Protecting the dataset
 
-Before calling R, the command uses __preserve__. If R execution or the subsequent
-__mi import flong__ fails, the original data are restored. On success, the command
-uses __restore, not__, retaining the imputed dataset loaded by R.
-
-### Experimental matching option
-
-The current syntax declares __matching__ as a switch. The implementation then treats
-its local macro as though it could contain values such as TRUE, FALSE, or AUTO.
-Consequently, in this development snapshot, specifying __matching__ does not enable
-matching; the generated R argument falls through to __matching = FALSE__. This option
-should therefore be regarded as under development until its syntax and implementation
-are reconciled.
+The command uses __preserve__ before the R call. If R execution or the subsequent
+__mi import flong__ fails, the original dataset is restored. On success, the command
+uses __restore, not__, retaining the completed data returned by R.
 
 ### Reserved names
 
-When __m()>1__, variables named __m__ and __id__ are reserved for conversion to
-Stata's flong MI representation. Rename existing variables with those names before
-calling __mlim__.
+For multiple imputation, variables named __m__ and __id__ are reserved for the
+Stata __flong__ representation. Rename existing variables with these names before
+running a multiple imputation.
 
 ### R execution
 
-The program checks for __rcall.ado__ and calls __rcall_check__ before imputation.
-All imputation calls use __rcall vanilla__, which starts a fresh R session for the call.
-Errors returned by R are propagated to Stata after the original dataset is restored.
+The program checks for __rcall.ado__ and verifies the required R and package versions
+with __rcall_check__. R is called in __vanilla__ mode. Errors returned by R are
+propagated to Stata after the original dataset is restored.
 
 Examples
 --------
@@ -141,34 +183,46 @@ Let's first prepare a dataset with missing values
     . sysuse auto, clear
     . replace mpg = . if mod(_n, 7) == 0
     . replace weight = . if mod(_n, 9) == 0
-    . encode make, gen(make_cat)              // note that the make variable is encoded
+    . encode make, gen(make_cat)
     . drop make
 
-Single imputation using default arguments:
+Single imputation using the default algorithm:
 
 > . __mlim__
 
-Impute five datasets:
+Multiple imputation with five datasets:
 
 > . __mlim, m(5)__
+
+Use several algorithms and allow up to 10 minutes of tuning per variable and iteration:
+
+> . __mlim, m(5) algos(ELNET RF XGB) tuningtime(600) maxmodels(50)__
+
+Use a hierarchical structure:
+
+> . __mlim, m(5) hierarchy(schoolid childid)__
+
+Disable stochastic imputation and numeric matching:
+
+> . __mlim, m(1) nostochastic nomatching__
 
 Ignore a variable and use a reproducible seed:
 
 > . __mlim, m(5) ignore(length) seed(2026)__
 
-Limit computational resources to 4 CPU and 8GB of RAM:
+Use four CPU threads:
 
-> . __mlim, m(5) cpu(4) ram(8)__
+> . __mlim, m(5) cpu(4)__
 
-Spend up to 10 minutes on hyperparameter tuning for each variable in each itteration:
+Save an imputation state:
 
-> . __mlim, m(5) tuningtime(600) maxmodels(200) maxiter(10) cv(5)__
+> . __mlim, m(5) save("my_imputation.mlim")__
 
-Disable automatic balancing and request balancing for selected variables:
+Continue a previously saved imputation:
 
-> . __mlim, m(5) noautobalance balance(outcome group)__
+> . __mlim, load("my_imputation.mlim")__
 
-Save the imputed dataset to disk:
+Save the completed data to a Stata file:
 
 > . __mlim, m(5) filename("imputed_data.dta")__
 
@@ -179,17 +233,17 @@ Inspect the R arguments generated by the Stata wrapper:
 Stored results
 --------------
 
-This Stata wrapper does not explicitly store documented __r()__, __e()__, or __s()__
-results. Its primary result is the imputed dataset left in memory. With multiple
-imputation, the dataset is registered as Stata MI data in flong form.
+The wrapper does not define a separate documented __r()__, __e()__, or __s()__
+result. The primary result is the completed dataset left in memory. The internal
+R result indicating the number of imputations is used by the wrapper to decide
+whether Stata's __mi import flong__ step is required.
 
 Acknowledgments
 ---------------
 
-__mlim__ is a Stata interface to the R package [__mlim__](http://github.com/haghish/mlim) 
-and uses [__rcall__](http://github.com/haghish/rcall) for 
-communication between Stata and R. Dataset exchange also relies on the R package
-__readstata13__ in the single-imputation file-writing path.
+__mlim__ is a Stata interface to the R package [__mlim__](http://github.com/haghish/mlim)
+and uses [__rcall__](http://github.com/haghish/rcall) for communication between Stata
+and R. Dataset exchange relies on the R package __readstata13__.
 
 Author
 ------
@@ -217,69 +271,65 @@ After saving the program as __mlim.ado__, generate the Stata help file with:
 ***/
 
 
-*capture program drop mlim
 program define mlim
     version 14
 
     syntax [, M(integer 1)                                  ///
-		ALGOS(string)                                       ///
-		STOCHASTIC                                          /// UNDER TESTING
-		NOSTOCHASTIC                                        /// UNDER TESTING
-		IGNORE(varlist)                                     ///
-		TUNINGTime(numlist integer max=1)                   ///
-		MAXModels(numlist integer max=1)                    ///
-		MAXITER(numlist integer max=1)                      ///
-		CV(numlist integer max=1)                           ///
-		MATCHING                                            /// UNDER TESTING
-		NOAUTOBALANCE                                       /// UNDER TESTING
-		SEED(numlist integer max=1)                         ///
-		VERBOSITY(string)                                   ///
-		REPORT(string)                                      ///
-		TOLERANCE(numlist max=1)                            ///
-		PREIMPUTE(string)                                   ///
-		CPU(numlist integer max=1)                          ///
-		RAM(numlist max=1)                                  ///
-		FLUSH                                               ///
-		SAVE(string)                                        ///
-		LOAD(string)                                        ///
-		JAVA(string)                                        ///
-		FILENAME(string)                                    ///
-		VERBOSITY(string)                                    ///
-		DEBUG                                               ///
-		]                                  
-		      
-		///POSTIMPUTE                                          ///
-		///PREIMPUTED(string asis)                             ///
-		///NOSHUTDOWN                                          /// NOT APPLICABLE
-		///BALANCE(varlist)                                    /// UNDER TESTING
+        ALGOS(string)                                       ///
+        STOCHASTIC                                          ///
+        NOSTOCHASTIC                                        ///
+        IGNORE(varlist)                                     ///
+        HIERARCHY(varlist)                                  ///
+        TUNINGTime(numlist integer max=1)                   ///
+        MAXModels(numlist integer max=1)                    ///
+        MAXITER(numlist integer max=1)                      ///
+        CV(numlist integer max=1)                           ///
+        NOMATCHING                                          ///
+        NOAUTOBALANCE                                       ///
+        SEED(numlist integer max=1)                         ///
+        VERBOSITY(string)                                   ///
+        REPORT(string)                                      ///
+        TOLERANCE(numlist max=1)                            ///
+        PREIMPUTE(string)                                   ///
+        CPU(numlist integer max=1)                          ///
+        SAVE(string)                                        ///
+        LOAD(string)                                        ///
+        FILENAME(string)                                    ///
+        DEBUG                                               ///
+        ]
 
-    // SYntax check
+    // Syntax checks
     // ============================================================
     if `m' < 1 {
         display as error "m must be 1 or larger"
         exit 198
     }
-	
+
     if "`stochastic'" != "" & "`nostochastic'" != "" {
         display as error "stochastic and nostochastic cannot be specified together"
         exit 198
     }
-	
-	// Warn about string variables
-	// ============================================================
-	quietly ds, has(type string)
-	local stringvars `r(varlist)'
 
-	// Ignore string variables already specified in ignore()
-	if "`ignore'" != "" {
-		local stringvars : list stringvars - ignore
-	}
 
-	if "`stringvars'" != "" {
-		display as error "string variables found:"
-		display as error "`stringvars'"
-		display as txt "encode them to categorical numeric variables or include them in ignore()."
-	}
+    if `"`save'"' != "" & `"`load'"' != "" {
+        display as error "save() and load() cannot be specified together"
+        exit 198
+    }
+
+    // Warn about string variables
+    // ============================================================
+    quietly ds, has(type string)
+    local stringvars `r(varlist)'
+
+    if "`ignore'" != "" {
+        local stringvars : list stringvars - ignore
+    }
+
+    if "`stringvars'" != "" {
+        display as error "string variables found:"
+        display as error "`stringvars'"
+        display as txt "encode them to categorical numeric variables or include them in ignore()."
+    }
 
     // Check rcall and required R packages
     // ============================================================
@@ -288,33 +338,70 @@ program define mlim
         display as error "rcall package is required"
         exit 198
     }
-	
-    rcall_check mlim>=0.3.0 readstata13>=0.11.0  //UPDATE mlim to 0.4.0
 
-    // Identify variables with missing observations that should be imputed
+    rcall_check mlim>=0.6.0 readstata13>=0.11.0, rversion(4.1.0)
+
+    // If a saved state is loaded, determine the number of imputations and
+    // the variables that were imputed from the saved object. This is necessary
+    // because the Stata m() option defaults to 1 and therefore cannot be used
+    // to determine the output type of a loaded state.
     // ============================================================
+    local loaded = 0
     local imputed
-    quietly ds
-    local variables `r(varlist)'
-    foreach variable of local variables {
-        quietly count if missing(`variable')
-        if r(N) > 0 {
-            local imputed `imputed' `variable'
+
+    if `"`load'"' != "" {
+        local load_r = subinstr(`"`load'"', char(92), "/", .)
+
+        capture noisily rcall vanilla:                       ///
+            load_state <- readRDS("`load_r'");               ///
+            if (!inherits(load_state, "mlim"))               ///
+                stop("loaded object must be of class 'mlim'"); ///
+            loaded_m <- as.integer(load_state$m);             ///
+            loaded_imputed <- paste(load_state$vars2impute,   ///
+                                    collapse = " ");           ///
+            st.return <- "rc"
+
+        local rc = _rc
+        if `rc' {
+            exit `rc'
+        }
+
+        local m = r(loaded_m)
+        local imputed `"`r(loaded_imputed)'"'
+        local loaded = 1
+    }
+
+    // Identify variables with missing observations for a new imputation.
+    // Match the R selectVariables() criterion: a variable must contain
+    // missing values but cannot be completely missing.
+    // ============================================================
+    if `loaded' == 0 {
+        quietly ds
+        local variables `r(varlist)'
+
+        foreach variable of local variables {
+            quietly count if missing(`variable')
+            local nmiss = r(N)
+            quietly count if !missing(`variable')
+            local nobs = r(N)
+
+            if `nmiss' > 0 & `nobs' > 0 {
+                local imputed `imputed' `variable'
+            }
+        }
+
+        if "`ignore'" != "" {
+            local imputed : list imputed - ignore
+        }
+
+        if "`imputed'" == "" {
+            display as error "no variables with missing observations were found"
+            exit 198
         }
     }
 
-    // Remove ignored variables from the list of imputed variables
-    if "`ignore'" != "" {
-        local imputed : list imputed - ignore
-    }
-
-    if "`imputed'" == "" {
-        display as error "no variables with missing observations were found"
-        exit 198
-    }
-	
-	
-    // Multiple imputation requires m and id variables
+    // Multiple imputation requires m and id variables.
+    // For load(), m has already been recovered from the saved state.
     // ============================================================
     if `m' > 1 {
         capture confirm variable m
@@ -330,107 +417,82 @@ program define mlim
         }
     }
 
-
     // Prepare mlim() arguments
     // ============================================================
-    local rargs `"m = `m'"'
+    local rargs
 
-    if `"`algos'"' != "" local rargs `"`rargs', algos = scan(text = "`algos'", what = character(), quiet = TRUE)"'
+    if `loaded' == 1 {
+        // A loaded object contains the complete imputation settings.
+        // Do not pass new model-fitting options because the R function
+        // restores them from the saved state.
+        local rargs `"load = "`load_r'""'
+    }
+    else {
+        local rargs `"m = `m'"'
 
-    // stochastic imputation (UNDER TESTING)
-    if "`stochastic'" != "" local rargs `"`rargs', stochastic = TRUE"'
+        if `"`algos'"' != "" local rargs `"`rargs', algos = scan(text = "`algos'", what = character(), quiet = TRUE)"'
 
-    if "`nostochastic'" != "" local rargs `"`rargs', stochastic = FALSE"'
+        // stochastic imputation
+        if "`stochastic'" != "" local rargs `"`rargs', stochastic = TRUE"'
+        if "`nostochastic'" != "" local rargs `"`rargs', stochastic = FALSE"'
 
-    // variables to ignore
-    if "`ignore'" != "" local rargs `"`rargs', ignore = scan(text = "`ignore'", what = character(), quiet = TRUE)"'
+        // variables to ignore
+        if "`ignore'" != "" local rargs `"`rargs', ignore = scan(text = "`ignore'", what = character(), quiet = TRUE)"'
 
-    // tuning
-    if "`tuningtime'" != "" local rargs `"`rargs', tuning_time = `tuningtime'"'
-    if "`maxmodels'" != "" local rargs `"`rargs', max_models = `maxmodels'"'
-    if "`maxiter'" != "" local rargs `"`rargs', maxiter = `maxiter'"'
-    if "`cv'" != "" local rargs `"`rargs', cv = `cv'"'
+        // hierarchy
+        if "`hierarchy'" != "" local rargs `"`rargs', hierarchy = scan(text = "`hierarchy'", what = character(), quiet = TRUE)"'
 
-    // matching (must be specified because it is an experimental feature)
-    if `"`matching'"' != "" {
-        local matching_upper = upper(`"`matching'"')
+        // tuning and iteration settings
+        if "`tuningtime'" != "" local rargs `"`rargs', tuning_time = `tuningtime'"'
+        if "`maxmodels'" != "" local rargs `"`rargs', max_models = `maxmodels'"'
+        if "`maxiter'" != "" local rargs `"`rargs', maxiter = `maxiter'"'
+        if "`cv'" != "" local rargs `"`rargs', cv = `cv'"'
 
-        if "`matching_upper'" == "TRUE" | "`matching_upper'" == "T" {
-            local rargs `"`rargs', matching = TRUE"'
+        // numeric matching
+        // The R default is matching = TRUE. Stata exposes only
+        // nomatching, which explicitly switches matching off.
+        if "`nomatching'" != "" local rargs `"`rargs', matching = FALSE"'
+
+        // automatic class balancing
+        // The R default is autobalance = TRUE. Stata exposes only
+        // noautobalance, which explicitly switches balancing off.
+        if "`noautobalance'" != "" local rargs `"`rargs', autobalance = FALSE"'
+
+        // random seed
+        if "`seed'" != "" local rargs `"`rargs', seed = `seed'"'
+
+        // verbosity
+        if `"`verbosity'"' != "" local rargs `"`rargs', verbosity = "`verbosity'""'
+
+        // report
+        if `"`report'"' != "" {
+            local report_r = subinstr(`"`report'"', char(92), "/", .)
+            local rargs `"`rargs', report = "`report_r'""'
         }
-        else if "`matching_upper'" == "FALSE" | "`matching_upper'" == "F" {
-            local rargs `"`rargs', matching = FALSE"'
+
+        // convergence tolerance
+        if "`tolerance'" != "" local rargs `"`rargs', tolerance = `tolerance'"'
+
+        // preimputation
+        if `"`preimpute'"' != "" local rargs `"`rargs', preimpute = "`preimpute'""'
+
+        // CPUs
+        if "`cpu'" != "" local rargs `"`rargs', cpu = `cpu'"'
+
+        // save mlim state
+        if `"`save'"' != "" {
+            local save_r = subinstr(`"`save'"', char(92), "/", .)
+            local rargs `"`rargs', save = "`save_r'""'
         }
-		else if "`matching_upper'" == "AUTO" | "`matching_upper'" == "auto" {
-            local rargs `"`rargs', matching = AUTO"'
-        }
-		
-		// if matching is not specified, turn it off! 
-        else {
-            local rargs `"`rargs', matching = FALSE"'
-        }
     }
 
-    // automatic class balancing
-    if "`noautobalance'" != "" local rargs `"`rargs', autobalance = FALSE"'
-	
-    // variables to balance
-    //if "`balance'" != "" local rargs `"`rargs', balance = scan(text = "`balance'", what = character(), quiet = TRUE)"'
-
-    // random seed
-    if "`seed'" != "" local rargs `"`rargs', seed = `seed'"'
-
-    // verbosity
-    if `"`verbosity'"' != "" local rargs `"`rargs', verbosity = "`verbosity'""'
-
-    // report
-    if `"`report'"' != "" {
-        local report_r = subinstr(`"`report'"', char(92), "/", .)
-        local rargs `"`rargs', report = "`report_r'""'
+    // Hidden debug argument
+    if "`debug'" != "" {
+        local rargs `"`rargs', debug = TRUE"'
     }
 
-    // convergence tolerance
-    if "`tolerance'" != "" local rargs `"`rargs', tolerance = `tolerance'"'
-
-    // preimputation
-    if `"`preimpute'"' != "" local rargs `"`rargs', preimpute = "`preimpute'""'
-
-    // CPUs
-    if "`cpu'" != "" local rargs `"`rargs', cpu = `cpu'"'
-
-    // RAM
-    if "`ram'" != "" local rargs `"`rargs', ram = `ram'"'
-
-    // flush H2O models
-    if "`flush'" != "" local rargs `"`rargs', flush = TRUE"'
-
-    // save mlim state
-    if `"`save'"' != "" {
-        local save_r = subinstr(`"`save'"', char(92), "/", .)
-        local rargs `"`rargs', save = "`save_r'""'
-    }
-
-    // load mlim state
-    if `"`load'"' != "" {
-        local load_r = subinstr(`"`load'"', char(92), "/", .)
-        local rargs `"`rargs', load = "`load_r'""'
-    }
-
-    // Java path
-    if `"`java'"' != "" {
-        local java_r = subinstr(`"`java'"', char(92), "/", .)
-        local rargs `"`rargs', java = "`java_r'""'
-    }
-
-    // Preimputed dataset
-    // ============================================================
-    local precode
-
-    if `"`preimputed'"' != "" {
-        local preimputed_r = subinstr(`"`preimputed'"', char(92), "/", .)
-        local precode `"preimp <- st.data("`preimputed_r'");"'
-        local rargs `"`rargs', preimputed.data = preimp"'
-    }
+    // Preimputed dataset is not a public Stata option in the current wrapper.
+    // It remains available as an internal R argument through the R package.
 
     // Prepare output filename
     // ============================================================
@@ -439,87 +501,58 @@ program define mlim
     // Protect the currently loaded dataset
     // ============================================================
     preserve
-	
-	if `"`verbosity'"' != "" {
-		display "calling mlim via Rcall..."
-		local rargs `"`rargs', verbosity = "debug""'
-	}
-	
-	// TEST THE CODE
-	if "`debug'" != "" {
-		local rargs `"`rargs', debug = TRUE"'
-		display `"`precode'"'
-		display `"`rargs'"'
-	}
 
-	
-
-    // Single imputation
-    // ============================================================
-    if `m' == 1 {
-        if `"`filename'"' == "" {
-            capture noisily rcall vanilla:                    ///
-			    options(prefer_RCurl = TRUE);                 ///
-                df <- st.data();                              ///
-                `precode'                                     ///
-                imp <- mlim::mlim(data = df, `rargs');        ///
-                st.load(imp);                                 ///
-                st.return <- "rc"
-        }
-
-        else {
-            capture noisily rcall vanilla:                    ///
-			    options(prefer_RCurl = TRUE);                 ///
-                df <- st.data();                              ///
-                `precode'                                     ///
-                imp <- mlim::mlim(data = df, `rargs');        ///
-                outfile <- "`filename_r'";                    ///
-                if (!endsWith(tolower(outfile), ".dta"))      ///
-                    outfile <- paste0(outfile, ".dta");       ///
-                readstata13::save.dta13(                      ///
-                    data = imp,                               ///
-                    file = outfile,                           ///
-                    convert.factors = TRUE,                   ///
-                    add.rownames = FALSE);                    ///
-                st.load(imp);                                 ///
-                st.return <- "rc"
-        }
+    if "`debug'" != "" {
+        display as txt "calling mlim via Rcall..."
+        display as txt `"`rargs'"'
     }
 
-
-    // Multiple imputation
+    // The R result determines whether this is a single or multiple imputation.
+    // This also makes load() work correctly when the saved state has m > 1.
     // ============================================================
+    if `"`filename'"' == "" {
+        capture noisily rcall vanilla:                    ///
+            df <- st.data();                              ///
+            imp <- mlim::mlim(data = df, `rargs');         ///
+            if (inherits(imp, "mlim.mi")) {               ///
+                stata.data <- mlim::mlim.stata(            ///
+                    mlim = imp,                           ///
+                    df = df,                              ///
+                    format = "flong");                    ///
+                st.load(stata.data);                      ///
+                mlim_m <- as.integer(length(imp));        ///
+            } else {                                       ///
+                st.load(imp);                              ///
+                mlim_m <- 1L;                              ///
+            }                                              ///
+            st.return <- "rc"
+    }
     else {
-        if `"`filename'"' == "" {
-            capture noisily rcall vanilla:                    ///
-			    options(prefer_RCurl = TRUE);                 ///
-                df <- st.data();                              ///
-                `precode'                                     ///
-                imp <- mlim::mlim(data = df, `rargs');        ///
-                stata.data <- mlim::mlim.stata(               ///
-                    mlim = imp,                               ///
-                    df = df,                                  ///
-                    format = "flong");                        ///
-                st.load(stata.data);                          ///
-                st.return <- "rc"
-        }
-
-        else {
-            capture noisily rcall vanilla:                    ///
-			    options(prefer_RCurl = TRUE);                 ///
-                df <- st.data();                              ///
-                `precode'                                     ///
-                imp <- mlim::mlim(data = df, `rargs');        ///
-                stata.data <- mlim::mlim.stata(               ///
-                    mlim = imp,                               ///
-                    df = df,                                  ///
-                    format = "flong",                         ///
-                    filename = "`filename_r'");               ///
-                st.load(stata.data);                          ///
-                st.return <- "rc"
-        }
+        capture noisily rcall vanilla:                    ///
+            df <- st.data();                              ///
+            imp <- mlim::mlim(data = df, `rargs');         ///
+            if (inherits(imp, "mlim.mi")) {               ///
+                stata.data <- mlim::mlim.stata(            ///
+                    mlim = imp,                           ///
+                    df = df,                              ///
+                    format = "flong",                     ///
+                    filename = "`filename_r'");            ///
+                st.load(stata.data);                      ///
+                mlim_m <- as.integer(length(imp));        ///
+            } else {                                       ///
+                outfile <- "`filename_r'";                 ///
+                if (!endsWith(tolower(outfile), ".dta"))  ///
+                    outfile <- paste0(outfile, ".dta");   ///
+                readstata13::save.dta13(                   ///
+                    data = imp,                            ///
+                    file = outfile,                        ///
+                    convert.factors = TRUE,                ///
+                    add.rownames = FALSE);                 ///
+                st.load(imp);                              ///
+                mlim_m <- 1L;                              ///
+            }                                              ///
+            st.return <- "rc"
     }
-
 
     // Check R execution
     // ============================================================
@@ -529,13 +562,16 @@ program define mlim
         exit `rc'
     }
 
-    // Import flong data as a Stata MI dataset
+    // Use the actual number of imputations returned by R.
     // ============================================================
-    if `m' > 1 {
-        capture noisily mi import flong,                      ///
-            m(m)                                              ///
-            id(id)                                            ///
+    local returned_m = r(mlim_m)
+
+    if `returned_m' > 1 {
+        capture noisily mi import flong,                  ///
+            m(`returned_m')                               ///
+            id(id)                                         ///
             imputed(`imputed')
+
         local rc = _rc
         if `rc' {
             restore
@@ -549,9 +585,8 @@ program define mlim
 
     // Describe multiple imputation data
     // ============================================================
-    if `m' > 1 {
+    if `returned_m' > 1 {
         mi describe
     }
-
 
 end
