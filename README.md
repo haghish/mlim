@@ -99,7 +99,7 @@ To install the latest development version from GitHub:
 
 ``` r
 library(devtools)
-install_github("haghish/mlim")
+install_github("haghish/mlim@dev")
 ```
 
 Depending on the learners you wish to use for imputation, there will be other dependencies. For installing all learners supported by __`mlim`__, you will need the following R dependencies:
