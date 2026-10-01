@@ -19,17 +19,12 @@ Description
 -----------
 
 __mlim__ imputes missing values in the dataset currently in memory by calling the
-R package __mlim__ through __rcall__. By default, it performs a single imputation.
-Specify __m(#)__ with a value larger than 1 to carry out multiple imputations.
+R package __mlim__ through __rcall__. 
 
-For a single imputation (__m(1)__), the completed dataset returned by R replaces
-the dataset in memory. For multiple imputation (__m()>1__), __mlim__ converts the
+For a single imputation, the imputed dataset returned replaces
+the dataset in memory. For multiple imputation, __mlim__ converts the
 R result to Stata's __flong__ format and then runs __mi import flong__. The variables
 that were imputed are registered with Stata as imputed variables.
-
-The wrapper follows the current R __mlim::mlim()__ interface. Options that control
-model fitting, stochastic imputation, matching, hierarchy, convergence, and
-reproducibility are passed directly to R.
 
 Requirements
 ------------
@@ -42,36 +37,36 @@ __mlim__ requires the Stata package __rcall__ and the following R packages:
 | __readstata13__ | 0.11.0          |
 
 R version 4.1.0 or newer is required. The current R implementation uses __mlr3__
-and __mlr3tuning__ rather than __h2o__, so Java and an H2O server are not required.
+and __mlr3tuning__ rather than __h2o__, which was the engine of the former versions. 
 Additional learner packages are required only when their corresponding optional
 algorithms are selected.
 
 Options
 -------
 
-| _Option_ | _Description_ |
-|:---------|:--------------|
-| __m(#)__ | Number of imputations.  |
-| __algos(string)__ | Supported learners: __ELNET__, __RF__, __CRF__, __GBM__, __XGB__, __LGBM__, __CAT__, __NNET__, __SVM__, __KNN__, and __ENSEMBLE__ |
-| __nostochastic__ | Sets __stochastic = FALSE__. Should be avoided in multiple imputation |
-| __ignore(varlist)__ | Excludes variables from the imputation. |
-| __hierarchy(varlist)__ | Specifies clustering variables from the highest to the lowest level. |
-| __tuningtime(#)__ | The maximum tuning time per variable and iteration.  |
-| __maxmodels(#)__ | Sets __max_models = #__, the maximum number of hyperparameter evaluations per variable and iteration. |
-| __maxiter(#)__ | Sets the maximum number of imputation iterations. |
-| __cv(#)__ | Sets the number of cross-validation folds. |
-| __nomatching__ | Sets __matching = FALSE__. By default, the R package uses __matching = TRUE__. |
-| __noautobalance__ | Sets __autobalance = FALSE__. |
-| __seed(#)__ | Sets the R random-number seed. |
+| _Option_              | _Description_                                                            |
+|:----------------------|:--------------------------------------------------------------------------|
+| __m(#)__              | Number of imputations.                               |
+| __algos(string)__     | Supported learners: __ELNET__, __RF__, __CRF__, __GBM__, __XGB__, __LGBM__, __CAT__, __NNET__, __SVM__, __KNN__, and __ENSEMBLE__ |
+| __nostochastic__      | Sets __stochastic = FALSE__. Should be avoided in multiple imputation |
+| __ignore(varlist)__   | Excludes variables from the imputation.   |
+| __hierarchy(varlist)__ | Specifies clustering variables from the highest to the lowest level.    |
+| __tuningtime(#)__     | The maximum tuning time per variable and iteration.                          |
+| __maxmodels(#)__      | Sets __max_models = #__, the maximum number of hyperparameter evaluations per variable and iteration. |
+| __maxiter(#)__        | Sets the maximum number of imputation iterations.                               |
+| __cv(#)__             | Sets the number of cross-validation folds. |                                          
+| __nomatching__        | Sets __matching = FALSE__. By default, the R package uses __matching = TRUE__. |
+| __noautobalance__     | Sets __autobalance = FALSE__. |
+| __seed(#)__           | Sets the R random-number seed. |
 | __verbosity(string)__ | Specifies __verbosity__, which can be __warn__, __info__, __debug__, or NULL. |
-| __report(string)__ | Specifies report filename  |
-| __tolerance(#)__ | Sets the convergence __tolerance__ (minimum relative improvement). |
+| __report(string)__.   | Specifies report filename  |
+| __tolerance(#)__      | Sets the convergence __tolerance__ (minimum relative improvement). |
 | __preimpute(string)__ | Sets the initial preimputation method, such as __random__ or __mm__. |
-| __cpu(#)__ | Sets the number of CPU threads supplied to learners that support internal multithreading. |
-| __save(string)__ | Saves the current imputation state to an __.mlim__ RDS file after variable-level updates. |
-| __load(string)__ | Resumes an imputation from a previously saved __.mlim__ state.  |
-| __filename(string)__ | Saves the completed data to the specified Stata __.dta__ file in addition to loading it into Stata. |
-| __debug__ | Activates debug logging in the report. |
+| __cpu(#)__            | Sets the number of CPU threads supplied to learners that support internal multithreading. |
+| __save(string)__      | Saves the current imputation state to an __.mlim__ RDS file after variable-level updates. |
+| __load(string)__      | Resumes an imputation from a previously saved __.mlim__ state.  |
+| __filename(string)__  | Saves the completed data to the specified Stata __.dta__ file in addition to loading it into Stata. |
+| __debug__             | Activates debug logging in the report.                                                              |
 
 Remarks
 -------
@@ -128,10 +123,8 @@ encoded as numeric categorical variables or placed in __ignore()__.
 
 ### Single versus multiple imputation
 
-With __m(1)__, __mlim::mlim()__ returns one completed data frame and __rcall__ loads
-it into Stata.
-
-With __m()>1__, the R result is converted by __mlim::mlim.stata()__ to __flong__
+With __m(1)__, __mlim__ returns one imputed dataset and __rcall__ loads
+it into Stata. For multiple imputation (higher values of m), the result is converted to __flong__
 format. Stata then runs:
 
 > __mi import flong, m(m) id(id) imputed(varlist)__
