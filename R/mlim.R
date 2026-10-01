@@ -229,7 +229,7 @@
 
 mlim <- function(data = NULL,
                  m = 1,
-                 algos = c("ELNET"),
+                 algos = c("ELNET", "LGBM"),
                  preimpute = "random",
 
                  ignore = NULL,
