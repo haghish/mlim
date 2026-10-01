@@ -49,30 +49,30 @@ algorithms are selected.
 Options
 -------
 
-| _Option_ | _Description_ |
-|:---------|:--------------|
-| __m(#)__ | Number of imputations. The default is 1. Values must be at least 1. |
-| __algos(string)__ | Space-separated machine-learning algorithms passed to R. Supported algorithms include __ELNET__, __RF__, __CRF__, __GBM__, __XGB__, __LGBM__, __CAT__, __NNET__, __SVM__, __KNN__, and __ENSEMBLE__. The default is __ELNET__. Optional algorithms may require additional R packages. |
-| __stochastic__ | Sets __stochastic = TRUE__. For multiple imputation, stochastic imputation is TRUE by default. |
-| __nostochastic__ | Sets __stochastic = FALSE__. May not be combined with __stochastic__. |
-| __ignore(varlist)__ | Excludes variables from the imputation process. |
-| __hierarchy(varlist)__ | Specifies clustering variables from the highest to the lowest level. The order is passed directly to R. |
-| __tuningtime(#)__ | Sets __tuning_time = #__, the maximum tuning time per variable and iteration. |
-| __maxmodels(#)__ | Sets __max_models = #__, the maximum number of hyperparameter evaluations per variable and iteration. |
-| __maxiter(#)__ | Sets the maximum number of imputation iterations. |
-| __cv(#)__ | Sets the number of cross-validation folds. |
-| __nomatching__ | Sets __matching = FALSE__. By default, the R package uses __matching = TRUE__. |
-| __noautobalance__ | Sets __autobalance = FALSE__. |
-| __seed(#)__ | Sets the R random-number seed. |
-| __verbosity(string)__ | Passes __verbosity__ to R. The R package accepts __warn__, __info__, __debug__, or NULL. |
-| __report(string)__ | Passes a report filename to R. |
+| _Option_              | _Description_                                                              |
+|:----------------------|:---------------------------------------------------------------------------|
+| __m(#)__              | Number of imputations. The default is 1 (dry run).                         |
+| __algos(string)__     | Supported algorithms include __ELNET__, __RF__, __CRF__, __GBM__, __XGB__, __LGBM__, __CAT__, __NNET__, and __ENSEMBLE__. |
+| __stochastic__        | Sets __stochastic = TRUE__. For multiple imputation, stochastic imputation is TRUE by default. |
+| __nostochastic__      | Sets __stochastic = FALSE__. May not be combined with __stochastic__. |
+| __ignore(varlist)__   | Excludes variables from the imputation process. |
+| __hierarchy(varlist)__ | Specifies clustering variables from the highest to the lowest level.  |
+| __tuningtime(#)__     | Sets  the maximum tuning time per variable and iteration. |
+| __maxmodels(#)__      | Sets the maximum number of hyperparameter evaluations per variable and iteration. |
+| __maxiter(#)__        | Sets the maximum number of imputation iterations. |
+| __cv(#)__             | Sets the number of cross-validation folds. |
+| __nomatching__        | Sets __matching = FALSE__. By default, __matching = TRUE__. |
+| __noautobalance__     | Sets __autobalance = FALSE__. |
+| __seed(#)__           | Sets random-number seed. |
+| __verbosity(string)__ | Accepts __warn__, __info__, __debug__, or NULL. |
+| __report(string)__ | Specify a report filename. |
 | __tolerance(#)__ | Sets the convergence __tolerance__. |
 | __preimpute(string)__ | Sets the initial preimputation method, such as __random__ or __mm__. |
-| __cpu(#)__ | Sets the number of CPU threads supplied to learners that support internal multithreading. |
-| __save(string)__ | Saves the current imputation state to an __.mlim__ RDS file after variable-level updates. |
-| __load(string)__ | Resumes an imputation from a previously saved __.mlim__ state. The saved state determines the imputation settings and number of imputations. For multiple imputation, the current Stata data must correspond to the original dataset used to create the saved state because it is used as the original (__m = 0__) dataset when constructing the Stata __flong__ data. For single imputation, the current Stata data are ignored by the R imputation. |
-| __filename(string)__ | Saves the completed data to the specified Stata __.dta__ file in addition to loading it into Stata. |
-| __debug__ | Passes the hidden R argument __debug = TRUE__. |
+| __cpu(#)__            | Sets the number of CPU threads supplied to learners. |
+| __save(string)__      | Saves the current imputation state to an __.mlim__ RDS file after variable-level updates. |
+| __load(string)__      | Resumes an imputation from a previously saved __.mlim__ state.  |
+| __filename(string)__  | Saves the completed data to the specified Stata __.dta__ file. |
+| __debug__             | Passes the hidden R argument __debug = TRUE__.                          |
 
 Remarks
 -------

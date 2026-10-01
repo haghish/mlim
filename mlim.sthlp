@@ -1,5 +1,5 @@
 {smcl}
-{it:v. 0.6.0}
+{it:v. 0.6.1}
 
 
 {title:mlim}
@@ -21,13 +21,19 @@
 
 {p 4 4 2}
 {bf:mlim} imputes missing values in the dataset currently in memory by calling the
-R package {bf:mlim} through {bf:rcall}. 
+R package {bf:mlim} through {bf:rcall}. By default, it performs a single imputation.
+Specify {bf:m(#)} with a value larger than 1 to carry out multiple imputations.
 
 {p 4 4 2}
-For a single imputation, the imputed dataset returned replaces
-the dataset in memory. For multiple imputation, {bf:mlim} converts the
+For a single imputation ({it:_m(1)_}), the completed dataset returned by R replaces
+the dataset in memory. For multiple imputation ({it:_m()>1_}), {bf:mlim} converts the
 R result to Stata{c 39}s {bf:flong} format and then runs {bf:mi import flong}. The variables
 that were imputed are registered with Stata as imputed variables.
+
+{p 4 4 2}
+The wrapper follows the current R {bf:mlim::mlim()} interface. Options that control
+model fitting, stochastic imputation, matching, hierarchy, convergence, and
+reproducibility are passed directly to R.
 
 
 {title:Requirements}
@@ -42,7 +48,7 @@ that were imputed are registered with Stata as imputed variables.
 {space 4}{hline 34}
 {p 4 4 2}
 R version 4.1.0 or newer is required. The current R implementation uses {bf:mlr3}
-and {bf:mlr3tuning} rather than {bf:h2o}, which was the engine of the former versions. 
+and {bf:mlr3tuning} rather than {bf:h2o}, so Java and an H2O server are not required.
 Additional learner packages are required only when their corresponding optional
 algorithms are selected.
 
@@ -51,26 +57,28 @@ algorithms are selected.
 
 {col 5}{it:Option}{col 28}{it:Description}
 {space 4}{hline}
-{col 5}{bf:m(#)}{col 28}Number of imputations.
-{col 5}{bf:algos(string)}{col 28}Supported learners: {bf:ELNET}, {bf:RF}, {bf:CRF}, {bf:GBM}, {bf:XGB}, {bf:LGBM}, {bf:CAT}, {bf:NNET}, {bf:SVM}, {bf:KNN}, and {bf:ENSEMBLE}
-{col 5}{bf:nostochastic}{col 28}Sets {bf:stochastic = FALSE}. Should be avoided in multiple imputation
-{col 5}{bf:ignore(varlist)}{col 28}Excludes variables from the imputation.
+{col 5}{bf:m(#)}{col 28}Number of imputations. The default is 1 (dry run).
+{col 5}{bf:algos(string)}{col 28}Supported algorithms include {bf:ELNET}, {bf:RF}, {bf:CRF}, {bf:GBM}, {bf:XGB}, {bf:LGBM}, {bf:CAT}, {bf:NNET}, and {bf:ENSEMBLE}.
+{col 5}{bf:stochastic}{col 28}Sets {bf:stochastic = TRUE}. For multiple imputation, stochastic imputation is TRUE by default.
+{col 5}{bf:nostochastic}{col 28}Sets {bf:stochastic = FALSE}. May not be combined with {bf:stochastic}.
+{col 5}{bf:ignore(varlist)}{col 28}Excludes variables from the imputation process.
 {col 5}{bf:hierarchy(varlist)}{col 28}Specifies clustering variables from the highest to the lowest level.
-{col 5}{bf:tuningtime(#)}{col 28}The maximum tuning time per variable and iteration.
-{col 5}{bf:maxmodels(#)}{col 28}Sets {bf:max_models = #}, the maximum number of hyperparameter evaluations per variable and iteration.
+{col 5}{bf:tuningtime(#)}{col 28}Sets  the maximum tuning time per variable and iteration.
+{col 5}{bf:maxmodels(#)}{col 28}Sets the maximum number of hyperparameter evaluations per variable and iteration.
 {col 5}{bf:maxiter(#)}{col 28}Sets the maximum number of imputation iterations.
-{col 5}{bf:cv(#)}{col 28}Sets the number of cross-validation folds.{col 103}{break}{col 5}{bf:nomatching}{col 28}Sets {bf:matching = FALSE}. By default, the R package uses {bf:matching = TRUE}.
+{col 5}{bf:cv(#)}{col 28}Sets the number of cross-validation folds.
+{col 5}{bf:nomatching}{col 28}Sets {bf:matching = FALSE}. By default, {bf:matching = TRUE}.
 {col 5}{bf:noautobalance}{col 28}Sets {bf:autobalance = FALSE}.
-{col 5}{bf:seed(#)}{col 28}Sets the R random-number seed.
-{col 5}{bf:verbosity(string)}{col 28}Specifies {bf:verbosity}, which can be {bf:warn}, {bf:info}, {bf:debug}, or NULL.
-{col 5}{bf:report(string)}.{col 28}Specifies report filename
-{col 5}{bf:tolerance(#)}{col 28}Sets the convergence {bf:tolerance} (minimum relative improvement).
+{col 5}{bf:seed(#)}{col 28}Sets random-number seed.
+{col 5}{bf:verbosity(string)}{col 28}Accepts {bf:warn}, {bf:info}, {bf:debug}, or NULL.
+{col 5}{bf:report(string)}{col 28}Specify a report filename.
+{col 5}{bf:tolerance(#)}{col 28}Sets the convergence {bf:tolerance}.
 {col 5}{bf:preimpute(string)}{col 28}Sets the initial preimputation method, such as {bf:random} or {bf:mm}.
-{col 5}{bf:cpu(#)}{col 28}Sets the number of CPU threads supplied to learners that support internal multithreading.
+{col 5}{bf:cpu(#)}{col 28}Sets the number of CPU threads supplied to learners.
 {col 5}{bf:save(string)}{col 28}Saves the current imputation state to an {bf:.mlim} RDS file after variable-level updates.
 {col 5}{bf:load(string)}{col 28}Resumes an imputation from a previously saved {bf:.mlim} state.
-{col 5}{bf:filename(string)}{col 28}Saves the completed data to the specified Stata {bf:.dta} file in addition to loading it into Stata.
-{col 5}{bf:debug}{col 28}Activates debug logging in the report.
+{col 5}{bf:filename(string)}{col 28}Saves the completed data to the specified Stata {bf:.dta} file.
+{col 5}{bf:debug}{col 28}Passes the hidden R argument {bf:debug = TRUE}.
 {space 4}{hline}
 
 {title:Remarks}
@@ -78,7 +86,7 @@ algorithms are selected.
 {p 4 4 2}{bf:Algorithms}
 
 {p 4 4 2}
-The current implementation supports the following algorithm names:
+The current R implementation supports the following algorithm names:
 
 {break}    * {bf:ELNET}: elastic net
 {break}    * {bf:RF}: random forest
@@ -95,7 +103,9 @@ The current implementation supports the following algorithm names:
 {p 4 4 2}
 Some algorithms are provided through {bf:mlr3extralearners} and therefore require
 that package and the corresponding learner package to be installed. For example,
-{bf:LGBM}, {bf:CAT}, and {bf:SVM} use optional learner extensions. {bf:GBM} is also
+{bf:LGBM}, {bf:CAT}, and {bf:SVM} use optional learner extensions. {bf:KNN} is not
+available for multiple imputation when bootstrap observation weights are required,
+because its current learner does not support observation weights. {bf:GBM} is also
 skipped for multinomial targets when its current learner does not support multiclass
 classification.
 
@@ -109,9 +119,6 @@ by default in R. The Stata option {bf:nomatching} sets {bf:matching = FALSE}. Wh
 matching is enabled and stochastic imputation is used, integer-valued numeric predictions
 are stochastically mapped to neighboring observed integer values after the stochastic
 numeric value has been generated.
-
-{p 4 4 2}
-Note that matching is currently in experimental stage!
 
 {p 4 4 2}{bf:Hierarchical imputation}
 
@@ -134,8 +141,11 @@ encoded as numeric categorical variables or placed in {bf:ignore()}.
 {p 4 4 2}{bf:Single versus multiple imputation}
 
 {p 4 4 2}
-With {bf:m(1)}, {bf:mlim} returns one imputed dataset and {bf:rcall} loads
-it into Stata. For multiple imputation (higher values of m), the result is converted to {bf:flong}
+With {bf:m(1)}, {bf:mlim::mlim()} returns one completed data frame and {bf:rcall} loads
+it into Stata.
+
+{p 4 4 2}
+With {bf:m()>1}, the R result is converted by {bf:mlim::mlim.stata()} to {bf:flong}
 format. Stata then runs:
 
 {p 8 8 2} {bf:mi import flong, m(m) id(id) imputed(varlist)}
@@ -252,6 +262,14 @@ Inspect the R arguments generated by the Stata wrapper:
 
 {p 8 8 2} . {bf:mlim, debug}
 
+
+{title:Stored results}
+
+{p 4 4 2}
+The wrapper does not define a separate documented {bf:r()}, {bf:e()}, or {bf:s()}
+result. The primary result is the completed dataset left in memory. The internal
+R result indicating the number of imputations is used by the wrapper to decide
+whether Stata{c 39}s {bf:mi import flong} step is required.
 
 
 {title:Acknowledgments}
