@@ -115,7 +115,7 @@ remotes::install_url("https://github.com/catboost/catboost/releases/download/v1.
 # Optional packages fot catBoost imputation (for Windows)
 remotes::install_url(
   "https://github.com/catboost/catboost/releases/download/v1.2.10/catboost-R-windows-x86_64-1.2.10.tgz", 
-  INSTALL_opts = c("--no-multiarch", "--no-test-load")
+  INSTALL_opts = c("--no-multiarch", "--no-test-load"))
 
 install.packages("mlr3extralearners", repos = c(mlrorg = "https://mlr-org.r-universe.dev"))
 ```
