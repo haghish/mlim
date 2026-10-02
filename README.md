@@ -1,7 +1,7 @@
 
 <a href="https://github.com/haghish/mlim"><img src='man/figures/mlim.png' align="right" height="200" /></a>
 
-**`mlim`** : Single and Multiple Imputation for R and Stata with Automated Machine Learning
+**`mlim`** : Single and Multiple Imputation for `R` and `Stata` with Automated Machine Learning
 ================================================================
 
 <!--<a href="https://github.com/haghish/mlim"><img src="./web/mlim.png" align="left" width="140" hspace="10" vspace="6"></a> -->
@@ -21,19 +21,10 @@
 2. **Higher imputation fairness**, when the data suffers from severe class imbalance, unnormal destribution, or the variables (features) have interactions with one another.
 3. **Faster imputation of big datasets** because **`mlim`** excells in making an efficient use of available CPU cores and the runtime scales fairly well as the size of data becomes huge. 
 
-The high performance of **`mlim`** is mainly by **fine-tuning** an **`ELNET`** algorithm, which often outperforms any standard statistical procedure or untuned machine learning algorithm and generalizes very well. However, **`mlim`** is an active research project and hence, it comes with a set of **experimental optimization toolkit** for exploring the possibility of performing multiple imputation with industry-standard machine learning algorithms such as _Deep Learning_, _Gradient Boosting Machine_, _Extreme Gradient Boosting_, and _Stacked Ensembles_. These algorithms can be used for either imputing missing data or optimizing already imputed data, but are **NOT used by default NOR recommended to all users**. Advanced users who are interested in exploring the possibilities of imputing missing data with these algorithms are recommended to read the free handbook (see below). These algorithms, as noted, are experimental, and the author is intended to examine their effectiveness for academic research (at this point). If you are interested to collaborate, [get in touch with the author](https://www.sv.uio.no/psi/english/people/aca/haghish/). 
-
-<!--
-> **NOTE**: Prior to version 0.3.0, `mlim` did not use a stochastic procedure and thus, the multiple imputation algorithm was inflating the relationships between the imputed variables. A solution is implemented in version 0.3.0, which is automatically activated for multiple imputation and is currently under testing. You can investigate the code for `stochastic = TRUE` argument to see how this procedure is implemented. In stochastic multiple imputation, `mlim` uses the estimated RMSE of each continuous variable as an indication of standard error and replaces the imputed values with stochastic values drawn with a mean equal to the imputed value and SD equal to the RMSE. For factor variables, however, `mlim` draws a random value based on estimated probabilities of each factor level for each missing value. These two procedures are still under testing... Meanwhile, for a single imputation, `mlim` continues to be the top performer among other R packages that I have tested.
--->
-
 Fine-tuning missing data imputation
 -----------------------------------
 
 Simply put, for each variable in the dataset, **`mlim`** automatically fine-tunes a fast machine learning model, which results in significantly lower imputation error compared to classical statistical models or even untuned machine learning imputation software that use Random Forest or unsuperwised learning algorithms. Moreover, **`mlim`** is intended to give social scientists a powerful solution to their missing data problem, a tool that can automatically adopts to different variable types, that can appear at different rates, with unknown destributions and have high correlations or interactions with one another. **But it is not just about higher accuracy! `mlim` also delivers fairer imputation, particularly for categorical and ordinal variables because it automatically balances the levels of the avriable, minimizing the bias resulting from class imbalance, which can often be seen in social science data and has been commonly ignored by missing data imputation software.**
-
-
-<!-- The figure below shows the normalized RMSE of the imputation of several algorithms, including `MICE`, `missForest`, `missRanger`, and `mlim`. Here, two of **`mlim`**'s algorithms, Elastic Net (ELNET) and Gradient Boosting Machine (GBM) are used for the imputation and the result are compared with Random Forest imputations as well as Multiple Imputation with Chained Equations (MICE), which uses Predictive Mean Matching (PMM). This imputation was carried out on __iris__ dataset in R, by adding 10% artifitial missing data and comparing the imputed values with the original. -->
 
 **`mlim`** outperforms other R packages for all variable types, continuous, binary (factor), multinomial (factor), and ordinal (ordered factor). The reason for this improved performance is that **`mlim`**:
 
@@ -95,17 +86,40 @@ Below are some comparisons between different R packages for carrying out multipl
 R Installation
 --------------
 
-To install the latest development version from GitHub:
+To install the latest version from GitHub:
 
 ``` r
 library(devtools)
 install_github("haghish/mlim")
 ```
 
-Or alternatively, install the latest stable version from CRAN:
-``` r
-install.packages("mlim")
+Depending on the learners you wish to use for imputation, there will be other dependencies. For installing all learners supported by __`mlim`__, you will need the following R dependencies:
+
+```r
+# Required packages
+install.packages(c("partykit", "sandwich", "coin", "gbm", "lightgbm", "kernlab", "kknn", "readstata13", "remotes"))
+
+# Optional packages fot catBoost imputation (for Mac)
+remotes::install_url("https://github.com/catboost/catboost/releases/download/v1.2.10/catboost-R-darwin-universal2-1.2.10.tgz",
+  INSTALL_opts = c("--no-multiarch", "--no-test-load", "--no-staged-install"))
+
+# Optional packages fot catBoost imputation (for Windows)
+remotes::install_url(
+  "https://github.com/catboost/catboost/releases/download/v1.2.10/catboost-R-windows-x86_64-1.2.10.tgz", 
+  INSTALL_opts = c("--no-multiarch", "--no-test-load"))
+
+# Optional package for catboost imputation (for Linux)
+remotes::install_url("https://github.com",
+                     INSTALL_opts = c("--no-multiarch", "--no-test-load", "--no-staged-install"))
+
+# Additional learners (RECOMMENDED!)
+install.packages("mlr3extralearners", repos = c(mlrorg = "https://mlr-org.r-universe.dev"))
 ```
+
+<!-- 
+pak::pak("mlr-org/mlr3extralearners@*release")
+pak::pak("mlr-org/mlr3learners@*release") 
+-->
 
 Stata Installation
 ------------------

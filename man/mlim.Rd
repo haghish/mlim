@@ -7,7 +7,7 @@
 mlim(
   data = NULL,
   m = 1,
-  algos = c("ELNET"),
+  algos = c("ELNET", "XGB"),
   preimpute = "random",
   ignore = NULL,
   hierarchy = NULL,
@@ -18,7 +18,6 @@ mlim(
   cv = 5L,
   cpu = 1,
   stochastic = m > 1,
-  matching = TRUE,
   autobalance = TRUE,
   seed = NULL,
   verbosity = NULL,
@@ -120,20 +119,6 @@ current cross-validation RMSE as the standard deviation. For categorical
 variables, values are sampled from the predicted class probabilities. The
 default is \code{FALSE} for single imputation and \code{TRUE} for multiple
 imputation.}
-
-\item{matching}{Logical. If \code{TRUE}, post-processing is applied to
-imputed values for integer-valued numeric variables when \code{stochastic}
-is also \code{TRUE}. Fractional predictions are stochastically matched
-between the two bounding observed values. The probability of selecting
-each value is based on its distance from the prediction, so that the
-expected matched value equals the original prediction. If the prediction
-falls outside the observed range, the nearest boundary value is used. If
-there is a gap in the observed values, the nearest lower and upper observed
-values are used. Matching is applied after stochastic variation has been
-added to the numeric prediction. Set to \code{FALSE} to disable numeric
-matching. For categorical variables, stochastic matching to the observed
-categories is handled by \code{stochastic}; see the \code{stochastic}
-argument for details.}
 
 \item{autobalance}{logical. if TRUE (default), binary and multinomial factor variables
 are balanced during single imputation. During multiple imputation,

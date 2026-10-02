@@ -1,5 +1,5 @@
 {smcl}
-{it:v. 0.6.0}
+{it:v. 0.6.1}
 
 
 {title:mlim}
@@ -12,7 +12,7 @@
 
 {p 8 8 2} {bf:mlim} [, {it:m(#)} {it:algos(string)} {it:stochastic} {it:nostochastic}
 {it:ignore(varlist)} {it:hierarchy(varlist)} {it:tuningtime(#)} {it:maxmodels(#)} {it:maxiter(#)}
-{it:cv(#)} {it:nomatching} {it:noautobalance} {it:seed(#)}
+{it:cv(#)} {it:noautobalance} {it:seed(#)}
 {it:verbosity(string)} {it:report(string)} {it:tolerance(#)} {it:preimpute(string)}
 {it:cpu(#)} {it:save(string)} {it:load(string)} {it:filename(string)} {it:debug} ]
 
@@ -55,31 +55,30 @@ algorithms are selected.
 
 {title:Options}
 
-{col 5}{it:Option}{col 15}{it:Description}
-{space 4}{hline 25}
-{col 5}{bf:m(#)}{col 15}Number of imputations. The default is 1. Values must be at least 1.
-{col 5}{bf:algos(string)}{col 15}Space-separated machine-learning algorithms passed to R. Supported algorithms include {bf:ELNET}, {bf:RF}, {bf:CRF}, {bf:GBM}, {bf:XGB}, {bf:LGBM}, {bf:CAT}, {bf:NNET}, {bf:SVM}, {bf:KNN}, and {bf:ENSEMBLE}. The default is {bf:ELNET}. Optional algorithms may require additional R packages.
-{col 5}{bf:stochastic}{col 15}Sets {bf:stochastic = TRUE}. For multiple imputation, stochastic imputation is TRUE by default.
-{col 5}{bf:nostochastic}{col 15}Sets {bf:stochastic = FALSE}. May not be combined with {bf:stochastic}.
-{col 5}{bf:ignore(varlist)}{col 15}Excludes variables from the imputation process.
-{col 5}{bf:hierarchy(varlist)}{col 15}Specifies clustering variables from the highest to the lowest level. The order is passed directly to R.
-{col 5}{bf:tuningtime(#)}{col 15}Sets {bf:tuning_time = #}, the maximum tuning time per variable and iteration.
-{col 5}{bf:maxmodels(#)}{col 15}Sets {bf:max_models = #}, the maximum number of hyperparameter evaluations per variable and iteration.
-{col 5}{bf:maxiter(#)}{col 15}Sets the maximum number of imputation iterations.
-{col 5}{bf:cv(#)}{col 15}Sets the number of cross-validation folds.
-{col 5}{bf:nomatching}{col 15}Sets {bf:matching = FALSE}. By default, the R package uses {bf:matching = TRUE}.
-{col 5}{bf:noautobalance}{col 15}Sets {bf:autobalance = FALSE}.
-{col 5}{bf:seed(#)}{col 15}Sets the R random-number seed.
-{col 5}{bf:verbosity(string)}{col 15}Passes {bf:verbosity} to R. The R package accepts {bf:warn}, {bf:info}, {bf:debug}, or NULL.
-{col 5}{bf:report(string)}{col 15}Passes a report filename to R.
-{col 5}{bf:tolerance(#)}{col 15}Sets the convergence {bf:tolerance}.
-{col 5}{bf:preimpute(string)}{col 15}Sets the initial preimputation method, such as {bf:random} or {bf:mm}.
-{col 5}{bf:cpu(#)}{col 15}Sets the number of CPU threads supplied to learners that support internal multithreading.
-{col 5}{bf:save(string)}{col 15}Saves the current imputation state to an {bf:.mlim} RDS file after variable-level updates.
-{col 5}{bf:load(string)}{col 15}Resumes an imputation from a previously saved {bf:.mlim} state. The saved state determines the imputation settings and number of imputations. For multiple imputation, the current Stata data must correspond to the original dataset used to create the saved state because it is used as the original ({it:_m = 0_}) dataset when constructing the Stata {bf:flong} data. For single imputation, the current Stata data are ignored by the R imputation.
-{col 5}{bf:filename(string)}{col 15}Saves the completed data to the specified Stata {bf:.dta} file in addition to loading it into Stata.
-{col 5}{bf:debug}{col 15}Passes the hidden R argument {bf:debug = TRUE}.
-{space 4}{hline 25}
+{col 5}{it:Option}{col 28}{it:Description}
+{space 4}{hline}
+{col 5}{bf:m(#)}{col 28}Number of imputations. The default is 1 (dry run).
+{col 5}{bf:algos(string)}{col 28}Supported algorithms include {bf:ELNET}, {bf:RF}, {bf:CRF}, {bf:GBM}, {bf:XGB}, {bf:LGBM}, {bf:CAT}, {bf:NNET}, and {bf:ENSEMBLE}.
+{col 5}{bf:stochastic}{col 28}Sets {bf:stochastic = TRUE}. For multiple imputation, stochastic imputation is TRUE by default.
+{col 5}{bf:nostochastic}{col 28}Sets {bf:stochastic = FALSE}. May not be combined with {bf:stochastic}.
+{col 5}{bf:ignore(varlist)}{col 28}Excludes variables from the imputation process.
+{col 5}{bf:hierarchy(varlist)}{col 28}Specifies clustering variables from the highest to the lowest level.
+{col 5}{bf:tuningtime(#)}{col 28}Sets  the maximum tuning time per variable and iteration.
+{col 5}{bf:maxmodels(#)}{col 28}Sets the maximum number of hyperparameter evaluations per variable and iteration.
+{col 5}{bf:maxiter(#)}{col 28}Sets the maximum number of imputation iterations.
+{col 5}{bf:cv(#)}{col 28}Sets the number of cross-validation folds.
+{col 5}{bf:noautobalance}{col 28}Sets {bf:autobalance = FALSE}.
+{col 5}{bf:seed(#)}{col 28}Sets random-number seed.
+{col 5}{bf:verbosity(string)}{col 28}Accepts {bf:warn}, {bf:info}, {bf:debug}, or NULL.
+{col 5}{bf:report(string)}{col 28}Specify a report filename.
+{col 5}{bf:tolerance(#)}{col 28}Sets the convergence {bf:tolerance}.
+{col 5}{bf:preimpute(string)}{col 28}Sets the initial preimputation method, such as {bf:random} or {bf:mm}.
+{col 5}{bf:cpu(#)}{col 28}Sets the number of CPU threads supplied to learners.
+{col 5}{bf:save(string)}{col 28}Saves the current imputation state to an {bf:.mlim} RDS file after variable-level updates.
+{col 5}{bf:load(string)}{col 28}Resumes an imputation from a previously saved {bf:.mlim} state.
+{col 5}{bf:filename(string)}{col 28}Saves the completed data to the specified Stata {bf:.dta} file.
+{col 5}{bf:debug}{col 28}Passes the hidden R argument {bf:debug = TRUE}.
+{space 4}{hline}
 
 {title:Remarks}
 
@@ -109,16 +108,12 @@ because its current learner does not support observation weights. {bf:GBM} is al
 skipped for multinomial targets when its current learner does not support multiclass
 classification.
 
-{p 4 4 2}{bf:Stochastic imputation and matching}
+{p 4 4 2}{bf:Stochastic imputation}
 
 {p 4 4 2}
 When {bf:stochastic} is TRUE, continuous numeric predictions receive stochastic
 variation based on the model{c 39}s cross-validation RMSE, whereas categorical predictions
-are sampled from their predicted class-probability vectors. Numeric matching is enabled
-by default in R. The Stata option {bf:nomatching} sets {bf:matching = FALSE}. When
-matching is enabled and stochastic imputation is used, integer-valued numeric predictions
-are stochastically mapped to neighboring observed integer values after the stochastic
-numeric value has been generated.
+are sampled from their predicted class-probability vectors. 
 
 {p 4 4 2}{bf:Hierarchical imputation}
 
@@ -228,9 +223,9 @@ Use a hierarchical structure:
 {p 8 8 2} . {bf:mlim, m(5) hierarchy(schoolid childid)}
 
 {p 4 4 2}
-Disable stochastic imputation and numeric matching:
+Disable stochastic imputation:
 
-{p 8 8 2} . {bf:mlim, m(1) nostochastic nomatching}
+{p 8 8 2} . {bf:mlim, m(1) nostochastic {bf:
 
 {p 4 4 2}
 Ignore a variable and use a reproducible seed:

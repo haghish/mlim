@@ -1,6 +1,5 @@
 #' @title normalized RMSE
 #' @description calculates the normalized RMSE
-#' @importFrom curl curl
 #' @author E. F. Haghish
 #' @keywords Internal
 #' @noRd

@@ -4,10 +4,10 @@ export(mlim)
 export(mlim.error)
 export(mlim.mids)
 export(mlim.na)
+export(mlim.na.multilevel)
 export(mlim.preimpute)
 export(mlim.stata)
 export(mlim.summarize)
-importFrom(curl,curl)
 importFrom(md.log,md.log)
 importFrom(memuse,Sys.meminfo)
 importFrom(mice,as.mids)
@@ -40,6 +40,7 @@ importFrom(paradox,
 )
 importFrom(readstata13,save.dta13)
 importFrom(stats,
+  ave,
   median,
   model.matrix,
   na.omit,

@@ -55,4 +55,4 @@
 #' @keywords datasets
 #' @name egsingle
 #' @usage data(egsingle)
-#' NULL
+"egsingle"
