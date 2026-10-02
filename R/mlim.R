@@ -251,7 +251,6 @@ mlim <- function(data = NULL,
 
                  # fairness
                  stochastic = m > 1,
-                 #matching = TRUE,
                  autobalance = TRUE,
 
                  # report and reproducibility
@@ -294,6 +293,7 @@ mlim <- function(data = NULL,
   sleep       <- threeDots(name = "sleep", ..., default = .25)
   superdebug  <- threeDots(name = "superdebug", ..., default = FALSE)
   preimputed.data  <- threeDots(name = "preimputed.data", ..., default = NULL)
+  matching    <- threeDots(name = "matching", ..., default = FALSE)
   #stochastic  <- threeDots(name = "stochastic", ..., default = FALSE)
 
 
