@@ -12,7 +12,7 @@
 
 {p 8 8 2} {bf:mlim} [, {it:m(#)} {it:algos(string)} {it:stochastic} {it:nostochastic}
 {it:ignore(varlist)} {it:hierarchy(varlist)} {it:tuningtime(#)} {it:maxmodels(#)} {it:maxiter(#)}
-{it:cv(#)} {it:nomatching} {it:noautobalance} {it:seed(#)}
+{it:cv(#)} {it:noautobalance} {it:seed(#)}
 {it:verbosity(string)} {it:report(string)} {it:tolerance(#)} {it:preimpute(string)}
 {it:cpu(#)} {it:save(string)} {it:load(string)} {it:filename(string)} {it:debug} ]
 
@@ -67,7 +67,6 @@ algorithms are selected.
 {col 5}{bf:maxmodels(#)}{col 28}Sets the maximum number of hyperparameter evaluations per variable and iteration.
 {col 5}{bf:maxiter(#)}{col 28}Sets the maximum number of imputation iterations.
 {col 5}{bf:cv(#)}{col 28}Sets the number of cross-validation folds.
-{col 5}{bf:nomatching}{col 28}Sets {bf:matching = FALSE}. By default, {bf:matching = TRUE}.
 {col 5}{bf:noautobalance}{col 28}Sets {bf:autobalance = FALSE}.
 {col 5}{bf:seed(#)}{col 28}Sets random-number seed.
 {col 5}{bf:verbosity(string)}{col 28}Accepts {bf:warn}, {bf:info}, {bf:debug}, or NULL.
@@ -109,16 +108,12 @@ because its current learner does not support observation weights. {bf:GBM} is al
 skipped for multinomial targets when its current learner does not support multiclass
 classification.
 
-{p 4 4 2}{bf:Stochastic imputation and matching}
+{p 4 4 2}{bf:Stochastic imputation}
 
 {p 4 4 2}
 When {bf:stochastic} is TRUE, continuous numeric predictions receive stochastic
 variation based on the model{c 39}s cross-validation RMSE, whereas categorical predictions
-are sampled from their predicted class-probability vectors. Numeric matching is enabled
-by default in R. The Stata option {bf:nomatching} sets {bf:matching = FALSE}. When
-matching is enabled and stochastic imputation is used, integer-valued numeric predictions
-are stochastically mapped to neighboring observed integer values after the stochastic
-numeric value has been generated.
+are sampled from their predicted class-probability vectors. 
 
 {p 4 4 2}{bf:Hierarchical imputation}
 
@@ -230,7 +225,7 @@ Use a hierarchical structure:
 {p 4 4 2}
 Disable stochastic imputation and numeric matching:
 
-{p 8 8 2} . {bf:mlim, m(1) nostochastic nomatching}
+{p 8 8 2} . {bf:mlim, m(1) nostochastic {bf:
 
 {p 4 4 2}
 Ignore a variable and use a reproducible seed:

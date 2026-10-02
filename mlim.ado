@@ -11,7 +11,7 @@ Syntax
 
 > __mlim__ [, _m(#)_ _algos(string)_ _stochastic_ _nostochastic_
 _ignore(varlist)_ _hierarchy(varlist)_ _tuningtime(#)_ _maxmodels(#)_ _maxiter(#)_
-_cv(#)_ _nomatching_ _noautobalance_ _seed(#)_
+_cv(#)_ _noautobalance_ _seed(#)_
 _verbosity(string)_ _report(string)_ _tolerance(#)_ _preimpute(string)_
 _cpu(#)_ _save(string)_ _load(string)_ _filename(string)_ _debug_ ]
 
@@ -61,7 +61,6 @@ Options
 | __maxmodels(#)__      | Sets the maximum number of hyperparameter evaluations per variable and iteration. |
 | __maxiter(#)__        | Sets the maximum number of imputation iterations. |
 | __cv(#)__             | Sets the number of cross-validation folds. |
-| __nomatching__        | Sets __matching = FALSE__. By default, __matching = TRUE__. |
 | __noautobalance__     | Sets __autobalance = FALSE__. |
 | __seed(#)__           | Sets random-number seed. |
 | __verbosity(string)__ | Accepts __warn__, __info__, __debug__, or NULL. |
@@ -101,15 +100,11 @@ because its current learner does not support observation weights. __GBM__ is als
 skipped for multinomial targets when its current learner does not support multiclass
 classification.
 
-### Stochastic imputation and matching
+### Stochastic imputation
 
 When __stochastic__ is TRUE, continuous numeric predictions receive stochastic
 variation based on the model's cross-validation RMSE, whereas categorical predictions
-are sampled from their predicted class-probability vectors. Numeric matching is enabled
-by default in R. The Stata option __nomatching__ sets __matching = FALSE__. When
-matching is enabled and stochastic imputation is used, integer-valued numeric predictions
-are stochastically mapped to neighboring observed integer values after the stochastic
-numeric value has been generated.
+are sampled from their predicted class-probability vectors. 
 
 ### Hierarchical imputation
 
@@ -204,7 +199,7 @@ Use a hierarchical structure:
 
 Disable stochastic imputation and numeric matching:
 
-> . __mlim, m(1) nostochastic nomatching__
+> . __mlim, m(1) nostochastic __
 
 Ignore a variable and use a reproducible seed:
 
@@ -448,10 +443,10 @@ program define mlim
         if "`maxiter'" != "" local rargs `"`rargs', maxiter = `maxiter'"'
         if "`cv'" != "" local rargs `"`rargs', cv = `cv'"'
 
-        // numeric matching
-        // The R default is matching = TRUE. Stata exposes only
+        // numeric matching (experimental and undocumented)
+        // The R default is matching = FALSE. Stata exposes only
         // nomatching, which explicitly switches matching off.
-        if "`nomatching'" != "" local rargs `"`rargs', matching = FALSE"'
+        if "`matching'" != "" local rargs `"`rargs', matching = TRUE"'
 
         // automatic class balancing
         // The R default is autobalance = TRUE. Stata exposes only
