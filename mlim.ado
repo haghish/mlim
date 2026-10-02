@@ -279,7 +279,7 @@ program define mlim
         MAXModels(numlist integer max=1)                    ///
         MAXITER(numlist integer max=1)                      ///
         CV(numlist integer max=1)                           ///
-        ///MATCHING                                            ///
+        MATCHING                                            ///
         NOAUTOBALANCE                                       ///
         SEED(numlist integer max=1)                         ///
         VERBOSITY(string)                                   ///
@@ -446,7 +446,8 @@ program define mlim
         // numeric matching (experimental and undocumented)
         // The R default is matching = FALSE. Stata exposes only
         // nomatching, which explicitly switches matching off.
-        //if "`matching'" != "" local rargs `"`rargs', matching = TRUE"'
+        if "`matching'" != "" local rargs `"`rargs', matching = TRUE"'
+		else local rargs `"`rargs', matching = FALSE"'
 
         // automatic class balancing
         // The R default is autobalance = TRUE. Stata exposes only
