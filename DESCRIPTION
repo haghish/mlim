@@ -48,6 +48,6 @@ Imports:
 Suggests:
     mlr3learners
 LazyData: true
-URL: https://github.com/haghish/mlim, https://www.sv.uio.no/psi/english/people/academic/haghish/
+URL: https://github.com/haghish/mlim
 BugReports: https://github.com/haghish/mlim/issues
 Config/roxygen2/version: 8.1.0
