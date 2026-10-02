@@ -125,6 +125,11 @@ remotes::install_url("https://github.com",
 install.packages("mlr3extralearners", repos = c(mlrorg = "https://mlr-org.r-universe.dev"))
 ```
 
+<!-- 
+pak::pak("mlr-org/mlr3extralearners@*release")
+pak::pak("mlr-org/mlr3learners@*release") 
+-->
+
 Stata Installation
 ------------------
 
