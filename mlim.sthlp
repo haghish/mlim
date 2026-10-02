@@ -223,7 +223,7 @@ Use a hierarchical structure:
 {p 8 8 2} . {bf:mlim, m(5) hierarchy(schoolid childid)}
 
 {p 4 4 2}
-Disable stochastic imputation and numeric matching:
+Disable stochastic imputation:
 
 {p 8 8 2} . {bf:mlim, m(1) nostochastic {bf:
 
