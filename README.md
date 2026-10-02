@@ -1,7 +1,7 @@
 
 <a href="https://github.com/haghish/mlim"><img src='man/figures/mlim.png' align="right" height="200" /></a>
 
-**`mlim`** : Single and Multiple Imputation for R and Stata with Automated Machine Learning
+**`mlim`** : Single and Multiple Imputation for `R` and `Stata` with Automated Machine Learning
 ================================================================
 
 <!--<a href="https://github.com/haghish/mlim"><img src="./web/mlim.png" align="left" width="140" hspace="10" vspace="6"></a> -->
