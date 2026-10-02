@@ -106,7 +106,7 @@ Depending on the learners you wish to use for imputation, there will be other de
 
 ```r
 # Required packages
-install.packages(c("partykit", "sandwich", "coin", "gbm", "lightgbm", "kernlab", "kknn", "readstata13"))
+install.packages(c("partykit", "sandwich", "coin", "gbm", "lightgbm", "kernlab", "kknn", "readstata13", "remotes"))
 
 # Optional packages fot catBoost imputation (for Mac)
 remotes::install_url("https://github.com/catboost/catboost/releases/download/v1.2.10/catboost-R-darwin-universal2-1.2.10.tgz",
