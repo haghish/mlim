@@ -95,19 +95,19 @@
 #                attempts to ensure the representation of the rare outcome.
 #                this argument is optional and intended for advanced users that
 #                impute a severely imbalance categorical (nominal) variable.
-#' @param matching Logical. If \code{TRUE}, post-processing is applied to
-#'   imputed values for integer-valued numeric variables when \code{stochastic}
-#'   is also \code{TRUE}. Fractional predictions are stochastically matched
-#'   between the two bounding observed values. The probability of selecting
-#'   each value is based on its distance from the prediction, so that the
-#'   expected matched value equals the original prediction. If the prediction
-#'   falls outside the observed range, the nearest boundary value is used. If
-#'   there is a gap in the observed values, the nearest lower and upper observed
-#'   values are used. Matching is applied after stochastic variation has been
-#'   added to the numeric prediction. Set to \code{FALSE} to disable numeric
-#'   matching. For categorical variables, stochastic matching to the observed
-#'   categories is handled by \code{stochastic}; see the \code{stochastic}
-#'   argument for details.
+# @param matching Experimental feature! If \code{TRUE}, post-processing is applied to
+#   imputed values for integer-valued numeric variables when \code{stochastic}
+#   is also \code{TRUE}. Fractional predictions are stochastically matched
+#   between the two bounding observed values. The probability of selecting
+#   each value is based on its distance from the prediction, so that the
+#   expected matched value equals the original prediction. If the prediction
+#   falls outside the observed range, the nearest boundary value is used. If
+#   there is a gap in the observed values, the nearest lower and upper observed
+#   values are used. Matching is applied after stochastic variation has been
+#   added to the numeric prediction. Set to \code{FALSE} to disable numeric
+#   matching. For categorical variables, stochastic matching to the observed
+#   categories is handled by \code{stochastic}; see the \code{stochastic}
+#   argument for details.
 #' @param maxiter integer. maximum number of iterations. the default value is \code{15},
 #'        but it can be reduced to \code{3} (not recommended, see below).
 #' @param cv Integer specifying the number of cross-validation folds. Values of
@@ -251,7 +251,7 @@ mlim <- function(data = NULL,
 
                  # fairness
                  stochastic = m > 1,
-                 matching = TRUE,
+                 #matching = TRUE,
                  autobalance = TRUE,
 
                  # report and reproducibility
@@ -272,7 +272,7 @@ mlim <- function(data = NULL,
 
   # check the ... arguments
   # ============================================================
-  hidden_args <- c("superdebug", "ignore.rank", "sleep", "debug", "preimputed.data")
+  hidden_args <- c("superdebug", "ignore.rank", "sleep", "debug", "preimputed.data", "matching")
   stopifnot("incompatible '...' arguments" = (names(list(...)) %in% hidden_args))
 
   # Simplify the syntax by taking arguments that are less relevant to the majority
