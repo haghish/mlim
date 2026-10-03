@@ -6,73 +6,64 @@
 #' @importFrom md.log md.log
 #' @importFrom memuse Sys.meminfo
 #' @importFrom stats var setNames na.omit
-#' @param data a \code{data.frame} (strictly) with missing data to be
-#'             imputed. if \code{'load'} argument is provided, this argument will be ignored.
+#' @param data a data.frame with missing data to be
+#'             imputed. if "load" argument is provided, this argument will be ignored.
 #' @param m integer, specifying number of multiple imputations. the default value is
 #'          1, carrying out a single imputation.
 #' @param algos character vector specifying the machine-learning algorithms used
-#'   for imputation. Supported algorithms are \code{"ELNET"} (elastic net via
-#'   \code{glmnet}), \code{"RF"} (random forest via \code{ranger}),
-#'   \code{"CRF"} (conditional random forest via \code{partykit::cforest}),
-#'   \code{"GBM"} (classical gradient boosting via \code{gbm}),
-#'   \code{"XGB"} (XGBoost), \code{"LGBM"} (LightGBM), \code{"CAT"}
-#'   (CatBoost), \code{"NNET"} (single-hidden-layer neural network via
-#'   \code{nnet}), \code{"SVM"} (kernel support vector machine via
-#'   \code{kernlab::ksvm}), \code{"KNN"} (k-nearest neighbors), and
-#'   \code{"ENSEMBLE"}.
-#'   The default is \code{"ELNET"}.
+#'   for imputation. Supported algorithms are "ELNET" (elastic net), "RF" (random forest),
+#'   "CRF" (conditional random forest),
+#'   "XGB" (extreme gradient boosting), "LGBM" (Light gradient boosting), "CAT"
+#'   (CatBoost), "NNET" (neural network), "SVN" (support vector machine), "kNN"
+#'   (K-Nearest Neighbor), and "ENSEMBLE" (stacked ensemble).
+#'   The default is "ELNET", selected only for its speed, rather than superiority.
 #'
-#'   When several base algorithms are supplied, \code{max_models} and
-#'   \code{tuning_time} are divided across the base algorithms and the
-#'   best-performing candidate is used. If \code{"ENSEMBLE"} is included,
+#'   When several base algorithms are supplied, "max_models" and
+#'   "tuning_time" are divided across the base algorithms and the
+#'   best-performing candidate is used. If "ENSEMBLE" is included,
 #'   at least two additional base algorithms must also be supplied. The ensemble
-#'   is a stacked model constructed with \code{mlr3pipelines} using
+#'   is a stacked model constructed with "mlr3pipelines" using
 #'   cross-validated predictions from the successfully tuned base learners and
 #'   is evaluated as an additional candidate after base-learner tuning.
 #'
-#'   The current \code{mlr3extralearners} \code{classif.gbm} wrapper supports
-#'   two-class classification but not multiclass classification; therefore
-#'   \code{"GBM"} is skipped for multinomial targets when other learners are
-#'   available.
-#'
-#'   \code{"KNN"} does not support observation weights in its current mlr3
+#'   "KNN" does not support observation weights in its current mlr3
 #'   learner. It can therefore be evaluated in single imputation, but is skipped
 #'   during multiple imputation because bootstrap multiplicity weights are
 #'   required for model fitting. When class balancing is requested in single
 #'   imputation, KNN is fitted without learner weights, although balancing
 #'   weights are retained for performance assessment.
 #' @param preimpute Character specifying the initial treatment of missing values before
-#'   iterative model-based imputation. The default is \code{"random"}, which performs
-#'   random sampling from each feature. The alternative is \code{"mm"},
+#'   iterative model-based imputation. The default is "random", which performs
+#'   random sampling from each feature. The alternative is "mm",
 #'   which performs median/mode preimputation.
 #                   feature is currently experimental, prone to over-fitting, and highly computationally extensive.
-#' @param stochastic Logical. If \code{TRUE}, stochastic variation is added after each
+#' @param stochastic Logical. If TRUE, stochastic variation is added after each
 #'   accepted variable-specific imputation update. For continuous variables, values
 #'   are drawn from a normal distribution centered on the model prediction with the
 #'   current cross-validation RMSE as the standard deviation. For categorical
 #'   variables, values are sampled from the predicted class probabilities. The
-#'   default is \code{FALSE} for single imputation and \code{TRUE} for multiple
+#'   default is FALSE for single imputation and TRUE for multiple
 #'   imputation.
 #' @param ignore character vector of column names or index of columns that should
 #'               should be ignored in the process of imputation.
 #' @param hierarchy Character vector specifying the clustering variables from the
 #'   highest to the lowest level. For example,
-#'   \code{hierarchy = c("city", "school", "classroom", "student")} specifies
+#'   'hierarchy = c("city", "school", "classroom", "student")' specifies
 #'   students nested within classrooms, classrooms nested within schools, and schools
-#'   nested within cities. Hierarchy variables must exist in \code{data} and cannot
-#'   contain missing values. The default is \code{NULL}, which assumes no
+#'   nested within cities. Hierarchy variables must exist in data and cannot
+#'   contain missing values. The default is NULL, which assumes no
 #'   hierarchical structure.
 #' @param tuning_time Numeric. Maximum base-learner tuning runtime in seconds for
-#'   each variable and iteration. The default is \code{3600}. When several base
+#'   each variable and iteration. The default is 3600. When several base
 #'   algorithms are selected, this budget is divided across them. Tuning stops
 #'   when the applicable time or evaluation limit is reached. A requested stacked
 #'   ensemble is evaluated after base-learner tuning and does not consume this
 #'   base-learner tuning-time allocation.
-#' @param max_models Integer or \code{NULL}. Maximum number of hyperparameter
+#' @param max_models Integer or NULL. Maximum number of hyperparameter
 #'   evaluations across the base algorithms for each variable and iteration.
-#'   The default is \code{100}. When several base algorithms are selected, this
-#'   budget is divided across them. If \code{NULL}, no explicit evaluation-count
-#'   limit is supplied by \code{mlim}. \code{"ENSEMBLE"} does not count as a base
+#'   The default is 100. When several base algorithms are selected, this
+#'   budget is divided across them. If NULL, no explicit evaluation-count
+#'   limit is supplied by mlim. "ENSEMBLE" does not count as a base
 #'   algorithm for this allocation.
 #' @param autobalance logical. if TRUE (default), binary and multinomial factor variables
 #'                    are balanced during single imputation. During multiple imputation,
@@ -95,26 +86,26 @@
 #                attempts to ensure the representation of the rare outcome.
 #                this argument is optional and intended for advanced users that
 #                impute a severely imbalance categorical (nominal) variable.
-# @param matching Experimental feature! If \code{TRUE}, post-processing is applied to
-#   imputed values for integer-valued numeric variables when \code{stochastic}
-#   is also \code{TRUE}. Fractional predictions are stochastically matched
+# @param matching Experimental feature! If TRUE, post-processing is applied to
+#   imputed values for integer-valued numeric variables when 'stochastic'
+#   is also TRUE. Fractional predictions are stochastically matched
 #   between the two bounding observed values. The probability of selecting
 #   each value is based on its distance from the prediction, so that the
 #   expected matched value equals the original prediction. If the prediction
 #   falls outside the observed range, the nearest boundary value is used. If
 #   there is a gap in the observed values, the nearest lower and upper observed
 #   values are used. Matching is applied after stochastic variation has been
-#   added to the numeric prediction. Set to \code{FALSE} to disable numeric
+#   added to the numeric prediction. Set to FALSE to disable numeric
 #   matching. For categorical variables, stochastic matching to the observed
-#   categories is handled by \code{stochastic}; see the \code{stochastic}
+#   categories is handled by 'stochastic'; see the 'stochastic'
 #   argument for details.
-#' @param maxiter integer. maximum number of iterations. the default value is \code{15},
-#'        but it can be reduced to \code{3} (not recommended, see below).
+#' @param maxiter integer. maximum number of iterations. the default value is 10,
+#'        but it can be reduced to 3 (not recommended, see below).
 #' @param cv Integer specifying the number of cross-validation folds. Values of
-#'   \code{5} or higher are required. the default is \code{5}.
+#'   5 or higher are required. the default is 5.
 #' @param tolerance numeric. the minimum rate of improvement in estimated error metric
 #'                  of a variable to qualify the imputation for another round of iteration,
-#'                  if the \code{maxiter} is not yet reached. any improvement of imputation
+#'                  if the maxiter is not yet reached. any improvement of imputation
 #'                  is desirable.  however, specifying values above 0 can reduce the number
 #'                  of required iterations at a marginal increase of imputation error.
 #'                  for larger datasets, value of "1e-3" is recommended to reduce number
@@ -122,30 +113,30 @@
 #'
 #' @param seed integer. specify the random generator seed
 
-#' @param report filename. if a filename is specified (e.g. report = "mlim.md"), the \code{"md.log"} R
+#' @param report filename. if a filename is specified (e.g. report = "mlim.md"), the "md.log" R
 #'               package is used to generate a Markdown progress report for the
 #'               imputation. the format of the report is adopted based on the
-#'               \code{'verbosity'} argument. the higher the verbosity, the more
+#'               'verbosity' argument. the higher the verbosity, the more
 #'               technical the report becomes. if verbosity equals "debug", then
 #'               a log file is generated, which includes time stamp and shows
 #'               the function that has generated the message. otherwise, a
 #'               reduced markdown-like report is generated. default is NULL.
 #' @param verbosity character. controls how much information is printed to console.
 #'                  the value can be "warn" (default), "info", "debug", or NULL.
-#' @param save filename (with .mlim extension). if a filename is specified, an \code{mlim} object is
+#' @param save filename (with .mlim extension). if a filename is specified, an 'mlim' object is
 #'             saved after the end of each variable imputation. this object not only
 #'             includes the imputed dataframe and estimated cross-validation error, but also
 #'             includes the information needed for continuing the imputation,
 #'             which is very useful feature for imputing large datasets, with a
 #'             long runtime. this argument is activated by default and an
-#'             mlim object is stored in the local directory named \code{"mlim.rds"}.
+#'             mlim object is stored in the local directory named "mlim.rds".
 #' @param load filename (with .mlim extension). an object of class "mlim", which includes the data, arguments,
 #'                 and settings for re-running the imputation, from where it was
 #'                 previously stopped. the "mlim" object saves the current state of
 #'                 the imputation and is particularly recommended for large datasets
 #'                 or when the user specifies a computationally extensive settings
 #'                 (e.g. specifying several algorithms, increasing tuning time, etc.).
-#' @param cpu Integer specifying the number of CPU threads supplied to learners that support internal multithreading. The default is \code{1}.
+#' @param cpu Integer specifying the number of CPU threads supplied to learners that support internal multithreading. The default is 1.
 #' @param ... arguments that are used internally between 'mlim'
 #'            these arguments are not documented in the help file and are not
 #'            intended to be used by end user.
@@ -177,13 +168,13 @@
 # @param error_metric character. specify the minimum improvement
 #                                  in the estimated error to proceed to the
 #                                  following iteration or stop the imputation.
-#                                  the default is 10^-4 for \code{"MAE"}
+#                                  the default is 10^-4 for "MAE"
 #                                  (Mean Absolute Error). this criteria is only
 #                                  applied from the end of the fourth iteration.
-#                                  \code{"RMSE"} (Root Mean Square
-#                                  Error). other possible values are \code{"MSE"},
-#                                  \code{"MAE"}, \code{"RMSLE"}.
-#' @return a \code{data.frame}, showing the
+#                                  "RMSE" (Root Mean Square
+#                                  Error). other possible values are "MSE",
+#                                  "MAE", "RMSLE".
+#' @return a data.frame, showing the
 #'         estimated imputation error from the cross validation within the data.frame's
 #'         attribution
 #' @author E. F. Haghish
@@ -229,7 +220,7 @@
 
 mlim <- function(data = NULL,
                  m = 1,
-                 algos = c("ELNET", "XGB"),
+                 algos = c("ELNET"),
                  preimpute = "random",
 
                  ignore = NULL,
@@ -246,7 +237,7 @@ mlim <- function(data = NULL,
                  tuning_time = 300,
                  max_models = 50, #
                  maxiter = 15L,
-                 cv = 5L,
+                 cv = 10L,
                  cpu = 1,
 
                  # fairness

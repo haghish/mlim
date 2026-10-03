@@ -113,9 +113,9 @@ syntaxProcessing <- function(
     "ELNET",
     "RF",
     "CRF",
-    "GBM",
+    "GBM", #GBM is not actually lightGBM because the used GBM does not support multiclass classification
+    #"LGBM",
     "XGB",
-    "LGBM",
     "CAT",
     "NNET",
     "SVM",
