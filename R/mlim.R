@@ -145,7 +145,7 @@
 # 1. preimputed.data data.frame. if you have used another software for missing data imputation, you can still
 #    optimize the imputation by handing the data.frame to this argument, which will bypass the "preimpute" procedure.
 # 2. ignore.rank logical, if FALSE (default), ordinal variables
-#                    are imputed as continuous integers with regression plus matching
+#                    are imputed as continuous integers with regression
 #                    and are reverted to ordinal later again. this procedure is
 #                    recommended. if FALSE, the rank of the categories will be ignored
 #                    the the algorithm will try to optimize for classification accuracy.
