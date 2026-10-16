@@ -7,17 +7,19 @@
 mlim(
   data = NULL,
   m = 1,
-  algos = c("ELNET", "XGB"),
+  algos = c("ELNET"),
   preimpute = "random",
   ignore = NULL,
   hierarchy = NULL,
+  variable_levels = NULL,
   tolerance = 0.001,
   tuning_time = 300,
   max_models = 50,
   maxiter = 15L,
-  cv = 5L,
+  cv = 10L,
   cpu = 1,
   stochastic = m > 1,
+  variance = "constant",
   autobalance = TRUE,
   seed = NULL,
   verbosity = NULL,
@@ -28,38 +30,37 @@ mlim(
 )
 }
 \arguments{
-\item{data}{a \code{data.frame} (strictly) with missing data to be
-imputed. if \code{'load'} argument is provided, this argument will be ignored.}
+\item{data}{a data.frame with missing data to be
+imputed. if "load" argument is provided, this argument will be ignored.}
 
 \item{m}{integer, specifying number of multiple imputations. the default value is
 1, carrying out a single imputation.}
 
 \item{algos}{character vector specifying the machine-learning algorithms used
-  for imputation. Supported algorithms are \code{"ELNET"} (elastic net via
-  \code{glmnet}), \code{"RF"} (random forest via \code{ranger}),
-  \code{"CRF"} (conditional random forest via \code{partykit::cforest}),
-  \code{"GBM"} (classical gradient boosting via \code{gbm}),
-  \code{"XGB"} (XGBoost), \code{"LGBM"} (LightGBM), \code{"CAT"}
-  (CatBoost), \code{"NNET"} (single-hidden-layer neural network via
-  \code{nnet}), \code{"SVM"} (kernel support vector machine via
-  \code{kernlab::ksvm}), \code{"KNN"} (k-nearest neighbors), and
-  \code{"ENSEMBLE"}.
-  The default is \code{"ELNET"}.
+  for imputation. Supported algorithms are "ELNET" (elastic net), "RF" (random forest),
+  "CRF" (conditional random forest),
+  "XGB" (extreme gradient boosting), "LGBM" (Light gradient boosting), "CAT"
+  (CatBoost), "NNET" (neural network), "SVN" (support vector machine), "kNN"
+  (K-Nearest Neighbor), and "ENSEMBLE" (stacked ensemble).
+  "HML" adds GPBoost hierarchical boosting with nested random intercepts.
+  It requires `hierarchy` and currently supports numeric and binary-factor
+  targets (but not native multinomial outcomes). The HML backend leaves
+  longitudinal data in long format, without cluster summary predictors.
+  For Gaussian outcomes, stochastic HML imputations use GPBoost joint
+  posterior predictive samples rather than a common cross-validation RMSE.
+  These draws do not capture all model-parameter uncertainty, so Rubin-style
+  multiple-imputation validity is not established.
+  The default is "ELNET", selected only for its speed, rather than superiority.
 
-  When several base algorithms are supplied, \code{max_models} and
-  \code{tuning_time} are divided across the base algorithms and the
-  best-performing candidate is used. If \code{"ENSEMBLE"} is included,
+  When several base algorithms are supplied, "max_models" and
+  "tuning_time" are divided across the base algorithms and the
+  best-performing candidate is used. If "ENSEMBLE" is included,
   at least two additional base algorithms must also be supplied. The ensemble
-  is a stacked model constructed with \code{mlr3pipelines} using
+  is a stacked model constructed with "mlr3pipelines" using
   cross-validated predictions from the successfully tuned base learners and
   is evaluated as an additional candidate after base-learner tuning.
 
-  The current \code{mlr3extralearners} \code{classif.gbm} wrapper supports
-  two-class classification but not multiclass classification; therefore
-  \code{"GBM"} is skipped for multinomial targets when other learners are
-  available.
-
-  \code{"KNN"} does not support observation weights in its current mlr3
+  "KNN" does not support observation weights in its current mlr3
   learner. It can therefore be evaluated in single imputation, but is skipped
   during multiple imputation because bootstrap multiplicity weights are
   required for model fitting. When class balancing is requested in single
@@ -67,58 +68,92 @@ imputed. if \code{'load'} argument is provided, this argument will be ignored.}
   weights are retained for performance assessment.}
 
 \item{preimpute}{Character specifying the initial treatment of missing values before
-iterative model-based imputation. The default is \code{"random"}, which performs
-random sampling from each feature. The alternative is \code{"mm"},
-which performs median/mode preimputation.}
+iterative model-based imputation. The default is "random", which performs
+random sampling from each feature. The alternative is "mm",
+which performs median/mode preimputation. When 'hierarchy' and
+'variable_levels' are supplied, these methods automatically initialize
+declared higher-level variables once per independent school/child unit:
+random samples one donor from each observed unit with equal probability;
+mm computes a median (numeric) or mode (categorical) across distinct
+observed units. Values are copied to all rows belonging to a unit, and
+observed values are preserved. Undeclared variables remain row-wise.
+The experimental RF preimputation method is unchanged.}
 
 \item{ignore}{character vector of column names or index of columns that should
 should be ignored in the process of imputation.}
 
 \item{hierarchy}{Character vector specifying the clustering variables from the
-highest to the lowest level. For example,
-\code{hierarchy = c("city", "school", "classroom", "student")} specifies
+highest to the lowest level. HML uses them as nested random intercepts. For example,
+'hierarchy = c("city", "school", "classroom", "student")' specifies
 students nested within classrooms, classrooms nested within schools, and schools
-nested within cities. Hierarchy variables must exist in \code{data} and cannot
-contain missing values. The default is \code{NULL}, which assumes no
+nested within cities. Hierarchy variables must exist in data and cannot
+contain missing values. The default is NULL, which assumes no
 hierarchical structure.}
+
+\item{variable_levels}{Optional named list declaring variables that are constant
+within higher-level units. Names must match elements of 'hierarchy'. For
+example, list(schoolid = c('size', 'lowinc', 'mobility'),
+childid = c('female', 'black', 'hispanic')). Undeclared variables are
+imputed at the observation level. For declared targets, fitting, CV and
+stochastic draws are done once per unit, and predicted values are copied
+across its repeated rows. Numeric lower-level predictors are aggregated
+by mean and categorical predictors by mode. The declared variable must
+have no conflicting observed values within a unit. These declarations
+also automatically activate unit-level 'random' or 'mm' preimputation
+(no additional option is required).}
 
 \item{tolerance}{numeric. the minimum rate of improvement in estimated error metric
 of a variable to qualify the imputation for another round of iteration,
-if the \code{maxiter} is not yet reached. any improvement of imputation
+if the maxiter is not yet reached. any improvement of imputation
 is desirable.  however, specifying values above 0 can reduce the number
 of required iterations at a marginal increase of imputation error.
 for larger datasets, value of "1e-3" is recommended to reduce number
 of iterations. the default value is '1e-3'.}
 
 \item{tuning_time}{Numeric. Maximum base-learner tuning runtime in seconds for
-each variable and iteration. The default is \code{3600}. When several base
+each variable and iteration. The default is 3600. When several base
 algorithms are selected, this budget is divided across them. Tuning stops
 when the applicable time or evaluation limit is reached. A requested stacked
 ensemble is evaluated after base-learner tuning and does not consume this
 base-learner tuning-time allocation.}
 
-\item{max_models}{Integer or \code{NULL}. Maximum number of hyperparameter
+\item{max_models}{Integer or NULL. Maximum number of hyperparameter
 evaluations across the base algorithms for each variable and iteration.
-The default is \code{100}. When several base algorithms are selected, this
-budget is divided across them. If \code{NULL}, no explicit evaluation-count
-limit is supplied by \code{mlim}. \code{"ENSEMBLE"} does not count as a base
+The default is 100. When several base algorithms are selected, this
+budget is divided across them. If NULL, no explicit evaluation-count
+limit is supplied by mlim. "ENSEMBLE" does not count as a base
 algorithm for this allocation.}
 
-\item{maxiter}{integer. maximum number of iterations. the default value is \code{15},
-but it can be reduced to \code{3} (not recommended, see below).}
+\item{maxiter}{integer. maximum number of iterations. the default value is 10,
+but it can be reduced to 3 (not recommended, see below).}
 
 \item{cv}{Integer specifying the number of cross-validation folds. Values of
-\code{5} or higher are required. the default is \code{5}.}
+5 or higher are required. the default is 5.}
 
-\item{cpu}{Integer specifying the number of CPU threads supplied to learners that support internal multithreading. The default is \code{1}.}
+\item{cpu}{Integer specifying the number of CPU threads supplied to learners that support internal multithreading. The default is 1.}
 
-\item{stochastic}{Logical. If \code{TRUE}, stochastic variation is added after each
+\item{stochastic}{Logical. If TRUE, stochastic variation is added after each
 accepted variable-specific imputation update. For continuous variables, values
 are drawn from a normal distribution centered on the model prediction with the
 current cross-validation RMSE as the standard deviation. For categorical
 variables, values are sampled from the predicted class probabilities. The
-default is \code{FALSE} for single imputation and \code{TRUE} for multiple
+default is FALSE for single imputation and TRUE for multiple
 imputation.}
+
+\item{variance}{Character, either "constant" (default) or "conditional".
+Controls the stochastic residual variance for non-HML numeric targets.
+"constant" draws independent Gaussian errors with SD equal to the
+cross-validation RMSE. "conditional" refits the selected mean learner
+across CV folds to obtain out-of-fold squared residuals, then trains a
+regularized random forest to estimate residual variance conditional on
+predictors. Its OOB predictions calibrate the average variance to the
+selected model's CV RMSE squared. This adds a second model and extra CV
+fits per numeric variable and iteration, and requires the 'ranger' package.
+Categorical targets retain probability-based sampling; HML retains its
+own multilevel predictive distribution. If stochastic=FALSE, this option
+does not affect deterministic imputation. Conditional prediction MSE is
+not necessarily the true irreducible residual variance, and this option
+alone does not guarantee valid multiple-imputation inference.}
 
 \item{autobalance}{logical. if TRUE (default), binary and multinomial factor variables
 are balanced during single imputation. During multiple imputation,
@@ -129,22 +164,22 @@ balancing weights are combined with bootstrap multiplicity weights.}
 \item{verbosity}{character. controls how much information is printed to console.
 the value can be "warn" (default), "info", "debug", or NULL.}
 
-\item{report}{filename. if a filename is specified (e.g. report = "mlim.md"), the \code{"md.log"} R
+\item{report}{filename. if a filename is specified (e.g. report = "mlim.md"), the "md.log" R
 package is used to generate a Markdown progress report for the
 imputation. the format of the report is adopted based on the
-\code{'verbosity'} argument. the higher the verbosity, the more
+'verbosity' argument. the higher the verbosity, the more
 technical the report becomes. if verbosity equals "debug", then
 a log file is generated, which includes time stamp and shows
 the function that has generated the message. otherwise, a
 reduced markdown-like report is generated. default is NULL.}
 
-\item{save}{filename (with .mlim extension). if a filename is specified, an \code{mlim} object is
+\item{save}{filename (with .mlim extension). if a filename is specified, an 'mlim' object is
 saved after the end of each variable imputation. this object not only
 includes the imputed dataframe and estimated cross-validation error, but also
 includes the information needed for continuing the imputation,
 which is very useful feature for imputing large datasets, with a
 long runtime. this argument is activated by default and an
-mlim object is stored in the local directory named \code{"mlim.rds"}.}
+mlim object is stored in the local directory named "mlim.rds".}
 
 \item{load}{filename (with .mlim extension). an object of class "mlim", which includes the data, arguments,
 and settings for re-running the imputation, from where it was
@@ -158,7 +193,7 @@ these arguments are not documented in the help file and are not
 intended to be used by end user.}
 }
 \value{
-a \code{data.frame}, showing the
+a data.frame, showing the
         estimated imputation error from the cross validation within the data.frame's
         attribution
 }
