@@ -15,7 +15,7 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
                            # loop data
                            vars2impute,
                            allPredictors, preimpute, impute,
-                           hierarchy = NULL,
+                           hierarchy = NULL, variable_levels = NULL,
 
                            # settings
                            error_metric, FAMILY, cv, tuning_time,
@@ -29,6 +29,7 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
                            miniter, matching, ignore.rank,
                            verbosity, error, cpu, clean,
                            stochastic,
+                           variance = "constant",
                            running = TRUE) {
 
   # ------------------------------------------------------------
@@ -51,7 +52,33 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
 
   if (boot) {
     rownames(data) <- 1:nrow(data) #remember the rows that are missing
-    sampling_index <- sample(x = nrow(data), size = nrow(data), replace=TRUE)
+    hml_requested <- "HML" %in% toupper(impute)
+    if (!is.null(variable_levels)) hml_requested <- TRUE  # cluster bootstrap for ALL learners
+    if (hml_requested) {
+      # Cluster bootstrap: sample TOP-LEVEL clusters as units. Represent the
+      # number of times a cluster was selected by positive case weights; this
+      # prevents a group's copies being scattered across CV folds. Note that
+      # weighted cluster resampling approximates, but is not identical to,
+      # refitting separately labelled replicated clusters.
+      cluster_id <- as.character(data[[hierarchy[1L]]])
+      distinct_id <- unique(cluster_id)
+      for (resample_attempt in seq_len(30L)) {
+        counts <- table(sample(distinct_id, length(distinct_id), replace = TRUE))
+        selected <- cluster_id %in% names(counts)
+        # Avoid futile fits caused by a bootstrap omitting an entire class.
+        binary_ok <- all(vapply(vars2impute, function(v) {
+          if (!is.factor(data[[v]]) || nlevels(data[[v]]) != 2L) return(TRUE)
+          length(unique(stats::na.omit(data[selected, v]))) == 2L
+        }, logical(1)))
+        if (sum(counts > 0L) >= 3L && binary_ok) break
+      }
+      if (sum(counts > 0L) < 3L || !binary_ok) {
+        stop("HML cluster bootstrap could not retain enough groups and both binary classes.")
+      }
+      sampling_index <- NULL
+    } else {
+      sampling_index <- sample(x = nrow(data), size = nrow(data), replace=TRUE)
+    }
 
 
 
@@ -67,17 +94,26 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
 
     ## SOLUTION 2: ADD THE DUPLICATES TO THE WEIGHT_COLUMN
     ## ----------------------------------------------------
-    dups <- bootstrapWeight(sampling_index)
-    bdata <- data[1:nrow(data) %in% dups[,1], ]
-    bdataNA <- is.na(bdata[, vars2impute, drop = FALSE])
+    if (hml_requested) {
+      bdata <- data[selected, , drop = FALSE]
+      bdataNA <- is.na(bdata[, vars2impute, drop = FALSE])
+      bootstrap_weights <- as.numeric(counts[cluster_id[selected]])
+    } else {
+      dups <- bootstrapWeight(sampling_index)
+      bdata <- data[1:nrow(data) %in% dups[,1], ]
+      bdataNA <- is.na(bdata[, vars2impute, drop = FALSE])
+      bootstrap_weights <- dups[, 2]
+    }
     message("\n")
-    bdata <- mlim.preimpute(data=bdata, preimpute=preimpute, seed = NULL)
-    bdata[, "mlim_bootstrap_weights_column_"] <- dups[,2] #OR ALTERNATIVELY #dups[,2] / sum(dups[,2])
+    bdata <- mlim.preimpute(data=bdata, preimpute=preimpute, seed = NULL,
+                             variable_levels=variable_levels, hierarchy=hierarchy)
+    bdata[, "mlim_bootstrap_weights_column_"] <- bootstrap_weights
 
     # mlr3 learners require complete predictor matrices. Keep dataNA as the
     # original missingness mask, but initialize the working data before
     # model.matrix() is constructed in iterate().
-    data <- mlim.preimpute(data=data, preimpute=preimpute, seed = NULL)
+    data <- mlim.preimpute(data=data, preimpute=preimpute, seed = NULL,
+                            variable_levels=variable_levels, hierarchy=hierarchy)
 
     ## SOLUTION 3: Assign CV folding manually instead of weight_column
     ## ----------------------------------------------------
@@ -148,7 +184,8 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
       data <- mlim.multilevel(
         data = data,
         hierarchy = hierarchy,
-        variables = multilevel_source_variables
+        variables = multilevel_source_variables,
+        engine = if ("HML" %in% toupper(impute)) "HML" else NULL
       )
 
       multilevel_variables <- attr(data, "mlim.multilevel.variables")
@@ -188,7 +225,8 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
             multilevel_source_variables,
             names(bdata)
           ),
-          weights = bdata[["mlim_bootstrap_weights_column_"]]
+          weights = bdata[["mlim_bootstrap_weights_column_"]],
+          engine = if ("HML" %in% toupper(impute)) "HML" else NULL
         )
 
         b_multilevel_variables <- attr(
@@ -215,7 +253,24 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
     }
 
     # always print the iteration
-    message(paste0("\ndata ", m.it, ", iteration ", k, " (RAM = ", memuse::Sys.meminfo()$freeram,")", ":"), sep = "") #":\t"
+    # System free RAM is not equivalent to R memory use: it also reflects
+    # file caches and other processes. Report R's managed heap and process RSS
+    # (including native learner allocations) to diagnose genuine retention.
+    .mlim_gc <- gc(verbose = FALSE)
+    .mlim_heap <- sprintf("%.3f GiB", sum(.mlim_gc[, 2L]) / 1024)
+    .mlim_rss <- "unavailable (install 'ps')"
+    if (requireNamespace("ps", quietly = TRUE)) {
+      .mlim_rss_bytes <- tryCatch(
+        as.numeric(ps::ps_memory_info(ps::ps_handle())[["rss"]]),
+        error = function(e) NA_real_
+      )
+      if (is.finite(.mlim_rss_bytes)) {
+        .mlim_rss <- sprintf("%.3f GiB", .mlim_rss_bytes / 1024^3)
+      }
+    }
+    message(paste0("\ndata ", m.it, ", iteration ", k,
+                   " (R heap = ", .mlim_heap,
+                   ", R process RSS = ", .mlim_rss, "):"))
     md.log(paste("Iteration", k), section="subsection")
 
     for (Y in ITERATIONVARS[z:length(ITERATIONVARS)]) {
@@ -245,9 +300,14 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
           # saving settings
           mem, orderedCols, ignore, maxiter,
           miniter, matching, ignore.rank,
-          verbosity, error, cpu, stochastic)
+          verbosity, error, cpu, stochastic, variance = variance,
+          variable_levels = variable_levels)
         , file = report, append = TRUE)
         , error = function(cond) {
+          if ("HML" %in% toupper(impute)) {
+            stop("HML failed to impute variable '", Y, "': ", conditionMessage(cond),
+                 ". Stopping rather than silently returning preimputed values.")
+          }
           message(paste0("\nReimputing '", Y, "' with the current specified algorithms failed and this variable will be skipped! \nSee error below:"));
           md.log(paste("Reimputing", Y, "failed and the variable will be skipped!"),
                  date = TRUE, time = TRUE, print = TRUE)
@@ -285,6 +345,11 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
 
       # update the statusbar
       if (verbose==0) setTxtProgressBar(pb, (which(ITERATIONVARS == Y)))
+
+      # iterate() returns both full working datasets. Do not retain an
+      # additional reference to them in 'it' across the next iteration,
+      # where cluster summaries and many columns can be regenerated.
+      it <- NULL
     }
 
     # CHECK CRITERIA FOR RUNNING THE NEXT ITERATION
@@ -347,6 +412,10 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
     }
   }
 
+  if (!is.null(variable_levels)) {
+    data <- mlim.variable_levels.reconcile(data, dataNA, variable_levels, hierarchy)
+  }
+
   # ------------------------------------------------------------
   # Revert ordinal transformation
   # ============================================================
@@ -374,6 +443,10 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
     attr(data, "mlim.multilevel.variables") <- NULL
   }
 
+  # This temporary predictor is constructed only for intercept-only HML.
+  if ("mlim_hml_dummy_predictor_" %in% names(data)) {
+    data[["mlim_hml_dummy_predictor_"]] <- NULL
+  }
   attr(data, "metrics") <- metrics
   attr(data, error_metric) <- error
 

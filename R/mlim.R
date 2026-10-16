@@ -16,6 +16,14 @@
 #'   "XGB" (extreme gradient boosting), "LGBM" (Light gradient boosting), "CAT"
 #'   (CatBoost), "NNET" (neural network), "SVN" (support vector machine), "kNN"
 #'   (K-Nearest Neighbor), and "ENSEMBLE" (stacked ensemble).
+#'   "HML" adds GPBoost hierarchical boosting with nested random intercepts.
+#'   It requires `hierarchy` and currently supports numeric and binary-factor
+#'   targets (but not native multinomial outcomes). The HML backend leaves
+#'   longitudinal data in long format, without cluster summary predictors.
+#'   For Gaussian outcomes, stochastic HML imputations use GPBoost joint
+#'   posterior predictive samples rather than a common cross-validation RMSE.
+#'   These draws do not capture all model-parameter uncertainty, so Rubin-style
+#'   multiple-imputation validity is not established.
 #'   The default is "ELNET", selected only for its speed, rather than superiority.
 #'
 #'   When several base algorithms are supplied, "max_models" and
@@ -35,7 +43,14 @@
 #' @param preimpute Character specifying the initial treatment of missing values before
 #'   iterative model-based imputation. The default is "random", which performs
 #'   random sampling from each feature. The alternative is "mm",
-#'   which performs median/mode preimputation.
+#'   which performs median/mode preimputation. When 'hierarchy' and
+#'   'variable_levels' are supplied, these methods automatically initialize
+#'   declared higher-level variables once per independent school/child unit:
+#'   random samples one donor from each observed unit with equal probability;
+#'   mm computes a median (numeric) or mode (categorical) across distinct
+#'   observed units. Values are copied to all rows belonging to a unit, and
+#'   observed values are preserved. Undeclared variables remain row-wise.
+#'   The experimental RF preimputation method is unchanged.
 #                   feature is currently experimental, prone to over-fitting, and highly computationally extensive.
 #' @param stochastic Logical. If TRUE, stochastic variation is added after each
 #'   accepted variable-specific imputation update. For continuous variables, values
@@ -44,10 +59,35 @@
 #'   variables, values are sampled from the predicted class probabilities. The
 #'   default is FALSE for single imputation and TRUE for multiple
 #'   imputation.
+#' @param variance Character, either "constant" (default) or "conditional".
+#'   Controls the stochastic residual variance for non-HML numeric targets.
+#'   "constant" draws independent Gaussian errors with SD equal to the
+#'   cross-validation RMSE. "conditional" refits the selected mean learner
+#'   across CV folds to obtain out-of-fold squared residuals, then trains a
+#'   regularized random forest to estimate residual variance conditional on
+#'   predictors. Its OOB predictions calibrate the average variance to the
+#'   selected model's CV RMSE squared. This adds a second model and extra CV
+#'   fits per numeric variable and iteration, and requires the 'ranger' package.
+#'   Categorical targets retain probability-based sampling; HML retains its
+#'   own multilevel predictive distribution. If stochastic=FALSE, this option
+#'   does not affect deterministic imputation. Conditional prediction MSE is
+#'   not necessarily the true irreducible residual variance, and this option
+#'   alone does not guarantee valid multiple-imputation inference.
 #' @param ignore character vector of column names or index of columns that should
 #'               should be ignored in the process of imputation.
+#' @param variable_levels Optional named list declaring variables that are constant
+#'   within higher-level units. Names must match elements of 'hierarchy'. For
+#'   example, list(schoolid = c('size', 'lowinc', 'mobility'),
+#'   childid = c('female', 'black', 'hispanic')). Undeclared variables are
+#'   imputed at the observation level. For declared targets, fitting, CV and
+#'   stochastic draws are done once per unit, and predicted values are copied
+#'   across its repeated rows. Numeric lower-level predictors are aggregated
+#'   by mean and categorical predictors by mode. The declared variable must
+#'   have no conflicting observed values within a unit. These declarations
+#'   also automatically activate unit-level 'random' or 'mm' preimputation
+#'   (no additional option is required).
 #' @param hierarchy Character vector specifying the clustering variables from the
-#'   highest to the lowest level. For example,
+#'   highest to the lowest level. HML uses them as nested random intercepts. For example,
 #'   'hierarchy = c("city", "school", "classroom", "student")' specifies
 #'   students nested within classrooms, classrooms nested within schools, and schools
 #'   nested within cities. Hierarchy variables must exist in data and cannot
@@ -225,6 +265,7 @@ mlim <- function(data = NULL,
 
                  ignore = NULL,
                  hierarchy = NULL,
+                 variable_levels = NULL,
 
                  # stopping criteria
                  tolerance = 1e-3,
@@ -242,6 +283,7 @@ mlim <- function(data = NULL,
 
                  # fairness
                  stochastic = m > 1,
+                 variance = "constant",
                  autobalance = TRUE,
 
                  # report and reproducibility
@@ -262,6 +304,7 @@ mlim <- function(data = NULL,
 
   # check the ... arguments
   # ============================================================
+  variance <- match.arg(variance, c("constant", "conditional"))
   hidden_args <- c("superdebug", "ignore.rank", "sleep", "debug", "preimputed.data", "matching")
   stopifnot("incompatible '...' arguments" = (names(list(...)) %in% hidden_args))
 
@@ -335,7 +378,12 @@ mlim <- function(data = NULL,
     autobalance    <- load$autobalance #EXPERIMENTAL
     if ("preimpute" %in% names(load)) preimpute <- load$preimpute
     if ("hierarchy" %in% names(load)) hierarchy <- load$hierarchy
+    variable_levels <- if ("variable_levels" %in% names(load)) load$variable_levels else NULL
     if ("stochastic" %in% names(load)) stochastic <- load$stochastic
+    # Older saved states predate this option; preserve their constant-SD behaviour.
+    variance <- if ("variance" %in% names(load)) {
+      match.arg(load$variance, c("constant", "conditional"))
+    } else "constant"
     #balance        <- load$balance #EXPERIMENTAL
     ignore         <- load$ignore
     save           <- load$save
@@ -401,6 +449,16 @@ mlim <- function(data = NULL,
   }
 
 
+  # Conditional variance is a separate ranger learner for conventional
+  # regression engines. Fail early if its dependency is unavailable; do not
+  # silently run constant variance for every requested imputation.
+  if (identical(variance, "conditional") && isTRUE(stochastic) &&
+      !("HML" %in% toupper(impute)) &&
+      !requireNamespace("ranger", quietly = TRUE)) {
+    stop("variance='conditional' requires the 'ranger' package. Install it before running mlim.",
+         call. = FALSE)
+  }
+
   # ============================================================
   # Initialize the Markdown report
   # ============================================================
@@ -418,6 +476,7 @@ mlim <- function(data = NULL,
   # Identify variables for imputation and their models' families
   # ============================================================
   if (is.null(load)) {
+    variable_levels <- mlim.variable_levels.validate(data, hierarchy, variable_levels)
     VARS <- selectVariables(data, ignore, verbose, report)
 
     dataNA <- VARS$dataNA # the missing data placeholder
@@ -468,6 +527,12 @@ mlim <- function(data = NULL,
                               ignore.rank=ignore.rank, report)
 
     FAMILY<- Features$family
+    if ("HML" %in% toupper(impute) && any(FAMILY %in% "multinomial")) {
+      stop("HML cannot natively impute nominal variables with more than two ",
+           "categories: ", paste(vars2impute[FAMILY %in% "multinomial"], collapse = ", "),
+           ". Use another engine for these variables; automatic fallback ",
+           "would not preserve the intended multilevel model.")
+    }
 
     # data  <- Features$data ##> this will be moved inside the loop because
     #                            in multiple imputation, we want to start over
@@ -483,7 +548,8 @@ mlim <- function(data = NULL,
       # preimpute in single imputation ONLY. for multiple imputation, each
       # bootstrap dataset is imputed seperately
       if (m == 1) {
-        data <- mlim.preimpute(data=data, preimpute=preimpute, seed = NULL) # DO NOT RESET THE SEED!
+        data <- mlim.preimpute(data=data, preimpute=preimpute, seed = NULL,
+                               variable_levels=variable_levels, hierarchy=hierarchy) # DO NOT RESET THE SEED!
       }
 
       # reset the relevant predictors
@@ -499,6 +565,16 @@ mlim <- function(data = NULL,
     gc()
   }
 
+
+  # Report original-data random-effect identifiability once per mlim() call.
+  # HML recomputes active effects for each target and bootstrap sample in
+  # mlim.hml.fit(); reporting from the original NA mask here avoids one message
+  # per variable/iteration without changing any fitted model.
+  if ("HML" %in% toupper(impute)) {
+    mlim.hml.report_hierarchy(data = data, hierarchy = hierarchy,
+                              variables = vars2impute, na_mask = dataNA,
+                              variable_levels = variable_levels)
+  }
 
   # ............................................................
   # ............................................................
@@ -538,7 +614,7 @@ mlim <- function(data = NULL,
                                # loop data
                                vars2impute,
                                allPredictors, preimpute, impute,
-                               hierarchy = hierarchy,
+                               hierarchy = hierarchy, variable_levels = variable_levels,
                                # settings
                                error_metric, FAMILY=FAMILY, cv, tuning_time,
                                max_models,
@@ -550,6 +626,7 @@ mlim <- function(data = NULL,
                                miniter, matching, ignore.rank,
                                verbosity, error, cpu, clean = TRUE,
                                stochastic=stochastic,
+                               variance=variance,
                                running=running)
 
     if (m > 1) MI[[m.it]] <- dataLast

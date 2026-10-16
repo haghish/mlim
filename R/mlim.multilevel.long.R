@@ -1,6 +1,7 @@
 #' @title Restore Multilevel Data to Long Format
 #' @description Restores long data that were automatically reshaped to wide
-#'   format by `mlim.multilevel()`.
+#'   format by `mlim.multilevel()`. For the HML engine, which retains long
+#'   data, the function simply returns the original columns in original order.
 #' @param data A wide data frame returned by `mlim.multilevel()`.
 #' @param original_only If `TRUE` (default), returns only variables present in
 #'   the original input; otherwise generated multilevel summaries are restored too.
@@ -12,6 +13,18 @@
 mlim.multilevel.long <- function(data, original_only = TRUE) {
 
   if (!is.data.frame(data)) stop("'data' must be a data.frame.")
+  if (identical(attr(data, "mlim.multilevel.engine"), "HML")) {
+    # HML never transforms to wide. Restoration must not change row count,
+    # ordering, levels, or the observed/imputed values.
+    if (isTRUE(original_only)) {
+      original <- attr(data, "mlim.original.variables")
+      if (is.null(original) || !all(original %in% names(data))) {
+        stop("HML metadata do not identify all original columns.")
+      }
+      return(data[, original, drop = FALSE])
+    }
+    return(data)
+  }
   if (!identical(attr(data, "mlim.multilevel.format"), "wide")) {
     stop("'data' was not created by mlim.multilevel().")
   }

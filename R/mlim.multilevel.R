@@ -11,6 +11,9 @@
 #' @param add_cluster_size Logical. If `TRUE`, cluster size is added at each
 #'   informative hierarchy level. The default is `TRUE`.
 #' @param weights Optional non-negative observation weights.
+#' @param engine Optional imputation engine. If "HML", retain the input data
+#'   unchanged (including long format) and attach lightweight metadata; GPBoost
+#'   models the group structure directly and does not use cluster summaries.
 #' @details Data format is detected automatically. Repeated combinations of the
 #'   hierarchy variables indicate long data; unique combinations indicate data
 #'   that are already wide. Long data are reshaped so that one row represents
@@ -31,8 +34,11 @@
 #' @author E. F. Haghish
 #' @keywords internal
 #' @noRd
+#' @export
+
 mlim.multilevel <- function(data, hierarchy, variables = NULL, leave_one_out = TRUE,
-                            add_cluster_size = TRUE, weights = NULL) {
+                            add_cluster_size = TRUE, weights = NULL,
+                            engine = NULL) {
 
   if (!is.data.frame(data)) stop("'data' must be a data.frame.")
   if (!is.character(hierarchy) || !length(hierarchy)) stop("'hierarchy' must be a character vector.")
@@ -40,6 +46,19 @@ mlim.multilevel <- function(data, hierarchy, variables = NULL, leave_one_out = T
     stop("Hierarchy variables not found in data: ", paste(setdiff(hierarchy, names(data)), collapse = ", "))
   }
   if (anyNA(data[hierarchy])) stop("Hierarchy variables cannot contain missing values.")
+
+  # GPBoost represents the grouping structure through genuine random effects.
+  # Do not create target-derived cluster summaries or reshape repeated measures:
+  # HML requires exactly one original row per original observation.
+  if (!is.null(engine) && identical(toupper(engine), "HML")) {
+    attr(data, "mlim.hierarchy") <- hierarchy
+    attr(data, "mlim.original.variables") <- names(data)
+    attr(data, "mlim.multilevel.variables") <- character(0)
+    attr(data, "mlim.multilevel.format") <- "long"
+    attr(data, "mlim.multilevel.input.format") <- "long"
+    attr(data, "mlim.multilevel.engine") <- "HML"
+    return(data)
+  }
 
   if (is.null(weights)) weights <- rep(1, nrow(data))
   if (!is.numeric(weights) || length(weights) != nrow(data) || anyNA(weights) ||
