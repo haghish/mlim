@@ -4,49 +4,42 @@
 \alias{mlim.preimpute}
 \title{Preimputation of missing values}
 \usage{
-mlim.preimpute(data, preimpute = "random", seed = NULL)
+mlim.preimpute(
+  data,
+  preimpute = "random",
+  seed = NULL,
+  variable_levels = NULL,
+  hierarchy = NULL
+)
 }
 \arguments{
-\item{data}{data.frame containing missing values}
+\item{data}{A data.frame containing incomplete observations.}
 
-\item{preimpute}{character. Specify the algorithm for preimputation.
-Supported options are "mm" (median/mode replacement),
-"random" for random sampling from available data.}
+\item{preimpute}{Character: "random", "mm", or experimental "rf".}
 
-\item{seed}{integer. Random-number seed used by Random Forest or random
-sampling. The default is \code{NULL}.}
+\item{seed}{Optional random seed.}
+
+\item{variable_levels}{Optional named list assigning higher-level variables to
+the hierarchy identifier at which they are constant. For example,
+list(schoolid = c('size', 'lowinc'), childid = 'female'). These declarations
+automatically activate level-aware random or median/mode preimputation.
+If NULL, all variables are initialized at the observation level.}
+
+\item{hierarchy}{Ordered vector of hierarchy identifiers, highest first.}
 }
 \value{
-imputed data.frame
+Preimputed data.frame.
 }
 \description{
-Initializes missing values before the iterative mlim imputation procedure.
-Missing values can be initialized using median/mode, random sampling,
-from the observed values of each variable, or Random Forest imputation (experimental).
-}
-\details{
-NOTE:
-====
-
-This file includes "RF" for randomforest preimputation. Such an approach can
-inflate relationships between the features and thus, this method is not documented
-and is not recommended. It is maintained in the code for research purpose only.
-}
-\examples{
-\dontrun{
-data(iris)
-
-# add 10\% stratified missing values to one factor variable
-irisNA <- iris
-irisNA$Species <- mlim.na(irisNA$Species, p = 0.1, stratify = TRUE, seed = 2022)
-
-# run the default Median/Model preimputation
-MLIM <- mlim.preimpute(irisNA, preimpute = "mm")
-mlim.error(MLIM, irisNA, iris) #check the preimputation error
-
-# Random-sampling preimputation
-RANDOM <- mlim.preimpute(irisNA, preimpute = "random", seed = 2022)
-}
+Initialize missing values by random sampling, median/mode, or
+  experimental random forest. When variable_levels is specified, declared
+  higher-level variables receive ONE initial value per school/child unit;
+  partially observed units use their observed value throughout.
+  With hierarchy and variable_levels, random and mm AUTOMATICALLY operate
+  on distinct observed units for higher-level variables, rather than
+  weighting donors or medians/modes by the number of repeated rows.
+  Undeclared variables keep observation-level initialization. The RF method
+  and its post-initialization unit reconciliation are unchanged.
 }
 \author{
 E. F. Haghish
