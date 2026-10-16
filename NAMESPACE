@@ -3,6 +3,7 @@
 export(mlim)
 export(mlim.error)
 export(mlim.mids)
+export(mlim.multilevel)
 export(mlim.na)
 export(mlim.na.multilevel)
 export(mlim.preimpute)
