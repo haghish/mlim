@@ -11,7 +11,7 @@
 #' Learner interfaces are supplied by 'mlr3learners' and
 #' 'mlr3extralearners'. Depending on the algorithms selected by the user,
 #' the corresponding backend packages are loaded conditionally with
-#' \code{requireNamespace()': 'glmnet' (ELNET), 'ranger' (RF),
+#' requireNamespace()': 'glmnet' (ELNET), 'ranger' (RF),
 #' 'partykit', 'sandwich', and 'coin' (CRF), 'gbm' (GBM),
 #' 'xgboost' (XGB), 'lightgbm' (LGBM), 'catboost' (CAT),
 #' 'nnet' (NNET), 'kernlab' (SVM), and 'kknn' (KNN). These
@@ -53,7 +53,8 @@ iterate <- function(MI, dataNA, bdataNA,
                     mem, orderedCols, ignore, maxiter,
                     miniter, matching, ignore.rank,
                     verbosity, error, cpu,
-                    stochastic
+                    stochastic, variance = "constant",
+                    variable_levels = NULL
 ) {
 
   # Update the report
@@ -73,6 +74,33 @@ iterate <- function(MI, dataNA, bdataNA,
     )
   }
 
+  # Collapse a declared higher-level target to ONE record per school/child.
+  # Store the long datasets so we can restore their exact row order and the
+  # original observed values immediately before saving/returning.
+  level_context <- NULL
+  hierarchy_original <- hierarchy
+  if (!is.null(variable_levels)) {
+    target_level <- names(variable_levels)[vapply(variable_levels,
+      function(vars) Y %in% vars, logical(1))]
+    if (length(target_level)) {
+      if (length(target_level) != 1L) stop("Target has ambiguous variable level.")
+      level_context <- mlim.variable_levels.prepare(
+        data, bdata, dataNA, bdataNA, Y, hierarchy, target_level)
+      long_data <- data
+      long_bdata <- bdata
+      long_dataNA <- dataNA
+      long_bdataNA <- bdataNA
+      data <- level_context$data
+      bdata <- level_context$bdata
+      dataNA <- level_context$dataNA
+      bdataNA <- level_context$bdataNA
+      hierarchy <- level_context$hierarchy
+      # IDs identifying units are not fixed-effect predictors. Lower-level
+      # identifiers are arbitrary after collapsing and MUST NOT be predictors.
+      X <- setdiff(X, hierarchy_original)
+    }
+  }
+
   # Index the missing data
   # ============================================================
   v.na <- dataNA[, Y]
@@ -82,11 +110,32 @@ iterate <- function(MI, dataNA, bdataNA,
   # If predictors are NULL, randomly fill the missing values.
   # Otherwise continue with model-based imputation.
   # ============================================================
-  if (length(X) == 0L) {
+  # If every unit has an observed response, the missing ROWS can be filled
+  # directly by copying that unit's observed value. No model is necessary.
+  if (!is.null(level_context) && !any(v.na) && (!boot || !any(b.na))) {
+    perf <- list(RMSE = 0, MSE = 0, MAE = 0, RMSLE = NA_real_,
+                 Mean_Residual_Deviance = NA_real_, R2 = NA_real_,
+                 logloss = NA_real_, mean_per_class_error = NA_real_,
+                 AUC = NA_real_, pr_auc = NA_real_)
+    metrics <- rbind(metrics, extractMetrics(data, k, Y, perf, FAMILY[z]))
+  }
+  else if (length(X) == 0L && !("HML" %in% toupper(impute))) {
     if (debug) {
       md.log("uni impute", date = debug, time = debug, trace = FALSE)
     }
-    data[[Y]] <- missRanger::imputeUnivariate(data[[Y]])
+    if (!is.null(level_context)) {
+      draw <- function(values, mask) {
+        if (!any(mask)) return(values)
+        pool <- values[!mask]
+        if (!length(pool)) stop("No observed units available for unit-level imputation.")
+        values[mask] <- sample(pool, sum(mask), replace = TRUE)
+        values
+      }
+      data[[Y]] <- draw(data[[Y]], v.na)
+      if (boot) bdata[[Y]] <- draw(bdata[[Y]], b.na)
+    } else {
+      data[[Y]] <- missRanger::imputeUnivariate(data[[Y]])
+    }
   }
   else {
     if (debug) {
@@ -100,8 +149,16 @@ iterate <- function(MI, dataNA, bdataNA,
       )
     }
 
-    predictors <- setdiff(X, Y)
+    hml_requested <- "HML" %in% toupper(impute)
+    predictors <- setdiff(X, c(Y, if (hml_requested) hierarchy else character(0)))
     classification <- FAMILY[z] %in% c("binomial", "multinomial")
+    # A constant feature supplies valid dimensions for intercept-only HML.
+    # Non-HML learners preserve their existing predictor handling.
+    if (hml_requested && !length(predictors)) {
+      data[["mlim_hml_dummy_predictor_"]] <- 0
+      if (boot) bdata[["mlim_hml_dummy_predictor_"]] <- 0
+      predictors <- "mlim_hml_dummy_predictor_"
+    }
 
     # Build one common design matrix so factor coding is identical for
     # training data and all rows receiving predictions.
@@ -137,6 +194,11 @@ iterate <- function(MI, dataNA, bdataNA,
       target <- data[[Y]][!v.na]
     }
 
+    # The combined model.matrix() can be much larger than the completed data.
+    # After extracting the prediction and training subsets, the original dense
+    # matrix is redundant and should not remain live during CV and tuning.
+    rm(design)
+
     training <- trainDesign
     training[["mlim_target_"]] <- target
 
@@ -148,7 +210,7 @@ iterate <- function(MI, dataNA, bdataNA,
       weights <- bdata[["mlim_bootstrap_weights_column_"]][!b.na]
     }
 
-    if (classification && autobalance) {
+    if (classification && autobalance && !hml_requested) {
       if (is.null(weights)) {
         weights <- rep(1, length(target))
       }
@@ -233,6 +295,10 @@ iterate <- function(MI, dataNA, bdataNA,
     # Algorithm names were validated by syntaxProcessing().
     # ============================================================
     algorithms <- unique(toupper(impute))
+    if (hml_requested && classification && isTRUE(autobalance) && debug) {
+      md.log("HML: class reweighting disabled to preserve probability calibration",
+             trace = FALSE)
+    }
     use_ensemble <- "ENSEMBLE" %in% algorithms
     requested_base_algorithms <- setdiff(algorithms, "ENSEMBLE")
     base_algorithms <- requested_base_algorithms
@@ -322,6 +388,42 @@ iterate <- function(MI, dataNA, bdataNA,
     # ============================================================
     for (algorithm_index in seq_along(base_algorithms)) {
       algorithm <- base_algorithms[algorithm_index]
+
+      if (identical(algorithm, "HML")) {
+        if (classification && nlevels(target) != 2L) {
+          message("\nSkipping HML for multinomial variable '", Y,
+                  "': GPBoost does not provide a native multinomial likelihood.")
+          next
+        }
+        hml_training_data <- if (boot) {
+          bdata[which(!b.na), hierarchy, drop = FALSE]
+        } else {
+          data[which(!v.na), hierarchy, drop = FALSE]
+        }
+        hml_result <- tryCatch(
+          mlim.hml.fit(
+            x = as.matrix(trainDesign), y = target,
+            hierarchy_data = hml_training_data,
+            weights = if (boot) bdata[["mlim_bootstrap_weights_column_"]][!b.na] else NULL,
+            max_models = if (is.null(max_models)) NULL else eval_budget[algorithm_index],
+            tuning_time = runtime, cv = cv, cpu = cpu, seed = seed,
+            cv_strategy = mlim.hml.cv_strategy(data, as.logical(v.na), hierarchy)
+          ),
+          error = function(cond) {
+            # Preserve the real GPBoost CV/fitting exception. Returning NULL
+            # here used to mask it behind 'model training ... failed'.
+            stop("HML tuning for variable '", Y, "' failed: ",
+                 conditionMessage(cond), call. = FALSE)
+          }
+        )
+        if (!is.null(hml_result) && is.finite(hml_result$score) &&
+            hml_result$score < best_score) {
+          fit <- hml_result$fit
+          best_score <- hml_result$score
+          best_algorithm <- "HML"
+        }
+        next
+      }
 
       package_ok <- tryCatch(
         {
@@ -693,6 +795,9 @@ iterate <- function(MI, dataNA, bdataNA,
       # replacing all tuning tokens with their selected values.
       final_values <- learner$param_set$values
       tuned_values <- instance$result_learner_param_vals
+      # Only the score and selected parameters are needed after tuning.
+      # Release the tuning archive/task references before the final refit.
+      rm(instance)
       final_values[names(tuned_values)] <- tuned_values
       learner$param_set$values <- final_values
 
@@ -890,11 +995,49 @@ iterate <- function(MI, dataNA, bdataNA,
     }
 
     if (accept) {
-      pred <- fit$predict_newdata(
-        dataDesign[which(v.na), , drop = FALSE]
-      )
+      # This is deliberately a separate step from mean-model tuning. Only
+      # continuous, stochastic, non-HML imputations require a variance learner.
+      # The trained mean learner is cloned and cross-fitted; the original fit
+      # is retained for predicting the missing values.
+      conditional_variance_fit <- NULL
+      if (identical(variance, "conditional") && isTRUE(stochastic) &&
+          !classification && !inherits(fit, "mlim.hml") &&
+          (any(v.na) || (boot && any(b.na)))) {
+        conditional_variance_fit <- tryCatch(
+          mlim.variance.fit(
+            mean_learner = fit,
+            task = make_task("full"),
+            x = trainDesign,
+            weights = weights,
+            cv = cv,
+            cpu = cpu,
+            global_sd = as.numeric(iterationMetric[1L, "RMSE"]),
+            seed = seed
+          ),
+          error = function(e) {
+            warning(paste0(
+              "Conditional variance for variable '", Y,
+              "' could not be estimated: ", conditionMessage(e),
+              ". Falling back to constant CV RMSE for this update."
+            ), call. = FALSE)
+            NULL
+          }
+        )
+      }
 
-      if (classification) {
+      if (any(v.na)) {
+      if (inherits(fit, "mlim.hml")) {
+        VEK <- mlim.hml.predict(
+          fit, dataDesign[which(v.na), , drop = FALSE],
+          data[which(v.na), hierarchy, drop = FALSE], stochastic = stochastic
+        )
+      } else {
+        pred <- fit$predict_newdata(
+          dataDesign[which(v.na), , drop = FALSE]
+        )
+      }
+
+      if (!inherits(fit, "mlim.hml") && classification) {
         if (stochastic) {
           VEK <- stochasticFactorImpute(
             levels = levels(data[[Y]]),
@@ -907,26 +1050,38 @@ iterate <- function(MI, dataNA, bdataNA,
           VEK <- pred$response
         }
       }
-      else {
+      else if (!inherits(fit, "mlim.hml")) {
         VEK <- pred$response
 
         if (stochastic) {
-          VEK <- rnorm(
-            n = length(VEK),
-            mean = VEK,
-            sd = iterationMetric[, "RMSE"]
-          )
+          sd_missing <- if (is.null(conditional_variance_fit)) {
+            as.numeric(iterationMetric[1L, "RMSE"])
+          } else {
+            mlim.variance.predict_sd(
+              conditional_variance_fit,
+              dataDesign[which(v.na), , drop = FALSE], cpu = cpu
+            )
+          }
+          VEK <- rnorm(n = length(VEK), mean = VEK, sd = sd_missing)
         }
       }
 
       data[which(v.na), Y] <- VEK
+      }
 
-      if (boot) {
-        pred <- fit$predict_newdata(
-          bdataDesign[which(b.na), , drop = FALSE]
-        )
+      if (boot && any(b.na)) {
+        if (inherits(fit, "mlim.hml")) {
+          BEK <- mlim.hml.predict(
+            fit, bdataDesign[which(b.na), , drop = FALSE],
+            bdata[which(b.na), hierarchy, drop = FALSE], stochastic = stochastic
+          )
+        } else {
+          pred <- fit$predict_newdata(
+            bdataDesign[which(b.na), , drop = FALSE]
+          )
+        }
 
-        if (classification) {
+        if (!inherits(fit, "mlim.hml") && classification) {
           if (stochastic) {
             BEK <- stochasticFactorImpute(
               levels = levels(bdata[[Y]]),
@@ -939,15 +1094,19 @@ iterate <- function(MI, dataNA, bdataNA,
             BEK <- pred$response
           }
         }
-        else {
+        else if (!inherits(fit, "mlim.hml")) {
           BEK <- pred$response
 
           if (stochastic) {
-            BEK <- rnorm(
-              n = length(BEK),
-              mean = BEK,
-              sd = iterationMetric[, "RMSE"]
-            )
+            sd_boot_missing <- if (is.null(conditional_variance_fit)) {
+              as.numeric(iterationMetric[1L, "RMSE"])
+            } else {
+              mlim.variance.predict_sd(
+                conditional_variance_fit,
+                bdataDesign[which(b.na), , drop = FALSE], cpu = cpu
+              )
+            }
+            BEK <- rnorm(n = length(BEK), mean = BEK, sd = sd_boot_missing)
           }
         }
 
@@ -972,8 +1131,21 @@ iterate <- function(MI, dataNA, bdataNA,
       metrics <- rbind(metrics, iterationMetric)
     }
 
-    rm(fit)
-    gc()
+    # Release temporary mlr3 tasks, learner clones and dense predictor frames
+    # before returning data to the outer iteration loop. R's gc() cannot
+    # reclaim objects that remain referenced by local variables.
+    .mlim_temporary <- intersect(
+      c("fit", "design", "dataDesign", "bdataDesign", "trainDesign", "training",
+        "target", "pred", "task", "task_for_learner", "learner", "instance",
+        "tuned_learner", "trained_learner", "ensemble_learners",
+        "ensemble_result", "ensemble_task", "rr", "graph", "hml_result",
+        "conditional_variance_fit", "sd_missing", "sd_boot_missing",
+        "VEK", "BEK"),
+      ls(envir = environment(), all.names = TRUE)
+    )
+    if (length(.mlim_temporary)) rm(list = .mlim_temporary)
+    rm(.mlim_temporary)
+    gc(verbose = FALSE)
   }
 
   if (debug) {
@@ -981,6 +1153,18 @@ iterate <- function(MI, dataNA, bdataNA,
       "iteration done",
       date = debug, time = debug, trace = FALSE
     )
+  }
+
+  # Recreate long-form datasets after a unit-level fit. Preserve all source
+  # records, their original missingness masks, and any generated summary
+  # predictors. Predictions for each missing unit are broadcast consistently
+  # to all observations of that school/child; observed cells remain untouched.
+  if (!is.null(level_context)) {
+    data <- mlim.variable_levels.restore(long_data, data,
+      level_context$data_rows, Y, long_dataNA)
+    if (boot) bdata <- mlim.variable_levels.restore(long_bdata, bdata,
+      level_context$bdata_rows, Y, long_bdataNA)
+    hierarchy <- hierarchy_original
   }
 
   # Update the predictors during the first iteration
@@ -1056,7 +1240,9 @@ iterate <- function(MI, dataNA, bdataNA,
       ignore = ignore,
       autobalance = autobalance,
       hierarchy = hierarchy,
+      variable_levels = variable_levels,
       stochastic = stochastic,
+      variance = variance,
       save = save,
       maxiter = maxiter,
       miniter = miniter,
