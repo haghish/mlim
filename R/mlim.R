@@ -13,7 +13,7 @@
 #' @param algos character vector specifying the machine-learning algorithms used
 #'   for imputation. Supported algorithms are "ELNET" (elastic net), "RF" (random forest),
 #'   "CRF" (conditional random forest),
-#'   "XGB" (extreme gradient boosting), "LGBM" (Light gradient boosting), "CAT"
+#'   "XGB" (extreme gradient boosting), "GBM" (Light gradient boosting), "CAT"
 #'   (CatBoost), "NNET" (neural network), "SVN" (support vector machine), "kNN"
 #'   (K-Nearest Neighbor), and "ENSEMBLE" (stacked ensemble).
 #'   "HML" adds GPBoost hierarchical boosting with nested random intercepts.

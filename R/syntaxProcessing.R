@@ -29,7 +29,7 @@ syntaxProcessing <- function(data, hierarchy, preimpute, impute, matching,
                                    paste(fully_missing, collapse = ", "))
   if (!is.character(preimpute) || length(preimpute) != 1L ||
       is.na(preimpute) || !tolower(preimpute) %in% c("rf", "mm", "random"))
-    fail("'preimpute' must be 'rf', 'mm', or 'random'.")
+    fail("'preimpute' must be 'mm' or 'random'.")
   if (!is.character(impute) || !length(impute) || anyNA(impute))
     fail("'impute' must be a nonempty character vector.")
   algorithms <- unique(toupper(impute))
