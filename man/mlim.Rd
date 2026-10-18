@@ -17,9 +17,8 @@ mlim(
   max_models = 50,
   maxiter = 15L,
   cv = 10L,
-  cpu = 1,
+  cpu = -1,
   stochastic = m > 1,
-  variance = "constant",
   autobalance = TRUE,
   seed = NULL,
   verbosity = NULL,
@@ -130,7 +129,8 @@ but it can be reduced to 3 (not recommended, see below).}
 \item{cv}{Integer specifying the number of cross-validation folds. Values of
 5 or higher are required. the default is 5.}
 
-\item{cpu}{Integer specifying the number of CPU threads supplied to learners that support internal multithreading. The default is 1.}
+\item{cpu}{Integer specifying the number of CPU threads supplied to learners that support internal multithreading.
+The default is -1, meaning all available physical cores should be used.}
 
 \item{stochastic}{Logical. If TRUE, stochastic variation is added after each
 accepted variable-specific imputation update. For continuous variables, values
@@ -139,21 +139,6 @@ current cross-validation RMSE as the standard deviation. For categorical
 variables, values are sampled from the predicted class probabilities. The
 default is FALSE for single imputation and TRUE for multiple
 imputation.}
-
-\item{variance}{Character, either "constant" (default) or "conditional".
-Controls the stochastic residual variance for non-HML numeric targets.
-"constant" draws independent Gaussian errors with SD equal to the
-cross-validation RMSE. "conditional" refits the selected mean learner
-across CV folds to obtain out-of-fold squared residuals, then trains a
-regularized random forest to estimate residual variance conditional on
-predictors. Its OOB predictions calibrate the average variance to the
-selected model's CV RMSE squared. This adds a second model and extra CV
-fits per numeric variable and iteration, and requires the 'ranger' package.
-Categorical targets retain probability-based sampling; HML retains its
-own multilevel predictive distribution. If stochastic=FALSE, this option
-does not affect deterministic imputation. Conditional prediction MSE is
-not necessarily the true irreducible residual variance, and this option
-alone does not guarantee valid multiple-imputation inference.}
 
 \item{autobalance}{logical. if TRUE (default), binary and multinomial factor variables
 are balanced during single imputation. During multiple imputation,

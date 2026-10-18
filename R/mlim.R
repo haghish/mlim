@@ -1,3 +1,40 @@
+# EXPERIMENTAL ARGUMENTS THAT ARE NOT DOCUMENTED
+# ================================================================================
+# @param balance character vector, specifying variable names that should be
+#                balanced before imputation. balancing the prevalence might
+#                decrease the overall accuracy of the imputation, because it
+#                attempts to ensure the representation of the rare outcome.
+#                this argument is optional and intended for advanced users that
+#                impute a severely imbalance categorical (nominal) variable.
+# @param matching Experimental feature! If TRUE, post-processing is applied to
+#   imputed values for integer-valued numeric variables when 'stochastic'
+#   is also TRUE. Fractional predictions are stochastically matched
+#   between the two bounding observed values. The probability of selecting
+#   each value is based on its distance from the prediction, so that the
+#   expected matched value equals the original prediction. If the prediction
+#   falls outside the observed range, the nearest boundary value is used. If
+#   there is a gap in the observed values, the nearest lower and upper observed
+#   values are used. Matching is applied after stochastic variation has been
+#   added to the numeric prediction. Set to FALSE to disable numeric
+#   matching. For categorical variables, stochastic matching to the observed
+#   categories is handled by 'stochastic'; see the 'stochastic'
+#   argument for details.
+# @param variance Character, either "constant" (default) or "conditional".
+#   Controls the stochastic residual variance for non-HML numeric targets.
+#   "constant" draws independent Gaussian errors with SD equal to the
+#   cross-validation RMSE. "conditional" refits the selected mean learner
+#   across CV folds to obtain out-of-fold squared residuals, then trains a
+#   regularized random forest to estimate residual variance conditional on
+#   predictors. Its OOB predictions calibrate the average variance to the
+#   selected model's CV RMSE squared. This adds a second model and extra CV
+#   fits per numeric variable and iteration, and requires the 'ranger' package.
+#   Categorical targets retain probability-based sampling; HML retains its
+#   own multilevel predictive distribution. If stochastic=FALSE, this option
+#   does not affect deterministic imputation. Conditional prediction MSE is
+#   not necessarily the true irreducible residual variance, and this option
+#   alone does not guarantee valid multiple-imputation inference.
+# ================================================================================
+
 #' @title missing data imputation with automated machine learning
 #' @description imputes data.frame with mixed variable types using automated
 #'              machine learning (AutoML)
@@ -6,6 +43,9 @@
 #' @importFrom md.log md.log
 #' @importFrom memuse Sys.meminfo
 #' @importFrom stats var setNames na.omit
+#' @importFrom parallel detectCores
+#'
+#'
 #' @param data a data.frame with missing data to be
 #'             imputed. if "load" argument is provided, this argument will be ignored.
 #' @param m integer, specifying number of multiple imputations. the default value is
@@ -59,20 +99,6 @@
 #'   variables, values are sampled from the predicted class probabilities. The
 #'   default is FALSE for single imputation and TRUE for multiple
 #'   imputation.
-#' @param variance Character, either "constant" (default) or "conditional".
-#'   Controls the stochastic residual variance for non-HML numeric targets.
-#'   "constant" draws independent Gaussian errors with SD equal to the
-#'   cross-validation RMSE. "conditional" refits the selected mean learner
-#'   across CV folds to obtain out-of-fold squared residuals, then trains a
-#'   regularized random forest to estimate residual variance conditional on
-#'   predictors. Its OOB predictions calibrate the average variance to the
-#'   selected model's CV RMSE squared. This adds a second model and extra CV
-#'   fits per numeric variable and iteration, and requires the 'ranger' package.
-#'   Categorical targets retain probability-based sampling; HML retains its
-#'   own multilevel predictive distribution. If stochastic=FALSE, this option
-#'   does not affect deterministic imputation. Conditional prediction MSE is
-#'   not necessarily the true irreducible residual variance, and this option
-#'   alone does not guarantee valid multiple-imputation inference.
 #' @param ignore character vector of column names or index of columns that should
 #'               should be ignored in the process of imputation.
 #' @param variable_levels Optional named list declaring variables that are constant
@@ -120,25 +146,6 @@
 #
 #                    NOTE: during multiple imputation, target-specific balancing weights are
 #                    combined with bootstrap multiplicity weights.
-# @param balance character vector, specifying variable names that should be
-#                balanced before imputation. balancing the prevalence might
-#                decrease the overall accuracy of the imputation, because it
-#                attempts to ensure the representation of the rare outcome.
-#                this argument is optional and intended for advanced users that
-#                impute a severely imbalance categorical (nominal) variable.
-# @param matching Experimental feature! If TRUE, post-processing is applied to
-#   imputed values for integer-valued numeric variables when 'stochastic'
-#   is also TRUE. Fractional predictions are stochastically matched
-#   between the two bounding observed values. The probability of selecting
-#   each value is based on its distance from the prediction, so that the
-#   expected matched value equals the original prediction. If the prediction
-#   falls outside the observed range, the nearest boundary value is used. If
-#   there is a gap in the observed values, the nearest lower and upper observed
-#   values are used. Matching is applied after stochastic variation has been
-#   added to the numeric prediction. Set to FALSE to disable numeric
-#   matching. For categorical variables, stochastic matching to the observed
-#   categories is handled by 'stochastic'; see the 'stochastic'
-#   argument for details.
 #' @param maxiter integer. maximum number of iterations. the default value is 10,
 #'        but it can be reduced to 3 (not recommended, see below).
 #' @param cv Integer specifying the number of cross-validation folds. Values of
@@ -176,7 +183,8 @@
 #'                 the imputation and is particularly recommended for large datasets
 #'                 or when the user specifies a computationally extensive settings
 #'                 (e.g. specifying several algorithms, increasing tuning time, etc.).
-#' @param cpu Integer specifying the number of CPU threads supplied to learners that support internal multithreading. The default is 1.
+#' @param cpu Integer specifying the number of CPU threads supplied to learners that support internal multithreading.
+#' The default is -1, meaning all available physical cores should be used.
 #' @param ... arguments that are used internally between 'mlim'
 #'            these arguments are not documented in the help file and are not
 #'            intended to be used by end user.
@@ -279,11 +287,10 @@ mlim <- function(data = NULL,
                  max_models = 50, #
                  maxiter = 15L,
                  cv = 10L,
-                 cpu = 1,
+                 cpu = -1,
 
                  # fairness
                  stochastic = m > 1,
-                 variance = "constant",
                  autobalance = TRUE,
 
                  # report and reproducibility
@@ -302,10 +309,13 @@ mlim <- function(data = NULL,
   #    other algorithms when the first algorithm stops being useful.
   #    perhaps this will help optimizing, while reducing the computation burdon
 
+  # use all available CPUs by default
+  # ============================================================
+  if (cpu == -1) cpu <- parallel::detectCores(logical = FALSE)
+
   # check the ... arguments
   # ============================================================
-  variance <- match.arg(variance, c("constant", "conditional"))
-  hidden_args <- c("superdebug", "ignore.rank", "sleep", "debug", "preimputed.data", "matching")
+  hidden_args <- c("superdebug", "ignore.rank", "sleep", "debug", "preimputed.data", "matching", "variance")
   stopifnot("incompatible '...' arguments" = (names(list(...)) %in% hidden_args))
 
   # Simplify the syntax by taking arguments that are less relevant to the majority
@@ -320,6 +330,7 @@ mlim <- function(data = NULL,
   error       <- NULL
   running     <- TRUE
   debug       <- threeDots(name = "debug", ..., default = FALSE)
+  variance    <- threeDots(name = "variance", ..., default = "constant")
   miniter     <- 2L #this is the minimum number of iterations
   verbose     <- 0
   error_metric<- "RMSE"

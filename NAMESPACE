@@ -39,6 +39,7 @@ importFrom(paradox,
   ps,
   to_tune
 )
+importFrom(parallel,detectCores)
 importFrom(readstata13,save.dta13)
 importFrom(stats,
   ave,
