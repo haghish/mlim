@@ -1,3 +1,6 @@
+**Citation**: Haghish, E. F. (2022). _mlim: Single and Multiple Imputation with Automated Machine Learning_ [Computer software]. https://CRAN.R-project.org/package=mlim.
+
+- - -
 
 <a href="https://github.com/haghish/mlim"><img src='man/figures/mlim.png' align="right" height="200" /></a>
 
@@ -44,19 +47,6 @@ Simply put, for each variable in the dataset, **`mlim`** automatically fine-tune
   + Imputes missing data in nested observations with higher accuracy compared to the HLM imputation methods
 - Does not force a particular linear model 
 - Uses a blend of different machine learning models 
-
-<!-- 
-
-Download mlim multiple imputation handbook
-------------------------------------------
-
-<a href="https://github.com/haghish/mlim_handbook/blob/main/mlim_handbook.pdf"><img src='https://github.com/haghish/mlim_handbook/blob/main/figures/handbook.png' align="left" height="150" /></a> `mlim` comes with a free and open-source handbook to help you get started with either single or multiple imputation. The handbook is written in _LaTeX_ and its source is publically hosted on GitHub, visit [github.com/haghish/mlim_handbook](https://github.com/haghish/mlim_handbook) for more information. 
-
-<br>
-<br>
-<br>
-<br>
--->
 
 How the imputation procedure works
 ---------------------------------------------------------
@@ -161,38 +151,6 @@ The following algorithm names are recognized by **`mlim`**:
 
 `ELNET` is the default because it is relatively fast to tune, not because it always produces the lowest error. More complex models can improve prediction in some datasets but may require substantially more computing time.
 
-
-### `GBM` vs `ELNET`
-
-But which one should you choose, assuming computation resources are not in question? Well, __`GBM`__ is very liokely to outperform __`ELNET`__, if you specify a large enough `max_models` argument to well-tune the algorithm for imputing each feature. That basically means generating more than 100 models, at least. But you will enjoy a slight -- yet probably statistically significant -- improvement in the imputation accuracy. The option is there, for those who can use it, and to my knowledge, fine-tuning __`GBM`__ with large enough number of models will be the most accurate imputation algorithm compared to any other procedure I know. But __`ELNET`__ comes second and compared to its speed advantage, it is indeed charming!
-
-Both of these algorithms offer one advantage over all the other machine learning missing data imputation methods such as kNN, K-Means, PCA, Random Forest, etc... Simply put, you do not need to specify any parameter yourself, everything is automatic and **`mlim`** searches for the optimal parameters for imputing each variable within each iteration. For all the aformentioned packages, some parameters need to be specified, which influence the imputation accuracy. Number of _k_ for kNN, number of components for PCA, number of trees (and other parameters) for Random Forest, etc... This is why `elnet` outperform the other packages. You get a software that optimizes its models on its own. 
-
-Advantages and limitations
---------------------------
-
-**`mlim`** fine-tunes models for imputation, a procedure that has never been implemented in other R packages. This procedure often yields much higher accuracy compared to other machine learning imputation methods or missing data imputation procedures because of using more accurate models that are fine-tuned for each feature in the dataset. The cost, however, is computational resources. If you have access to a very powerful machine, with a huge amount of RAM per CPU, then try __`GBM`__. If you specify a high enough number of models in each fine-tuning process, you are likely to get a more accurate imputation that __`ELNET`__. However, for personal machines and laptops, __`ELNET`__ is generally recommended (see below). __If your machine is not powerful enough, it is likely that the imputation crashes due to memory problems...__. So, perhaps begin with __`ELNET`__, unless you are working with a powerful server. This is my general advice as long as **`mlim`** is in Beta version and under development.
-
-
-Citation 
---------
-
-- Haghish, E. F. (2022). mlim: Multiple Imputation with Automated Machine Learning [Computer software]. https://CRAN.R-project.org/package=mlim. 
-<!-- - Haghish, E. F. (2022). mlim Multiple Imputation Handbook. Software Manual. https://github.com/haghish/mlim_handbook. -->
-
-<!--
-Preimputation
--------------
-
-**`mlim`** implements a trick to reduce number of iterations needed for reaching the optimized imputation. Usually, prior to the imputation, the missing data are replaced with mean, mode, or even random values from within the variable. This is a fair start-point for the imputation procedure, but makes the optimization very time consuming. Another possibility would be to use a fast and well-established imputation algorithm for the pre-imputation and then improve the imputed values. **`mlim`** supports the following algorithms for preimputation:
-
-| **Algorithm**  |    **Speed**   |  **RAM** |  **CPU**  |
-|:---------------|:---------------|:---------|:----------|
-| `knn`       |    Very fast   |    Low   |    Low    |
-| `rf`    |      fast      |   High   |    High   |
-| `mm`        | Extremely fast | Very Low |  Very Low |
-
--->
 
 Example 
 -------
