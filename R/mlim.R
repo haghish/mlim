@@ -33,6 +33,39 @@
 #   does not affect deterministic imputation. Conditional prediction MSE is
 #   not necessarily the true irreducible residual variance, and this option
 #   alone does not guarantee valid multiple-imputation inference.
+# ARGUMENTS FOR ..., WHICH ARE MOSTLY EXPERIMENTAL
+# 1. preimputed.data data.frame. if you have used another software for missing data imputation, you can still
+#    optimize the imputation by handing the data.frame to this argument, which will bypass the "preimpute" procedure.
+# 2. ignore.rank logical, if FALSE (default), ordinal variables
+#                    are imputed as continuous integers with regression
+#                    and are reverted to ordinal later again. this procedure is
+#                    recommended. if FALSE, the rank of the categories will be ignored
+#                    the the algorithm will try to optimize for classification accuracy.
+#                    WARNING: the latter often results in very high classification accuracy but at
+#                    the cost of higher rank error. see the "mlim.error" function
+#                    documentation to see how rank error is computed. therefore, if you
+#                    intend to carry out analysis on the rank data as numeric, it is
+#                    recommended that you set this argument to FALSE.
+# @param stopping_metric character.
+# @param stopping_rounds integer.
+# @param stopping_tolerance numeric.
+# @param weights_column non-negative integer. a vector of observation weights
+#                       can be provided, which should be of the same length
+#                       as the dataframe. giving an observation a weight of
+#                       Zero is equivalent of ignoring that observation in the
+#                       model. in contrast, a weight of 2 is equivalent of
+#                       repeating that observation twice in the dataframe.
+#                       the higher the weight, the more important an observation
+#                       becomes in the modeling process. the default is NULL.
+# @param error_metric character. specify the minimum improvement
+#                                  in the estimated error to proceed to the
+#                                  following iteration or stop the imputation.
+#                                  the default is 10^-4 for "MAE"
+#                                  (Mean Absolute Error). this criteria is only
+#                                  applied from the end of the fourth iteration.
+#                                  "RMSE" (Root Mean Square
+#                                  Error). other possible values are "MSE",
+#                                  "MAE", "RMSLE".
 # ================================================================================
 
 #' @title missing data imputation with automated machine learning
@@ -189,39 +222,6 @@
 #'            these arguments are not documented in the help file and are not
 #'            intended to be used by end user.
 #
-# ARGUMENTS FOR ..., WHICH ARE MOSTLY EXPERIMENTAL
-# 1. preimputed.data data.frame. if you have used another software for missing data imputation, you can still
-#    optimize the imputation by handing the data.frame to this argument, which will bypass the "preimpute" procedure.
-# 2. ignore.rank logical, if FALSE (default), ordinal variables
-#                    are imputed as continuous integers with regression
-#                    and are reverted to ordinal later again. this procedure is
-#                    recommended. if FALSE, the rank of the categories will be ignored
-#                    the the algorithm will try to optimize for classification accuracy.
-#                    WARNING: the latter often results in very high classification accuracy but at
-#                    the cost of higher rank error. see the "mlim.error" function
-#                    documentation to see how rank error is computed. therefore, if you
-#                    intend to carry out analysis on the rank data as numeric, it is
-#                    recommended that you set this argument to FALSE.
-# @param stopping_metric character.
-# @param stopping_rounds integer.
-# @param stopping_tolerance numeric.
-# @param weights_column non-negative integer. a vector of observation weights
-#                       can be provided, which should be of the same length
-#                       as the dataframe. giving an observation a weight of
-#                       Zero is equivalent of ignoring that observation in the
-#                       model. in contrast, a weight of 2 is equivalent of
-#                       repeating that observation twice in the dataframe.
-#                       the higher the weight, the more important an observation
-#                       becomes in the modeling process. the default is NULL.
-# @param error_metric character. specify the minimum improvement
-#                                  in the estimated error to proceed to the
-#                                  following iteration or stop the imputation.
-#                                  the default is 10^-4 for "MAE"
-#                                  (Mean Absolute Error). this criteria is only
-#                                  applied from the end of the fourth iteration.
-#                                  "RMSE" (Root Mean Square
-#                                  Error). other possible values are "MSE",
-#                                  "MAE", "RMSLE".
 #' @return a data.frame, showing the
 #'         estimated imputation error from the cross validation within the data.frame's
 #'         attribution
