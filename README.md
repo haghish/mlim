@@ -4,7 +4,6 @@
 **`mlim`** : Single and Multiple Imputation for `R` and `Stata` with Automated Machine Learning
 ================================================================
 
-<!--<a href="https://github.com/haghish/mlim"><img src="./web/mlim.png" align="left" width="140" hspace="10" vspace="6"></a> -->
 [![GitHub dev](https://img.shields.io/github/v/release/haghish/mlim.svg?color=2eb885)](https://github.com/haghish/mlim/releases/?include_prereleases&sort=semver "View GitHub releases")
 [![CRAN version](https://www.r-pkg.org/badges/version/mlim?color=2eb8b3)](https://cran.r-project.org/package=mlim)  [![](https://cranlogs.r-pkg.org/badges/grand-total/mlim?color=a958d1)](https://cran.r-project.org/package=mlim) [![](man/figures/manual.svg)](https://CRAN.R-project.org/package=mlim)
 <!--  [![](man/figures/handbook_stupid.svg)](https://github.com/haghish/mlim_handbook/blob/main/mlim_handbook.pdf) 
@@ -14,12 +13,23 @@
 [![GitHub dev](https://img.shields.io/github/v/tag/haghish/mlim.svg?sort=semver?color=2eb885)](https://github.com/haghish/mlim/releases/?include_prereleases&sort=semver "View GitHub releases")
  -->
 
+**`mlim`** is an open-source statistical software for single and multiple imputation of missing data using automated machine learning. It is freely available in __R__ and __Stata__. The aim is to make model-based imputation accessible for datasets containing mixed data types easier (e.g., continuous, binary, ordinal, and nominal variables), while allowing the models to be __fine-tuned__ separately for the variables that require imputation. To the author's knowledge, **`mlim`** is the first statistical software to allow machine-learning imputation with automated fine-tuning, which is expected to not only enhance imputation accuracy, but also, reduce bias. **Importantly, `mlim` is also suitable for imputing longitudinal and hierarchical data**, providing a simple and robust solution for missing data imputation of several data types simultaneously. 
 
-**`mlim`** is the first missing data imputation software to implement automated machine learning for performing _multiple imputation_ or _single imputation_ of missing data. The software, which is currently implemented as an R package, brings the state-of-the-arts of machine learning to provide a versatile missing data solution for various data types (continuous, binary, multinomial, and ordinal). In a nutshell, **`mlim`** is expected to outperform any other available missing data imputation software on many grounds. For example, **`mlim`** is expected to deliver:
+In a nutshel, instead of applying one fixed prediction model to every variable, **`mlim`** searches for suitable hyperparameters using cross-validation. Users can select elastic net, random forests, gradient boosting, and other machine-learning algorithms for imputation and specify the amount of computational resources they wish to provide for fine-tuning each of the variables.
 
-1. **Lower imputation error** compared to other missing data imputation software.
-2. **Higher imputation fairness**, when the data suffers from severe class imbalance, unnormal destribution, or the variables (features) have interactions with one another.
-3. **Faster imputation of big datasets** because **`mlim`** excells in making an efficient use of available CPU cores and the runtime scales fairly well as the size of data becomes huge. 
+## Why use `mlim`?
+
+Missing data imputation is challenging when variables have different measurement levels, nonlinear relationships, interactions, or highly unequal category frequencies. **`mlim`** was developed to address some of these challenge. The main features of this package are:
+
+- **Automated fine-tuning.** Models are tuned separately for imputed variables, using cross-validation to compare candidate settings.
+- **Mixed data types.** Continuous, binary, nominal, and ordinal variables can be included in the same dataset. Ordinal variables are, by default, treated as ordered numeric responses during model fitting and then converted back to their original categories.
+- **Different machine-learning algorithms**: Users can select one learner, compare several learners, or request a stacked ensemble of multiple learners.
+- **Single and multiple imputation**: Multiple imputation uses bootstrap-based model fitting and stochastic draws to generate different completed datasets.
+- **Imbalanced categorical variables**: Automatic class balancing is available for categorical outcomes in the standard learners. This may improve representation of uncommon categories, although it does not guarantee unbiased estimates.
+- **Hierarchical data**: Hierarchy identifiers and the level at which variables are measured can be specified. The **`HML`** learner models nested random intercepts.
+- **R** and **Stata**: The imputation models run in R; Stata users can invoke them without manually exporting and importing each completed dataset.
+
+Predictive accuracy is important, but it is not the only criterion for evaluating imputation. The preservation of variable distributions, associations, uncertainty, and the validity of subsequent statistical inference should also be considered. **Higher cross-validation accuracy does not necessarily mean lower bias or valid multiple-imputation inference.**
 
 Fine-tuning missing data imputation
 -----------------------------------
