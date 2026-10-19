@@ -29,7 +29,10 @@ Missing data imputation is challenging when variables have different measurement
 - **Hierarchical data**: Hierarchy identifiers and the level at which variables are measured can be specified. The **`HML`** learner models nested random intercepts.
 - **R** and **Stata**: The imputation models run in R; Stata users can invoke them without manually exporting and importing each completed dataset.
 
-Predictive accuracy is important, but it is not the only criterion for evaluating imputation. The preservation of variable distributions, associations, uncertainty, and the validity of subsequent statistical inference should also be considered. **Higher cross-validation accuracy does not necessarily mean lower bias or valid multiple-imputation inference.**
+
+
+
+
 
 Fine-tuning missing data imputation
 -----------------------------------
@@ -90,63 +93,40 @@ Below are some comparisons between different R packages for carrying out multipl
 
 <img src="man/figures/charity.png" width="200" height="150"><img src="man/figures/iris_continuous_p15.png" width="200" height="150"><img src="man/figures/iris_mpce_p15.png" width="200" height="150"><img src="man/figures/bfi_binary_p15.png" width="200" height="150"><img src="man/figures/bfi_missrank_p15.png" width="200" height="150"><img src="man/figures/sat.act_nrmse_p15.png" width="200" height="150"><img src="man/figures/titanic_mpce_p15.png" width="200" height="150">
 
+## Installation
 
+### R
 
-
-R Installation
---------------
-
-To install the latest version from GitHub:
-
-``` r
-library(devtools)
-install_github("haghish/mlim")
-```
-
-Depending on the learners you wish to use for imputation, there will be other dependencies. For installing all learners supported by __`mlim`__, you will need the following R dependencies:
+Install directly from GitHub:
 
 ```r
-# Required packages
-install.packages(c("partykit", "sandwich", "coin", "gbm", "lightgbm", "kernlab", "kknn", "readstata13", "remotes"))
-
-# Optional packages fot catBoost imputation (for Mac)
-remotes::install_url("https://github.com/catboost/catboost/releases/download/v1.2.10/catboost-R-darwin-universal2-1.2.10.tgz",
-  INSTALL_opts = c("--no-multiarch", "--no-test-load", "--no-staged-install"))
-
-# Optional packages fot catBoost imputation (for Windows)
-remotes::install_url(
-  "https://github.com/catboost/catboost/releases/download/v1.2.10/catboost-R-windows-x86_64-1.2.10.tgz", 
-  INSTALL_opts = c("--no-multiarch", "--no-test-load"))
-
-# Optional package for catboost imputation (for Linux)
-remotes::install_url("https://github.com",
-                     INSTALL_opts = c("--no-multiarch", "--no-test-load", "--no-staged-install"))
-
-# Additional learners (RECOMMENDED!)
-install.packages("mlr3extralearners", repos = c(mlrorg = "https://mlr-org.r-universe.dev"))
+install.packages("remotes")
+remotes::install_github("haghish/mlim")
+library(mlim)
 ```
 
-<!-- 
-pak::pak("mlr-org/mlr3extralearners@*release")
-pak::pak("mlr-org/mlr3learners@*release") 
--->
+The package uses `mlr3`, `mlr3tuning`, `mlr3pipelines`, and related packages for model training and tuning. Selected algorithms may require additional packages. For example:
 
-Stata Installation
-------------------
+```r
+install.packages(c("mlr3learners", "glmnet", "ranger", "gbm", "xgboost"))
 
-__`mlim`__ is also available in Stata. The [__`github package`__](https://github.com/haghish/github) is the only recommended way for installing **`mlim`**. Once [__`github`__](https://github.com/haghish/github) is installed, you can install the package with the following command:
+# Additional learners, when needed
+install.packages("mlr3extralearners",
+                 repos = c(mlrorg = "https://mlr-org.r-universe.dev"))
 
-```js
+# For experimental hierarchical imputation
+install.packages("gpboost")  # check platform-specific availability
+```
+
+Other optional backends include `partykit`, `sandwich`, `coin`, `lightgbm`, `catboost`, `nnet`, `kernlab`, and `kknn`. Install the backend corresponding to the algorithm you want to use. Not all of these packages are available on every operating system through the same installation method. 
+
+### Stata
+
+The Stata command calls the R package through [`rcall`](https://github.com/haghish/rcall). Install and configure `rcall` first, ensure that R is available to Stata, and install the R development package as shown above. Then install the Stata command from its GitHub repository using the [`github`](https://github.com/haghish/github) Stata package:
+
+```stata
 github install haghish/mlim
 ```
-
-<!--
-Otherwise, install the latest stable release (recommended for general users)
-
-```js
-github install haghish/mlim, stable
-```
--->
 
 Supported algorithms
 --------------------
