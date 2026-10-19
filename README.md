@@ -108,18 +108,18 @@ remotes::install_url(
   "https://github.com/catboost/catboost/releases/download/v1.2.10/catboost-R-windows-x86_64-1.2.10.tgz", 
   INSTALL_opts = c("--no-multiarch", "--no-test-load"))
 
-# Optional package for catboost imputation (for Linux)
-remotes::install_url("https://github.com",
+# Optional package for catboost imputation (for Linux X86_64)
+remotes::install_url("https://github.com/catboost/catboost/releases/download/v1.2.10/catboost-R-Linux-1.2.10.tgz",
+                     INSTALL_opts = c("--no-multiarch", "--no-test-load", "--no-staged-install"))
+
+# Optional package for catboost imputation (for Linux Aarch64)
+remotes::install_url("https://github.com/catboost/catboost/releases/download/v1.2.10/catboost-R-linux-aarch64-1.2.10.tgz",
                      INSTALL_opts = c("--no-multiarch", "--no-test-load", "--no-staged-install"))
 
 # Additional learners (RECOMMENDED!)
 install.packages("mlr3extralearners", repos = c(mlrorg = "https://mlr-org.r-universe.dev"))
 ```
 
-<!-- 
-pak::pak("mlr-org/mlr3extralearners@*release")
-pak::pak("mlr-org/mlr3learners@*release") 
--->
 
 Stata Installation
 ------------------
