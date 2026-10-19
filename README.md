@@ -29,11 +29,6 @@ Missing data imputation is challenging when variables have different measurement
 - **Hierarchical data**: Hierarchy identifiers and the level at which variables are measured can be specified. The **`HML`** learner models nested random intercepts.
 - **R** and **Stata**: The imputation models run in R; Stata users can invoke them without manually exporting and importing each completed dataset.
 
-
-
-
-
-
 Fine-tuning missing data imputation
 -----------------------------------
 
@@ -63,33 +58,23 @@ Download mlim multiple imputation handbook
 <br>
 -->
 
-Procedure
+How the imputation procedure works
 ---------------------------------------------------------
 
-When a dataframe with NAs is given to **`mlim`**, the NAs are replaced with plausible values (e.g. Mean and Mode) to prepare the dataset for the imputation, as shown in the flowchart below:
+The procedure consists of several steps:
+
+1. **Identify missing variables.** `mlim` selects variables containing some observed and some missing values. Completely missing variables cannot be estimated from their own observed information. Variables can be excluded from imputation using `ignore`.
+2. **Preimputation.** Missing predictors are temporarily initialized using random sampling (`preimpute = "random"`, the default) or the median/mode (`preimpute = "mm"`). An experimental random-forest initialization (`"rf"`) is also available. These initial values are not the final imputations.
+3. **Model tuning.** For each target variable, the chosen learner or learners are fitted using the observed values of that target. Candidate models are evaluated by cross-validation. The number of evaluations and the available tuning time can be limited.
+4. **Iterative updates.** The model predicts the missing values, and the imputed dataset is updated. The procedure can continue through several iterations, subject to the stopping criterion and `maxiter`.
+5. **Stochastic imputation.** For multiple imputation, stochastic variation is enabled by default. The standard numeric learners use residual variation based on cross-validation RMSE. However, categorical variables are sampled using predicted class probabilities. For longitudinal and hierarchical imputation, the `HML` procedure uses hierarchical predictive distributions.
 
 <img src='man/figures/flowchart_base.png' align="center" width="300" /> 
-
-<!-- 
-**`mlim`** follows three steps to optimize the missing data imputation. This procedure is _optional_, depending on the amount of computing resources available to you. In general, **`ELNET`** imputation already outperforms other available single and multiple imputation methods available in **R**. However, the imputation error can be further improved by training stronger algorithms such as **`GBM`**, **`XGB`**, **`DL`**, or even **`Ensemble`**, stacking several models on top of one another. For the majority of the users, the **`GBM`** or **`XGB`** (XGB is available only in Mac OSX and Linux) will significantly imprive the **`ELNET`** imputation, if long-enough time is provided to generate a lot of models to fine-tune them. 
--->
-
-<!-- 
-<img src='man/figures/procedure5.png' align="center" height="400" /> 
--->
-
-<!-- 
-You do not necessarily need the post-imputation. Once you have _reimputed_ the data with `ELNET`, you can stop there. `ELNET` is relatively a fast algorithm and it is easy to fine-tune it compared to `GBM`, `XGB`, `DL`, or `Ensemble`. In addition, `ELNET` generalizes nicely and is less prone to overfiting. In the flowchart below the procedure of **mlim** algorithm is drawn. When using **mlim**, you can use `ELNET` to impute a dataset with NA or optimize the imputed values of a dataset that is already imputed. If you wish to go the extra mile, you can use heavier algorithms as well to activate the postimputation procedure, but it is strictly optional and by default, **mlim** does not use postimputation. 
--->
-
-<!-- 
-<img src='man/figures/flowchart_optimization.png' align="center" width="300" /> 
--->
 
 Fast imputation with **`ELNET`**
 ---------------------------------------------------------
 
-Below are some comparisons between different R packages for carrying out multiple imputations (bars with error) and single imputation. In these analyses, I only used the **`ELNET`** algorithm, which fine-tunes much faster than other algorithms (**`GBM`**, **`XGBoost`**, and **`DL`**). As it evident, **`ELNET`** already outperforms all other single and multiple imputation procedures available in **R** language. 
+Below are some comparisons between different R packages for carrying out multiple imputations (bars with error) and single imputation. In these analyses, I only used the **`ELNET`** algorithm, which fine-tunes much faster than other algorithms (**`GBM`**, **`XGB`**, and **`DL`**). As it evident, **`ELNET`** already outperforms all other single and multiple imputation procedures available in **R** language. 
 
 <img src="man/figures/charity.png" width="200" height="150"><img src="man/figures/iris_continuous_p15.png" width="200" height="150"><img src="man/figures/iris_mpce_p15.png" width="200" height="150"><img src="man/figures/bfi_binary_p15.png" width="200" height="150"><img src="man/figures/bfi_missrank_p15.png" width="200" height="150"><img src="man/figures/sat.act_nrmse_p15.png" width="200" height="150"><img src="man/figures/titanic_mpce_p15.png" width="200" height="150">
 
@@ -102,7 +87,29 @@ Install directly from GitHub:
 ```r
 install.packages("remotes")
 remotes::install_github("haghish/mlim")
-library(mlim)
+
+# Required packages
+install.packages(c("partykit", "sandwich", "coin", "gbm", "lightgbm", "kernlab", "kknn", "readstata13", "remotes"))
+
+# Optional packages fot catBoost imputation (for Mac)
+remotes::install_url("https://github.com/catboost/catboost/releases/download/v1.2.10/catboost-R-darwin-universal2-1.2.10.tgz",
+  INSTALL_opts = c("--no-multiarch", "--no-test-load", "--no-staged-install"))
+
+# Optional packages fot catBoost imputation (for Windows)
+remotes::install_url(
+  "https://github.com/catboost/catboost/releases/download/v1.2.10/catboost-R-windows-x86_64-1.2.10.tgz", 
+  INSTALL_opts = c("--no-multiarch", "--no-test-load"))
+
+# Optional package for catboost imputation (for Linux X86_64)
+remotes::install_url("https://github.com/catboost/catboost/releases/download/v1.2.10/catboost-R-Linux-1.2.10.tgz",
+                     INSTALL_opts = c("--no-multiarch", "--no-test-load", "--no-staged-install"))
+
+# Optional package for catboost imputation (for Linux Aarch64)
+remotes::install_url("https://github.com/catboost/catboost/releases/download/v1.2.10/catboost-R-linux-aarch64-1.2.10.tgz",
+                     INSTALL_opts = c("--no-multiarch", "--no-test-load", "--no-staged-install"))
+
+# Additional learners (RECOMMENDED!)
+install.packages("mlr3extralearners", repos = c(mlrorg = "https://mlr-org.r-universe.dev"))
 ```
 
 The package uses `mlr3`, `mlr3tuning`, `mlr3pipelines`, and related packages for model training and tuning. Selected algorithms may require additional packages. For example:
@@ -131,27 +138,29 @@ github install haghish/mlim
 Supported algorithms
 --------------------
 
-**`mlim`** supports several algorithms:
+The following algorithm names are recognized by **`mlim`**:
 
-- `ELNET` (Elastic Net) 
-- `RF`    (Random Forest and Extremely Randomized Trees) 
-- `GBM` (Gradient Boosting Machine) 
-- `XGB` (Extreme Gradient Boosting, available in Mac OS and Linux) 
-- `DL` (Deep Learning) 
-- `Ensemble` (Stacked Ensemble) 
-
-> `ELNET` is the default imputation algorithm. Among all of the above, ELNET is the simplest model, fastest to fine-tune, requires the least amount of RAM and CPU, and yet, it is the most stable one, which also makes it one of the most generalizable algorithms. By default, **`mlim`** uses only `ELNET`, however, you can add another algorithm to activate the post-imputation procedure.
-
-<!-- However, officially, only __`ELNET`__ is _recommended for personal computers with limited RAM_. **`mlim`** is computation hungry and is more suitable for servers with a lot of RAM. However, __`ELNET`__ converges rather fast and hence, provides a fast, scalable, yet highly flexible solution for missing data imputation. Compared to a fine-tuned __`GBM`__, __`ELNET`__ generally performs poorer, but their computational demands are vastly different. In order to fine-tune a __`GBM`__ model that out-performs __`ELNET`__, you need to include a large number of models to allow **`mlim`** to search for the ideal parameters for each variable, within each iteration. 
--->
+| Algorithm | Description      | Notes |
+|-----------|------------------|-------|
+| `ELNET`   | Elastic net regression | Default; a practical starting point with relatively low computational requirements |
+| `RF`      | Random forest | Captures nonlinear patterns and interactions |
+| `CRF`     | Conditional random forest | Requires additional tree-related packages |
+| `GBM`     | Gradient boosting | Requires the corresponding backend; some target types may be unsupported |
+| `XGB`     | XGBoost | Boosted decision trees |
+| `CAT`     | CatBoost | Optional backend and platform-dependent installation |
+| `NNET`    | Neural network | Optional learner backend |
+| `HML` | Hierarchical machine learning (GPBoost) | Experimental; requires `hierarchy` and must currently be used alone |
 <!--
-| **Algorithm** | **Speed**      | **RAM**        | **CPU**        |
-|:--------------|:---------------|:---------------|:---------------|
-| `ELNET`         | High           | Low            | Low            |
-| `GBM`           | Low           | High           | High           |
+| `SVM` | Support vector machine | Optional learner backend |
+| `KNN` | k-nearest neighbors | Not used for bootstrap-weighted multiple imputation in the current implementation |
+| `NB` | Naive Bayes | Supported by the syntax validator; check target-specific learner availability |
+| `ENSEMBLE` | Stacked ensemble | Requires at least two additional base algorithms |
 -->
-<!--| XGBoost       | Low           | High           | High           |
-| Ensemble      | Extremely Low | Extremely High | Extremely High |-->
+
+`LGBM` appears in parts of the learner documentation and Stata help, but is not accepted by the current R syntax validator. Until those files are made consistent, it should **not** be presented as a generally available algorithm in `dev`.
+
+`ELNET` is the default because it is relatively fast to tune, not because it always produces the lowest error. More complex models can improve prediction in some datasets but may require substantially more computing time.
+
 
 ### `GBM` vs `ELNET`
 
