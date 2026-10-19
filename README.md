@@ -4,7 +4,7 @@
 
 <a href="https://github.com/haghish/mlim"><img src='man/figures/mlim.png' align="right" height="200" /></a>
 
-**`mlim`** : Single and Multiple Imputation for `R` and `Stata` with Automated Machine Learning
+**`mlim`** : Single and Multiple Imputation for R and Stata with Automated Machine Learning
 ================================================================
 
 [![GitHub dev](https://img.shields.io/github/v/release/haghish/mlim.svg?color=2eb885)](https://github.com/haghish/mlim/releases/?include_prereleases&sort=semver "View GitHub releases")
@@ -61,12 +61,14 @@ The procedure consists of several steps:
 
 <img src='man/figures/flowchart_base.png' align="center" width="300" /> 
 
+<!--
 Fast imputation with **`ELNET`**
 ---------------------------------------------------------
 
 Below are some comparisons between different R packages for carrying out multiple imputations (bars with error) and single imputation. In these analyses, I only used the **`ELNET`** algorithm, which fine-tunes much faster than other algorithms (**`GBM`**, **`XGB`**, and **`DL`**). As it evident, **`ELNET`** already outperforms all other single and multiple imputation procedures available in **R** language. 
 
 <img src="man/figures/charity.png" width="200" height="150"><img src="man/figures/iris_continuous_p15.png" width="200" height="150"><img src="man/figures/iris_mpce_p15.png" width="200" height="150"><img src="man/figures/bfi_binary_p15.png" width="200" height="150"><img src="man/figures/bfi_missrank_p15.png" width="200" height="150"><img src="man/figures/sat.act_nrmse_p15.png" width="200" height="150"><img src="man/figures/titanic_mpce_p15.png" width="200" height="150">
+-->
 
 ## Installation
 
@@ -140,17 +142,6 @@ The following algorithm names are recognized by **`mlim`**:
 | `CAT`     | CatBoost | Optional backend and platform-dependent installation |
 | `NNET`    | Neural network | Optional learner backend |
 | `HML` | Hierarchical machine learning (GPBoost) | Experimental; requires `hierarchy` and must currently be used alone |
-<!--
-| `SVM` | Support vector machine | Optional learner backend |
-| `KNN` | k-nearest neighbors | Not used for bootstrap-weighted multiple imputation in the current implementation |
-| `NB` | Naive Bayes | Supported by the syntax validator; check target-specific learner availability |
-| `ENSEMBLE` | Stacked ensemble | Requires at least two additional base algorithms |
--->
-
-`LGBM` appears in parts of the learner documentation and Stata help, but is not accepted by the current R syntax validator. Until those files are made consistent, it should **not** be presented as a generally available algorithm in `dev`.
-
-`ELNET` is the default because it is relatively fast to tune, not because it always produces the lowest error. More complex models can improve prediction in some datasets but may require substantially more computing time.
-
 
 Example 
 -------
@@ -220,5 +211,25 @@ fit <- with(data=mids, exp=glm(Species ~ Sepal.Length, family = "binomial"))
 res <- mice::pool(fit)
 summary(res)
 ```
+
+Saving and resuming a long imputation
+-------------------------------------
+
+If you are imputing a large/time-consuming dataset, you can save the imputation process. If the imputation gets interrupted for any reason, you can continue the imputation later on from that point, using the **`save`** and **`load`** arguments. Saved states contain the settings and intermediate results needed to resume an interrupted imputation. 
+
+In R:
+
+```r
+imp <- mlim(irisNA, m = 5, save = "iris_imputation.mlim", seed = 2022)
+imp <- mlim(load = "iris_imputation.mlim")
+```
+
+In Stata:
+
+```stata
+mlim, m(5) save("imputation.mlim")
+mlim, load("imputation.mlim")
+```
+
 
 
