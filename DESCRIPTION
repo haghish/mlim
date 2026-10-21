@@ -1,7 +1,7 @@
 Package: mlim
 Type: Package
 Title: Single and Multiple Imputation with Automated Machine Learning
-Version: 0.7.0
+Version: 0.7.0.1
 Authors@R: 
     person("E. F. Haghish",
            role = c("aut", "cre", "cph"),
@@ -51,3 +51,4 @@ LazyData: true
 URL: https://github.com/haghish/mlim, https://www.sv.uio.no/psi/english/people/academic/haghish/
 BugReports: https://github.com/haghish/mlim/issues
 Config/roxygen2/version: 8.1.0
+RoxygenNote: 7.3.3

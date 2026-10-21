@@ -12,50 +12,36 @@ export(mlim.summarize)
 importFrom(md.log,md.log)
 importFrom(memuse,Sys.meminfo)
 importFrom(mice,as.mids)
-importFrom(missRanger,
-  imputeUnivariate,
-  missRanger
-)
-importFrom(mlr3,
-  TaskClassif,
-  TaskRegr,
-  lrn,
-  msr,
-  resample,
-  rsmp
-)
-importFrom(mlr3pipelines,
-  GraphLearner,
-  pipeline_stacking
-)
-importFrom(mlr3tuning,
-  tnr,
-  tune
-)
-importFrom(paradox,
-  p_dbl,
-  p_fct,
-  p_int,
-  ps,
-  to_tune
-)
+importFrom(missRanger,imputeUnivariate)
+importFrom(missRanger,missRanger)
+importFrom(mlr3,TaskClassif)
+importFrom(mlr3,TaskRegr)
+importFrom(mlr3,lrn)
+importFrom(mlr3,msr)
+importFrom(mlr3,resample)
+importFrom(mlr3,rsmp)
+importFrom(mlr3pipelines,GraphLearner)
+importFrom(mlr3pipelines,pipeline_stacking)
+importFrom(mlr3tuning,tnr)
+importFrom(mlr3tuning,tune)
+importFrom(paradox,p_dbl)
+importFrom(paradox,p_fct)
+importFrom(paradox,p_int)
+importFrom(paradox,ps)
+importFrom(paradox,to_tune)
 importFrom(parallel,detectCores)
 importFrom(readstata13,save.dta13)
-importFrom(stats,
-  ave,
-  median,
-  model.matrix,
-  na.omit,
-  reshape,
-  rnorm,
-  runif,
-  setNames,
-  var
-)
+importFrom(stats,ave)
+importFrom(stats,median)
+importFrom(stats,model.matrix)
+importFrom(stats,na.omit)
+importFrom(stats,reshape)
+importFrom(stats,rnorm)
+importFrom(stats,runif)
+importFrom(stats,setNames)
+importFrom(stats,var)
 importFrom(tools,file_ext)
-importFrom(utils,
-  capture.output,
-  packageVersion,
-  setTxtProgressBar,
-  txtProgressBar
-)
+importFrom(utils,capture.output)
+importFrom(utils,packageVersion)
+importFrom(utils,setTxtProgressBar)
+importFrom(utils,txtProgressBar)

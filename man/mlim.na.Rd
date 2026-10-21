@@ -4,7 +4,15 @@
 \alias{mlim.na}
 \title{add stratified/unstratified artificial missing observations}
 \usage{
-mlim.na(x, p = 0.1, stratify = FALSE, classes = NULL, seed = NULL)
+mlim.na(
+  x,
+  p = 0.1,
+  stratify = FALSE,
+  classes = NULL,
+  seed = NULL,
+  mechanism = "mcar",
+  mar = NULL
+)
 }
 \arguments{
 \item{x}{data.frame. x must be strictly a data.frame and any other
@@ -20,25 +28,29 @@ when the factor levels are imbalanced.}
 
 \item{classes}{character vector, specifying the variable classes that should
 be selected for adding NA values. the default value is NULL,
-meaning all variables will receive NA values with probability of 'p'.
-however, if you wish to add NA values only to a specific classes, e.g.
-'numeric' variables or 'ordered' factors, specify them in this argument.
-e.g. write "classes = c('numeric', 'ordered')" if you wish to add NAs
-only to numeric and ordered factors.}
+meaning all variables can receive NA values. use classes
+such as c('numeric', 'ordered') to restrict selection.}
 
-\item{seed}{integer. a random seed number for reproducing the result (recommended)}
+\item{seed}{integer. random seed for reproducibility (recommended)}
+
+\item{mechanism}{missingness mechanism: "mcar" (default) or "mar".}
+
+\item{mar}{named numeric vector or coefficient matrix for MAR. matrix rows
+identify incomplete variables; columns identify predictors of
+missingness. a vector uses its named predictors for all other
+variables. rows are processed in order; previously masked values
+are not used. ignored when mechanism = "mcar".}
 }
 \value{
-data.frame
+data.frame or atomic vector
 }
 \description{
 to examine the performance of imputation algorithms, artificial
              missing data are added to datasets and then imputed, to compare
              the original observations with the imputed values. this function
-             can add stratified or unstratified artificial missing data. stratified
-             missing data can be particularly useful if your categorical or ordinal
-             variables are imbalanced, i.e., one category appears at a much higher
-             rate than others.
+             can add stratified or unstratified artificial missing data.
+             stratification is useful when categorical or ordinal variables
+             are imbalanced.
 }
 \examples{
 
@@ -56,6 +68,10 @@ mlim.na(iris, p=0.5, stratify = TRUE, classes = "factor", seed = 1)
 
 # or add NAs to numeric variables
 mlim.na(iris, p=0.5, classes = "numeric", seed = 1)
+
+# MAR: remove predictor values based on the fully observed outcome
+dat <- data.frame(v1 = rnorm(100), v2 = rnorm(100), outcome = rnorm(100))
+mlim.na(dat, p = 0.15, mechanism = "mar", mar = c(outcome = 1))
 }
 }
 \author{
