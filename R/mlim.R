@@ -19,20 +19,6 @@
 #   matching. For categorical variables, stochastic matching to the observed
 #   categories is handled by 'stochastic'; see the 'stochastic'
 #   argument for details.
-# @param variance Character, either "constant" (default) or "conditional".
-#   Controls the stochastic residual variance for non-HML numeric targets.
-#   "constant" draws independent Gaussian errors with SD equal to the
-#   cross-validation RMSE. "conditional" refits the selected mean learner
-#   across CV folds to obtain out-of-fold squared residuals, then trains a
-#   regularized random forest to estimate residual variance conditional on
-#   predictors. Its OOB predictions calibrate the average variance to the
-#   selected model's CV RMSE squared. This adds a second model and extra CV
-#   fits per numeric variable and iteration, and requires the 'ranger' package.
-#   Categorical targets retain probability-based sampling; HML retains its
-#   own multilevel predictive distribution. If stochastic=FALSE, this option
-#   does not affect deterministic imputation. Conditional prediction MSE is
-#   not necessarily the true irreducible residual variance, and this option
-#   alone does not guarantee valid multiple-imputation inference.
 # ARGUMENTS FOR ..., WHICH ARE MOSTLY EXPERIMENTAL
 # 1. preimputed.data data.frame. if you have used another software for missing data imputation, you can still
 #    optimize the imputation by handing the data.frame to this argument, which will bypass the "preimpute" procedure.
@@ -74,7 +60,6 @@
 #' @importFrom utils setTxtProgressBar txtProgressBar capture.output packageVersion
 #' @importFrom tools file_ext
 #' @importFrom md.log md.log
-#' @importFrom memuse Sys.meminfo
 #' @importFrom stats var setNames na.omit
 #' @importFrom parallel detectCores
 #'
@@ -315,7 +300,7 @@ mlim <- function(data = NULL,
 
   # check the ... arguments
   # ============================================================
-  hidden_args <- c("superdebug", "ignore.rank", "sleep", "debug", "preimputed.data", "matching", "variance")
+  hidden_args <- c("superdebug", "ignore.rank", "sleep", "debug", "preimputed.data", "matching")
   stopifnot("incompatible '...' arguments" = (names(list(...)) %in% hidden_args))
 
   # Simplify the syntax by taking arguments that are less relevant to the majority
@@ -330,7 +315,6 @@ mlim <- function(data = NULL,
   error       <- NULL
   running     <- TRUE
   debug       <- threeDots(name = "debug", ..., default = FALSE)
-  variance    <- threeDots(name = "variance", ..., default = "constant")
   miniter     <- 2L #this is the minimum number of iterations
   verbose     <- 0
   error_metric<- "RMSE"
@@ -391,10 +375,6 @@ mlim <- function(data = NULL,
     if ("hierarchy" %in% names(load)) hierarchy <- load$hierarchy
     variable_levels <- if ("variable_levels" %in% names(load)) load$variable_levels else NULL
     if ("stochastic" %in% names(load)) stochastic <- load$stochastic
-    # Older saved states predate this option; preserve their constant-SD behaviour.
-    variance <- if ("variance" %in% names(load)) {
-      match.arg(load$variance, c("constant", "conditional"))
-    } else "constant"
     #balance        <- load$balance #EXPERIMENTAL
     ignore         <- load$ignore
     save           <- load$save
@@ -459,16 +439,6 @@ mlim <- function(data = NULL,
     debug <- synt$debug
   }
 
-
-  # Conditional variance is a separate ranger learner for conventional
-  # regression engines. Fail early if its dependency is unavailable; do not
-  # silently run constant variance for every requested imputation.
-  if (identical(variance, "conditional") && isTRUE(stochastic) &&
-      !("HML" %in% toupper(impute)) &&
-      !requireNamespace("ranger", quietly = TRUE)) {
-    stop("variance='conditional' requires the 'ranger' package. Install it before running mlim.",
-         call. = FALSE)
-  }
 
   # ============================================================
   # Initialize the Markdown report
@@ -637,7 +607,6 @@ mlim <- function(data = NULL,
                                miniter, matching, ignore.rank,
                                verbosity, error, cpu, clean = TRUE,
                                stochastic=stochastic,
-                               variance=variance,
                                running=running)
 
     if (m > 1) MI[[m.it]] <- dataLast

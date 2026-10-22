@@ -2,7 +2,6 @@
 #' @description runs imputation iteration loop to fully impute a dataframe
 #' @importFrom utils setTxtProgressBar txtProgressBar capture.output packageVersion
 #' @importFrom md.log md.log
-#' @importFrom memuse Sys.meminfo
 #' @importFrom stats var setNames na.omit
 #' @return list
 #' @author E. F. Haghish
@@ -29,7 +28,6 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
                            miniter, matching, ignore.rank,
                            verbosity, error, cpu, clean,
                            stochastic,
-                           variance = "constant",
                            running = TRUE) {
 
   # ------------------------------------------------------------
@@ -106,14 +104,14 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
     }
     message("\n")
     bdata <- mlim.preimpute(data=bdata, preimpute=preimpute, seed = NULL,
-                             variable_levels=variable_levels, hierarchy=hierarchy)
+                            variable_levels=variable_levels, hierarchy=hierarchy)
     bdata[, "mlim_bootstrap_weights_column_"] <- bootstrap_weights
 
     # mlr3 learners require complete predictor matrices. Keep dataNA as the
     # original missingness mask, but initialize the working data before
     # model.matrix() is constructed in iterate().
     data <- mlim.preimpute(data=data, preimpute=preimpute, seed = NULL,
-                            variable_levels=variable_levels, hierarchy=hierarchy)
+                           variable_levels=variable_levels, hierarchy=hierarchy)
 
     ## SOLUTION 3: Assign CV folding manually instead of weight_column
     ## ----------------------------------------------------
@@ -253,24 +251,7 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
     }
 
     # always print the iteration
-    # System free RAM is not equivalent to R memory use: it also reflects
-    # file caches and other processes. Report R's managed heap and process RSS
-    # (including native learner allocations) to diagnose genuine retention.
-    .mlim_gc <- gc(verbose = FALSE)
-    .mlim_heap <- sprintf("%.3f GiB", sum(.mlim_gc[, 2L]) / 1024)
-    .mlim_rss <- "unavailable (install 'ps')"
-    if (requireNamespace("ps", quietly = TRUE)) {
-      .mlim_rss_bytes <- tryCatch(
-        as.numeric(ps::ps_memory_info(ps::ps_handle())[["rss"]]),
-        error = function(e) NA_real_
-      )
-      if (is.finite(.mlim_rss_bytes)) {
-        .mlim_rss <- sprintf("%.3f GiB", .mlim_rss_bytes / 1024^3)
-      }
-    }
-    message(paste0("\ndata ", m.it, ", iteration ", k,
-                   " (R heap = ", .mlim_heap,
-                   ", R process RSS = ", .mlim_rss, "):"))
+    message(paste0("\ndata ", m.it, ", iteration ", k, ":"))
     md.log(paste("Iteration", k), section="subsection")
 
     for (Y in ITERATIONVARS[z:length(ITERATIONVARS)]) {
@@ -300,7 +281,7 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
           # saving settings
           mem, orderedCols, ignore, maxiter,
           miniter, matching, ignore.rank,
-          verbosity, error, cpu, stochastic, variance = variance,
+          verbosity, error, cpu, stochastic,
           variable_levels = variable_levels)
         , file = report, append = TRUE)
         , error = function(cond) {

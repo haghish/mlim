@@ -21,7 +21,6 @@
 #' @importFrom utils packageVersion
 #' @importFrom stats model.matrix rnorm
 #' @importFrom md.log md.log
-#' @importFrom memuse Sys.meminfo
 #' @importFrom missRanger imputeUnivariate
 #' @importFrom mlr3 TaskClassif TaskRegr lrn msr resample rsmp
 #' @importFrom mlr3tuning tune tnr
@@ -53,7 +52,7 @@ iterate <- function(MI, dataNA, bdataNA,
                     mem, orderedCols, ignore, maxiter,
                     miniter, matching, ignore.rank,
                     verbosity, error, cpu,
-                    stochastic, variance = "constant",
+                    stochastic,
                     variable_levels = NULL
 ) {
 
@@ -67,8 +66,7 @@ iterate <- function(MI, dataNA, bdataNA,
     md.log(
       paste(
         "imputing:", Y,
-        " family:", FAMILY[z],
-        "(RAM =", memuse::Sys.meminfo()$freeram, ")"
+        " family:", FAMILY[z]
       ),
       trace = FALSE
     )
@@ -81,7 +79,7 @@ iterate <- function(MI, dataNA, bdataNA,
   hierarchy_original <- hierarchy
   if (!is.null(variable_levels)) {
     target_level <- names(variable_levels)[vapply(variable_levels,
-      function(vars) Y %in% vars, logical(1))]
+                                                  function(vars) Y %in% vars, logical(1))]
     if (length(target_level)) {
       if (length(target_level) != 1L) stop("Target has ambiguous variable level.")
       level_context <- mlim.variable_levels.prepare(
@@ -995,78 +993,41 @@ iterate <- function(MI, dataNA, bdataNA,
     }
 
     if (accept) {
-      # This is deliberately a separate step from mean-model tuning. Only
-      # continuous, stochastic, non-HML imputations require a variance learner.
-      # The trained mean learner is cloned and cross-fitted; the original fit
-      # is retained for predicting the missing values.
-      conditional_variance_fit <- NULL
-      if (identical(variance, "conditional") && isTRUE(stochastic) &&
-          !classification && !inherits(fit, "mlim.hml") &&
-          (any(v.na) || (boot && any(b.na)))) {
-        conditional_variance_fit <- tryCatch(
-          mlim.variance.fit(
-            mean_learner = fit,
-            task = make_task("full"),
-            x = trainDesign,
-            weights = weights,
-            cv = cv,
-            cpu = cpu,
-            global_sd = as.numeric(iterationMetric[1L, "RMSE"]),
-            seed = seed
-          ),
-          error = function(e) {
-            warning(paste0(
-              "Conditional variance for variable '", Y,
-              "' could not be estimated: ", conditionMessage(e),
-              ". Falling back to constant CV RMSE for this update."
-            ), call. = FALSE)
-            NULL
-          }
-        )
-      }
-
       if (any(v.na)) {
-      if (inherits(fit, "mlim.hml")) {
-        VEK <- mlim.hml.predict(
-          fit, dataDesign[which(v.na), , drop = FALSE],
-          data[which(v.na), hierarchy, drop = FALSE], stochastic = stochastic
-        )
-      } else {
-        pred <- fit$predict_newdata(
-          dataDesign[which(v.na), , drop = FALSE]
-        )
-      }
-
-      if (!inherits(fit, "mlim.hml") && classification) {
-        if (stochastic) {
-          VEK <- stochasticFactorImpute(
-            levels = levels(data[[Y]]),
-            probMat = pred$prob[
-              , levels(data[[Y]]), drop = FALSE
-            ]
+        if (inherits(fit, "mlim.hml")) {
+          VEK <- mlim.hml.predict(
+            fit, dataDesign[which(v.na), , drop = FALSE],
+            data[which(v.na), hierarchy, drop = FALSE], stochastic = stochastic
+          )
+        } else {
+          pred <- fit$predict_newdata(
+            dataDesign[which(v.na), , drop = FALSE]
           )
         }
-        else {
-          VEK <- pred$response
-        }
-      }
-      else if (!inherits(fit, "mlim.hml")) {
-        VEK <- pred$response
 
-        if (stochastic) {
-          sd_missing <- if (is.null(conditional_variance_fit)) {
-            as.numeric(iterationMetric[1L, "RMSE"])
-          } else {
-            mlim.variance.predict_sd(
-              conditional_variance_fit,
-              dataDesign[which(v.na), , drop = FALSE], cpu = cpu
+        if (!inherits(fit, "mlim.hml") && classification) {
+          if (stochastic) {
+            VEK <- stochasticFactorImpute(
+              levels = levels(data[[Y]]),
+              probMat = pred$prob[
+                , levels(data[[Y]]), drop = FALSE
+              ]
             )
           }
-          VEK <- rnorm(n = length(VEK), mean = VEK, sd = sd_missing)
+          else {
+            VEK <- pred$response
+          }
         }
-      }
+        else if (!inherits(fit, "mlim.hml")) {
+          VEK <- pred$response
 
-      data[which(v.na), Y] <- VEK
+          if (stochastic) {
+            VEK <- rnorm(n = length(VEK), mean = VEK,
+                         sd = as.numeric(iterationMetric[1L, "RMSE"]))
+          }
+        }
+
+        data[which(v.na), Y] <- VEK
       }
 
       if (boot && any(b.na)) {
@@ -1098,15 +1059,8 @@ iterate <- function(MI, dataNA, bdataNA,
           BEK <- pred$response
 
           if (stochastic) {
-            sd_boot_missing <- if (is.null(conditional_variance_fit)) {
-              as.numeric(iterationMetric[1L, "RMSE"])
-            } else {
-              mlim.variance.predict_sd(
-                conditional_variance_fit,
-                bdataDesign[which(b.na), , drop = FALSE], cpu = cpu
-              )
-            }
-            BEK <- rnorm(n = length(BEK), mean = BEK, sd = sd_boot_missing)
+            BEK <- rnorm(n = length(BEK), mean = BEK,
+                         sd = as.numeric(iterationMetric[1L, "RMSE"]))
           }
         }
 
@@ -1139,7 +1093,6 @@ iterate <- function(MI, dataNA, bdataNA,
         "target", "pred", "task", "task_for_learner", "learner", "instance",
         "tuned_learner", "trained_learner", "ensemble_learners",
         "ensemble_result", "ensemble_task", "rr", "graph", "hml_result",
-        "conditional_variance_fit", "sd_missing", "sd_boot_missing",
         "VEK", "BEK"),
       ls(envir = environment(), all.names = TRUE)
     )
@@ -1161,9 +1114,9 @@ iterate <- function(MI, dataNA, bdataNA,
   # to all observations of that school/child; observed cells remain untouched.
   if (!is.null(level_context)) {
     data <- mlim.variable_levels.restore(long_data, data,
-      level_context$data_rows, Y, long_dataNA)
+                                         level_context$data_rows, Y, long_dataNA)
     if (boot) bdata <- mlim.variable_levels.restore(long_bdata, bdata,
-      level_context$bdata_rows, Y, long_bdataNA)
+                                                    level_context$bdata_rows, Y, long_bdataNA)
     hierarchy <- hierarchy_original
   }
 
@@ -1242,7 +1195,6 @@ iterate <- function(MI, dataNA, bdataNA,
       hierarchy = hierarchy,
       variable_levels = variable_levels,
       stochastic = stochastic,
-      variance = variance,
       save = save,
       maxiter = maxiter,
       miniter = miniter,
