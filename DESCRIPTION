@@ -1,7 +1,7 @@
 Package: mlim
 Type: Package
 Title: Single and Multiple Imputation with Automated Machine Learning
-Version: 0.7.0.1
+Version: 0.7.0.2
 Authors@R: 
     person("E. F. Haghish",
            role = c("aut", "cre", "cph"),
@@ -37,8 +37,6 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 Imports:
     mice,
-    missRanger,
-    memuse,
     mlr3,
     mlr3pipelines,
     mlr3tuning,
@@ -46,6 +44,7 @@ Imports:
     md.log (>= 0.2.0),
     readstata13 (>= 0.11.0)
 Suggests:
+    missRanger,
     mlr3learners
 LazyData: true
 URL: https://github.com/haghish/mlim, https://www.sv.uio.no/psi/english/people/academic/haghish/

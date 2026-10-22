@@ -26,9 +26,13 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
                            # saving settings
                            mem, orderedCols, ignore, maxiter,
                            miniter, matching, ignore.rank,
-                           verbosity, error, cpu, clean,
+                           verbosity,
+                           error,
+                           cpu,
+                           clean,
                            stochastic,
-                           running = TRUE) {
+                           running = TRUE,
+                           quiet=FALSE) {
 
   # ------------------------------------------------------------
   # bootrtap
@@ -78,18 +82,6 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
       sampling_index <- sample(x = nrow(data), size = nrow(data), replace=TRUE)
     }
 
-
-
-    ## SOLUTION 1: DROP THE DUPLICATES AND DO UNDERSAMPLING
-    ## ----------------------------------------------------
-    # bdata <- data[sampling_index, ]
-    # bdataNA <- is.na(bdata[, vars2impute, drop = FALSE])
-    # bdata <- mlim.preimpute(data=bdata, preimpute=preimpute, seed = NULL)
-    # sampling_index <- sampling_index[!duplicated(sampling_index)]
-    # bdata <- data[sampling_index, ]
-    # bdata[, "mlim_bootstrap_weights_column_"] <- 1
-    # bdataNA <- is.na(bdata[, vars2impute, drop = FALSE])
-
     ## SOLUTION 2: ADD THE DUPLICATES TO THE WEIGHT_COLUMN
     ## ----------------------------------------------------
     if (hml_requested) {
@@ -103,27 +95,23 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
       bootstrap_weights <- dups[, 2]
     }
     message("\n")
-    bdata <- mlim.preimpute(data=bdata, preimpute=preimpute, seed = NULL,
-                            variable_levels=variable_levels, hierarchy=hierarchy)
+    bdata <- mlim.preimpute(data=bdata,
+                            preimpute=preimpute,
+                            seed = NULL,
+                            variable_levels=variable_levels,
+                            hierarchy=hierarchy,
+                            quiet=quiet)
     bdata[, "mlim_bootstrap_weights_column_"] <- bootstrap_weights
 
     # mlr3 learners require complete predictor matrices. Keep dataNA as the
     # original missingness mask, but initialize the working data before
     # model.matrix() is constructed in iterate().
-    data <- mlim.preimpute(data=data, preimpute=preimpute, seed = NULL,
-                           variable_levels=variable_levels, hierarchy=hierarchy)
-
-    ## SOLUTION 3: Assign CV folding manually instead of weight_column
-    ## ----------------------------------------------------
-    # bdata <- data[sampling_index, ]
-    # bdataNA <- is.na(bdata[, vars2impute, drop = FALSE])
-    # bdata <- mlim.preimpute(data=bdata, preimpute=preimpute, seed = NULL)
-    # bdata[, "mlim_bootstrap_fold_assignment_"] <- 0
-    # folds <- bootstrapCV(index = sampling_index, cv = cv)
-    # for (i in 1:cv) {
-    #   indexcv <- sampling_index %in% folds[,i]
-    #   bdata[indexcv, "mlim_bootstrap_fold_assignment_"] <- i
-    # }
+    data <- mlim.preimpute(data=data,
+                           preimpute=preimpute,
+                           seed = NULL,
+                           variable_levels=variable_levels,
+                           hierarchy=hierarchy,
+                           quiet=quiet)
   }
 
   # update the fresh data
@@ -282,8 +270,7 @@ iteration_loop <- function(MI, dataNA, preimputed.data, data, bdata, boot, metri
           mem, orderedCols, ignore, maxiter,
           miniter, matching, ignore.rank,
           verbosity, error, cpu, stochastic,
-          variable_levels = variable_levels)
-        , file = report, append = TRUE)
+          variable_levels = variable_levels, quiet=quiet), file = report, append = TRUE)
         , error = function(cond) {
           if ("HML" %in% toupper(impute)) {
             stop("HML failed to impute variable '", Y, "': ", conditionMessage(cond),

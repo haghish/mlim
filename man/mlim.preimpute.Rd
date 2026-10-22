@@ -9,13 +9,15 @@ mlim.preimpute(
   preimpute = "random",
   seed = NULL,
   variable_levels = NULL,
-  hierarchy = NULL
+  hierarchy = NULL,
+  quiet = FALSE
 )
 }
 \arguments{
 \item{data}{A data.frame containing incomplete observations.}
 
-\item{preimpute}{Character: "random", "mm", or experimental "rf".}
+\item{preimpute}{Character: "random", "mm", or experimental "rf".
+The "rf" option requires the optional "missRanger" package.}
 
 \item{seed}{Optional random seed.}
 

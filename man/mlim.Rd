@@ -21,7 +21,7 @@ mlim(
   stochastic = m > 1,
   autobalance = TRUE,
   seed = NULL,
-  verbosity = NULL,
+  verbosity = "quiet",
   report = NULL,
   save = NULL,
   load = NULL,
@@ -147,7 +147,7 @@ balancing weights are combined with bootstrap multiplicity weights.}
 \item{seed}{integer. specify the random generator seed}
 
 \item{verbosity}{character. controls how much information is printed to console.
-the value can be "warn" (default), "info", "debug", or NULL.}
+the value can be "warn", "info", "debug", or "quiet" (default).}
 
 \item{report}{filename. if a filename is specified (e.g. report = "mlim.md"), the "md.log" R
 package is used to generate a Markdown progress report for the

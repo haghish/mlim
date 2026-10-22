@@ -187,7 +187,7 @@
 #'               the function that has generated the message. otherwise, a
 #'               reduced markdown-like report is generated. default is NULL.
 #' @param verbosity character. controls how much information is printed to console.
-#'                  the value can be "warn" (default), "info", "debug", or NULL.
+#'                  the value can be "warn", "info", "debug", or "quiet" (default).
 #' @param save filename (with .mlim extension). if a filename is specified, an 'mlim' object is
 #'             saved after the end of each variable imputation. this object not only
 #'             includes the imputed dataframe and estimated cross-validation error, but also
@@ -280,7 +280,7 @@ mlim <- function(data = NULL,
 
                  # report and reproducibility
                  seed = NULL,
-                 verbosity = NULL,
+                 verbosity = "quiet",
                  report = NULL,
 
                  save = NULL,
@@ -297,6 +297,12 @@ mlim <- function(data = NULL,
   # use all available CPUs by default
   # ============================================================
   if (cpu == -1) cpu <- parallel::detectCores(logical = FALSE)
+
+  quiet <- FALSE
+  if (verbosity == "quiet") {
+    verbosity <- "warn"
+    quiet     <- TRUE
+  }
 
   # check the ... arguments
   # ============================================================
@@ -529,8 +535,12 @@ mlim <- function(data = NULL,
       # preimpute in single imputation ONLY. for multiple imputation, each
       # bootstrap dataset is imputed seperately
       if (m == 1) {
-        data <- mlim.preimpute(data=data, preimpute=preimpute, seed = NULL,
-                               variable_levels=variable_levels, hierarchy=hierarchy) # DO NOT RESET THE SEED!
+        data <- mlim.preimpute(data=data,
+                               preimpute=preimpute,
+                               seed = NULL,
+                               variable_levels=variable_levels,
+                               hierarchy=hierarchy,
+                               quiet=quiet) # DO NOT RESET THE SEED!
       }
 
       # reset the relevant predictors

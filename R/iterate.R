@@ -21,7 +21,6 @@
 #' @importFrom utils packageVersion
 #' @importFrom stats model.matrix rnorm
 #' @importFrom md.log md.log
-#' @importFrom missRanger imputeUnivariate
 #' @importFrom mlr3 TaskClassif TaskRegr lrn msr resample rsmp
 #' @importFrom mlr3tuning tune tnr
 #' @importFrom paradox p_dbl p_fct p_int ps to_tune
@@ -53,7 +52,8 @@ iterate <- function(MI, dataNA, bdataNA,
                     miniter, matching, ignore.rank,
                     verbosity, error, cpu,
                     stochastic,
-                    variable_levels = NULL
+                    variable_levels = NULL,
+                    quiet = FALSE
 ) {
 
   # Update the report
@@ -132,7 +132,15 @@ iterate <- function(MI, dataNA, bdataNA,
       data[[Y]] <- draw(data[[Y]], v.na)
       if (boot) bdata[[Y]] <- draw(bdata[[Y]], b.na)
     } else {
-      data[[Y]] <- missRanger::imputeUnivariate(data[[Y]])
+      # Univariate imputation: sample observed values with replacement.
+      values <- data[[Y]]
+      missing <- is.na(values)
+      if (any(missing)) {
+        observed <- values[!missing]
+        if (!length(observed)) stop("No non-missing elements to sample from.")
+        values[missing] <- observed[sample.int(length(observed), sum(missing), replace = TRUE)]
+        data[[Y]] <- values
+      }
     }
   }
   else {

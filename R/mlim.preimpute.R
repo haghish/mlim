@@ -10,6 +10,7 @@
 #'   and its post-initialization unit reconciliation are unchanged.
 #' @param data A data.frame containing incomplete observations.
 #' @param preimpute Character: "random", "mm", or experimental "rf".
+#'   The "rf" option requires the optional "missRanger" package.
 #' @param seed Optional random seed.
 #' @param variable_levels Optional named list assigning higher-level variables to
 #'   the hierarchy identifier at which they are constant. For example,
@@ -17,12 +18,16 @@
 #'   automatically activate level-aware random or median/mode preimputation.
 #'   If NULL, all variables are initialized at the observation level.
 #' @param hierarchy Ordered vector of hierarchy identifiers, highest first.
-#' @importFrom missRanger missRanger imputeUnivariate
 #' @return Preimputed data.frame.
 #' @author E. F. Haghish
 #' @export
-mlim.preimpute <- function(data, preimpute = "random", seed = NULL,
-                           variable_levels = NULL, hierarchy = NULL) {
+mlim.preimpute <- function(data,
+                           preimpute = "random",
+                           seed = NULL,
+                           variable_levels = NULL,
+                           hierarchy = NULL,
+                           quiet = FALSE) {
+
   if (!is.data.frame(data)) stop("'data' must be a data.frame.")
   if (!is.character(preimpute) || length(preimpute) != 1L)
     stop("'preimpute' must be a single character value.")
@@ -39,20 +44,24 @@ mlim.preimpute <- function(data, preimpute = "random", seed = NULL,
   row_vars <- setdiff(names(data), unit_vars)
 
   if (preimpute == "rf") {
-    message("\nPreimputation: Random Forest")
+    if (!requireNamespace("missRanger", quietly = TRUE)) {
+      stop("Random forest preimputation requires the optional package 'missRanger'. ",
+           "Install it with install.packages('missRanger').", call. = FALSE)
+    }
+    if (!quiet) message("\nPreimputation: Random Forest")
     pb <- utils::txtProgressBar(0, 1, style = 3)
     data <- missRanger::missRanger(data, num.trees = 500, mtry = 1,
                                    verbose = 0, returnOOB = TRUE, seed = seed)
     utils::setTxtProgressBar(pb, 1)
   } else if (preimpute == "mm") {
-    message("\nPreimputation: Median/Mode")
+    if (!quiet) message("\nPreimputation: Median/Mode")
     pb <- utils::txtProgressBar(0, 1, style = 3)
     if (length(unit_vars)) {
       if (length(row_vars)) data[row_vars] <- medianmode(data[row_vars])
     } else data <- medianmode(data)
     utils::setTxtProgressBar(pb, 1)
   } else {
-    message("\nPreimputation: Random Sampling")
+    if (!quiet) message("\nPreimputation: Random Sampling")
     if (!is.null(seed)) set.seed(seed)
     rsample <- function(x) {
       missing <- is.na(x)
