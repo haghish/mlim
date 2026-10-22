@@ -18,6 +18,7 @@
 #'   automatically activate level-aware random or median/mode preimputation.
 #'   If NULL, all variables are initialized at the observation level.
 #' @param hierarchy Ordered vector of hierarchy identifiers, highest first.
+#' @param quiet logical. if TRUE, it suppresses some messages. The default is FALSE.
 #' @return Preimputed data.frame.
 #' @author E. F. Haghish
 #' @export

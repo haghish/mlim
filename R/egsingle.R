@@ -9,6 +9,8 @@
 #' \describe{
 #'   \item{schoolid}{A factor identifying schools.}
 #'   \item{childid}{A factor identifying students.}
+#'   \item{measurementid}{An ID for each measurement. This column was not
+#'   included in the original dataset from the 'mlmRev' package.}
 #'   \item{year}{A numeric variable indicating the year of the test.}
 #'   \item{grade}{A numeric variable indicating the student's grade.}
 #'   \item{math}{A numeric variable containing mathematics test scores on the

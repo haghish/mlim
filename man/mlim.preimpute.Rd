@@ -28,6 +28,8 @@ automatically activate level-aware random or median/mode preimputation.
 If NULL, all variables are initialized at the observation level.}
 
 \item{hierarchy}{Ordered vector of hierarchy identifiers, highest first.}
+
+\item{quiet}{logical. if TRUE, it suppresses some messages. The default is FALSE.}
 }
 \value{
 Preimputed data.frame.

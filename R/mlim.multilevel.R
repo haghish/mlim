@@ -34,7 +34,7 @@
 #' @author E. F. Haghish
 #' @keywords internal
 #' @noRd
-#' @export
+# @export #not meant to be exported, unless for debugging
 
 mlim.multilevel <- function(data, hierarchy, variables = NULL, leave_one_out = TRUE,
                             add_cluster_size = TRUE, weights = NULL,
