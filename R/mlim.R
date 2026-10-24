@@ -62,7 +62,8 @@
 #' @importFrom md.log md.log
 #' @importFrom stats var setNames na.omit
 #' @importFrom parallel detectCores
-#'
+#' @import     mlr3learners
+#' @import     gpboost
 #'
 #' @param data a data.frame with missing data to be
 #'             imputed. if "load" argument is provided, this argument will be ignored.

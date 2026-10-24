@@ -36,8 +36,10 @@ Description: Machine learning algorithms have been used for performing
 License: MIT + file LICENSE
 Encoding: UTF-8
 Imports:
+    gpboost,
     mice,
     mlr3,
+    mlr3learners,
     mlr3pipelines,
     mlr3tuning,
     paradox,
@@ -45,8 +47,6 @@ Imports:
     readstata13 (>= 0.11.0)
 Suggests:
     missRanger,
-    mlr3learners,
-    gpboost,
     ranger
 LazyData: true
 URL: https://github.com/haghish/mlim, https://www4.uib.no/en/find-employees/e-f.haghish

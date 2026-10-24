@@ -2,7 +2,7 @@
 % Please edit documentation in R/mlim.na.R
 \name{mlim.na}
 \alias{mlim.na}
-\title{add stratified/unstratified artificial missing observations}
+\title{Add artificial missing observations}
 \usage{
 mlim.na(
   x,
@@ -11,67 +11,65 @@ mlim.na(
   classes = NULL,
   seed = NULL,
   mechanism = "mcar",
-  mar = NULL
+  mar = NULL,
+  mnar = NULL
 )
 }
 \arguments{
-\item{x}{data.frame. x must be strictly a data.frame and any other
-data.table classes will be rejected}
+\item{x}{An atomic vector or a data.frame (not a tibble).}
 
-\item{p}{proportion of missingness to be added to the data}
+\item{p}{Expected proportion of missing observations per selected variable
+under MAR or MNAR; proportion used by addNA() under MCAR.}
 
-\item{stratify}{logical. if TRUE, stratified sampling will be
-carried out, when adding NA values to 'factor' variables
-(either ordered or unordered). this feature makes evaluation
-of missing data imputation algorithms more fair, especially
-when the factor levels are imbalanced.}
+\item{stratify}{Logical. Use stratified sampling for factor variables under MCAR.}
 
-\item{classes}{character vector, specifying the variable classes that should
-be selected for adding NA values. the default value is NULL,
-meaning all variables can receive NA values. use classes
-such as c('numeric', 'ordered') to restrict selection.}
+\item{classes}{Character vector of variable classes eligible for missingness.
+NULL selects all variables identified by the mechanism.}
 
-\item{seed}{integer. random seed for reproducibility (recommended)}
+\item{seed}{Integer. Random seed for reproducibility.}
 
-\item{mechanism}{missingness mechanism: "mcar" (default) or "mar".}
+\item{mechanism}{One of "mcar" (default), "mar", or "mnar".}
 
-\item{mar}{named numeric vector or coefficient matrix for MAR. matrix rows
-identify incomplete variables; columns identify predictors of
-missingness. a vector uses its named predictors for all other
-variables. rows are processed in order; previously masked values
-are not used. ignored when mechanism = "mcar".}
+\item{mar}{Named numeric vector or coefficient matrix for observed predictors
+of missingness. For MAR, matrix rows identify incomplete variables
+and columns identify predictors; a vector applies to all variables
+except its predictors. With MNAR, this argument is optional and its
+nonzero predictors must remain fully observed.}
+
+\item{mnar}{For mechanism = "mnar", a numeric coefficient applied to all
+eligible variables, a named numeric vector of variable-specific
+coefficients, or a named list. Numeric coefficients determine the
+effect of the variable's own standardized value on its probability
+of missingness. For unordered factors or character variables,
+provide a named vector of category-specific log-odds effects in
+a list, e.g., list(group = c(A = 0, B = 1, C = -1)).}
 }
 \value{
-data.frame or atomic vector
+A data.frame or atomic vector with artificial missing values.
 }
 \description{
-to examine the performance of imputation algorithms, artificial
-             missing data are added to datasets and then imputed, to compare
-             the original observations with the imputed values. this function
-             can add stratified or unstratified artificial missing data.
-             stratification is useful when categorical or ordinal variables
-             are imbalanced.
+Add MCAR, MAR, or MNAR missingness to evaluate imputation
+             algorithms. Stratified sampling is available for MCAR only.
 }
 \examples{
-
 \dontrun{
-# adding stratified NA to an atomic vector
-x <- as.factor(c(rep("M", 100), rep("F", 900)))
-table(mlim.na(x, p=.5, stratify = TRUE))
-
-# adding unstratified NAs to all variables of a data.frame
 data(iris)
-mlim.na(iris, p=0.5, stratify = FALSE, seed = 1)
+mlim.na(iris, p = 0.15, seed = 1)
+mlim.na(iris, p = 0.15, stratify = TRUE, classes = "factor", seed = 1)
 
-# or add stratified NAs only to factor variables, ignoring other variables
-mlim.na(iris, p=0.5, stratify = TRUE, classes = "factor", seed = 1)
+dat <- data.frame(v1 = rnorm(1000), v2 = rnorm(1000),
+                  outcome = rnorm(1000))
+mlim.na(dat, p = 0.15, mechanism = "mar", mar = c(outcome = 1), seed = 1)
+mlim.na(dat, p = 0.15, mechanism = "mnar", mnar = 1, seed = 1)
+mlim.na(dat, p = 0.15, mechanism = "mnar",
+        mnar = c(v1 = 1, v2 = -1), seed = 1)
+mlim.na(dat, p = 0.15, mechanism = "mnar",
+        mnar = c(v1 = 1, v2 = -1), mar = c(outcome = 0.5), seed = 1)
 
-# or add NAs to numeric variables
-mlim.na(iris, p=0.5, classes = "numeric", seed = 1)
-
-# MAR: remove predictor values based on the fully observed outcome
-dat <- data.frame(v1 = rnorm(100), v2 = rnorm(100), outcome = rnorm(100))
-mlim.na(dat, p = 0.15, mechanism = "mar", mar = c(outcome = 1))
+mixed <- data.frame(score = rnorm(1000),
+                    group = factor(sample(c("A", "B", "C"), 1000, TRUE)))
+mlim.na(mixed, p = 0.15, mechanism = "mnar",
+        mnar = list(score = 1, group = c(A = 0, B = 1, C = -1)), seed = 1)
 }
 }
 \author{
