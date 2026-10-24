@@ -3,7 +3,7 @@
 // DO NOT FORGET to update the version of the package, if changed!
 // for more information visit http://github.com/haghish/github
 
-make mlim, replace toc pkg  version(0.6.0)                                   ///
+make mlim, replace toc pkg  version(0.7.0)                                   ///
      license("MIT")                                                          ///
      author("E. F. Haghish")                                                 ///
      affiliation("Department of Psychological Sciences, University of Bergen") ///
